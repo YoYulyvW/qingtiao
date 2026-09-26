@@ -189,22 +189,19 @@ class AutoClickAccessibilityService : AccessibilityService() {
         } else if (diag) {
             DramaDebug.add("未找到倍速/挂载（pkg=$pkg 节点数 ${nodes.size}）")
 
-            // 专门 dump 屏幕底部 25% 区域的节点（倍速按钮必在此处）
-            val screenH = resources.displayMetrics.heightPixels
-            val minY = screenH * 0.75f
+            // dump 全屏有文字/描述的节点，便于分析
             val rect = android.graphics.Rect()
-            val bottomInfo = ArrayList<String>()
+            val info = ArrayList<String>()
             for (n in nodes) {
-                n.getBoundsInScreen(rect)
-                if (rect.centerY() < minY) continue
                 val t = n.text?.toString()?.trim()
                 val d = n.contentDescription?.toString()?.trim()
-                val id = n.viewIdResourceName?.substringAfterLast('/')
-                if (t.isNullOrBlank() && d.isNullOrBlank() && id.isNullOrBlank()) continue
-                bottomInfo.add("[${t ?: ""}|${d ?: ""}|${id ?: ""}]")
-                if (bottomInfo.size >= 25) break
+                if (t.isNullOrBlank() && d.isNullOrBlank()) continue
+                n.getBoundsInScreen(rect)
+                val yPct = (rect.centerY() * 100 / resources.displayMetrics.heightPixels)
+                info.add("[${t ?: d}@${yPct}%]")
+                if (info.size >= 40) break
             }
-            DramaDebug.add("底部节点(text|desc|id): " + bottomInfo.joinToString(" "))
+            DramaDebug.add("可见节点(text@Y%): " + info.joinToString(" "))
         }
     }
 
@@ -243,23 +240,53 @@ class AutoClickAccessibilityService : AccessibilityService() {
     }
 
     /**
-     * 找短剧挂载按钮：文字以"短剧"开头（短剧｜xxx / 短剧 | xxx），
-     * 位置在屏幕 45%~80% 区间（发布者上方），且可点击。
+     * 找短剧挂载按钮。
+     * 特征：一个节点文字为"短剧"，其右侧同一水平线上有"|"节点（两节点是分开的）。
+     * 位置约束：屏幕 42%~82% 区间（发布者上方）。
      */
     private fun findDramaMount(nodes: List<android.view.accessibility.AccessibilityNodeInfo>): android.view.accessibility.AccessibilityNodeInfo? {
         val screenH = resources.displayMetrics.heightPixels
-        val minY = screenH * 0.45f
-        val maxY = screenH * 0.80f
+        val minY = (screenH * 0.42f).toInt()
+        val maxY = (screenH * 0.82f).toInt()
         val rect = android.graphics.Rect()
-        val regex = Regex("^短剧[\\s\\|｜·:：]")
+
+        // 1) 收集所有"短剧"节点（Y 在区间内）
+        val dramaNodes = ArrayList<android.view.accessibility.AccessibilityNodeInfo>()
         for (n in nodes) {
             val t = n.text?.toString()?.trim() ?: continue
-            if (!regex.containsMatchIn(t)) continue
+            if (t != "短剧") continue
             n.getBoundsInScreen(rect)
             val cy = rect.centerY()
-            if (cy in minY.toInt()..maxY.toInt()) {
-                return findClickableAncestor(n) ?: n
+            if (cy in minY..maxY) dramaNodes.add(n)
+        }
+
+        // 2) 对每个"短剧"节点，检查右侧 150px 内、同高度(±40px) 是否有"|"节点
+        for (d in dramaNodes) {
+            val dRect = android.graphics.Rect()
+            d.getBoundsInScreen(dRect)
+            val cy = dRect.centerY()
+            val cx = dRect.centerX()
+            val hasBar = nodes.any { n ->
+                val t = n.text?.toString()?.trim() ?: return@any false
+                if (t != "|" && t != "｜" && t != "I" && t != "l") return@any false
+                val r = android.graphics.Rect()
+                n.getBoundsInScreen(r)
+                kotlin.math.abs(r.centerY() - cy) < 40 &&
+                    r.centerX() > cx && (r.centerX() - cx) < 150
             }
+            if (hasBar) {
+                return findClickableAncestor(d) ?: d
+            }
+        }
+
+        // 3) 备用：单节点文本形如 "短剧｜xxx"
+        val fallback = Regex("^短剧[\\s\\|｜·:：].+")
+        for (n in nodes) {
+            val t = n.text?.toString()?.trim() ?: continue
+            if (!fallback.containsMatchIn(t)) continue
+            n.getBoundsInScreen(rect)
+            val cy = rect.centerY()
+            if (cy in minY..maxY) return findClickableAncestor(n) ?: n
         }
         return null
     }
