@@ -44,6 +44,7 @@ fun HomeScreen(vm: MainViewModel) {
     val total by vm.totalCount.collectAsState()
     val delay by vm.clickDelay.collectAsState()
     val learnMode by vm.learnMode.collectAsState()
+    val strictClose by vm.strictClose.collectAsState()
 
     var serviceOn by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
@@ -149,6 +150,24 @@ fun HomeScreen(vm: MainViewModel) {
                     valueRange = 0f..2000f,
                     steps = 19
                 )
+            }
+        }
+
+        // 严格模式
+        Card(Modifier.fillMaxWidth()) {
+            Row(
+                Modifier.fillMaxWidth().padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("严格模式（推荐开启）", fontWeight = FontWeight.Bold)
+                    Text(
+                        "「关闭 / X」类按钮，只有在登录、广告等弹窗中才点；普通页面不点，避免误触。",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+                Switch(checked = strictClose, onCheckedChange = { vm.setStrictClose(it) })
             }
         }
 

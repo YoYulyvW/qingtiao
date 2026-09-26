@@ -33,6 +33,9 @@ class AutoClickAccessibilityService : AccessibilityService() {
     @Volatile private var whitelistEnabled = false
     @Volatile private var whitelistPkgs: Set<String> = emptySet()
 
+    /** 严格模式：关闭/X 类按钮仅在登录/广告上下文出现时才点击 */
+    @Volatile private var strictClose = true
+
     /** 学习模式回调：抓到用户点击的节点时触发 */
     @Volatile var learnCallback: ((MatchedNode) -> Unit)? = null
 
@@ -48,6 +51,7 @@ class AutoClickAccessibilityService : AccessibilityService() {
         scope.launch { repo.rules.collect { cachedRules = it } }
         scope.launch { repo.whitelistEnabled.collect { whitelistEnabled = it } }
         scope.launch { repo.whitelistPkgs.collect { whitelistPkgs = it } }
+        scope.launch { repo.strictClose.collect { strictClose = it } }
         startKeepAlive()
         Log.i(TAG, "无障碍服务已连接")
     }
@@ -80,7 +84,7 @@ class AutoClickAccessibilityService : AccessibilityService() {
         val now = System.currentTimeMillis()
         if (now - lastClickTime < CLICK_COOLDOWN) return
 
-        val result = Matcher.match(root, cachedRules, pkg)
+        val result = Matcher.match(root, cachedRules, pkg, strictClose)
         if (result != null) {
             performClick(result, pkg)
         }

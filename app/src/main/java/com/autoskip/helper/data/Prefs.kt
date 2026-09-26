@@ -18,6 +18,8 @@ class Prefs(private val context: Context) {
     private val KEY_LAST_PKG = stringPreferencesKey("last_pkg")
     private val KEY_WL_ENABLED = booleanPreferencesKey("whitelist_enabled")
     private val KEY_WL_PKGS = stringPreferencesKey("whitelist_pkgs")
+    private val KEY_STRICT_CLOSE = booleanPreferencesKey("strict_close")
+    private val KEY_MIGRATED_V2 = booleanPreferencesKey("migrated_v2")
 
     val enabled: Flow<Boolean> = context.dataStore.data.map { it[KEY_ENABLED] ?: true }
     val clickDelayMs: Flow<Long> = context.dataStore.data.map { (it[KEY_DELAY] ?: "600").toLongOrNull() ?: 600L }
@@ -41,6 +43,18 @@ class Prefs(private val context: Context) {
     }
     suspend fun setWhitelistEnabled(value: Boolean) {
         context.dataStore.edit { it[KEY_WL_ENABLED] = value }
+    }
+
+    /** 严格模式：关闭/X 类按钮仅在登录/广告上下文出现时才点击（默认开） */
+    val strictClose: Flow<Boolean> = context.dataStore.data.map { it[KEY_STRICT_CLOSE] ?: true }
+    suspend fun setStrictClose(value: Boolean) {
+        context.dataStore.edit { it[KEY_STRICT_CLOSE] = value }
+    }
+
+    /** 是否已完成 v2 迁移（移除默认"关闭"规则） */
+    val migratedV2: Flow<Boolean> = context.dataStore.data.map { it[KEY_MIGRATED_V2] ?: false }
+    suspend fun markMigratedV2() {
+        context.dataStore.edit { it[KEY_MIGRATED_V2] = true }
     }
     suspend fun setWhitelist(pkgs: Set<String>) {
         context.dataStore.edit { it[KEY_WL_PKGS] = pkgs.joinToString("|") }

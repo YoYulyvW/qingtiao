@@ -21,6 +21,7 @@ class App : Application() {
     override fun onCreate() {
         super.onCreate()
         instance = this
+        appScope.launch { runCatching { repo.migrateV2IfNeeded() } }
         seedDefaultRulesIfEmpty()
     }
 

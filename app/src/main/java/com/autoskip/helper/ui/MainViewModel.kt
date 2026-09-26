@@ -25,6 +25,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val clickDelay = repo.clickDelayMs.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 600L)
     val whitelistEnabled = repo.whitelistEnabled.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
     val whitelistPkgs = repo.whitelistPkgs.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
+    val strictClose = repo.strictClose.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
     private val _learnMode = MutableStateFlow(false)
     val learnMode = _learnMode.asStateFlow()
@@ -42,6 +43,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun clearLogs() = viewModelScope.launch { repo.clearLogs() }
 
     fun setWhitelistEnabled(v: Boolean) = viewModelScope.launch { repo.setWhitelistEnabled(v) }
+
+    fun setStrictClose(v: Boolean) = viewModelScope.launch { repo.setStrictClose(v) }
 
     fun toggleWhitelistPkg(pkg: String) = viewModelScope.launch {
         val cur = repo.whitelistPkgs.first()

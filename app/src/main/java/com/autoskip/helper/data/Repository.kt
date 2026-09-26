@@ -20,6 +20,7 @@ class Repository(
     val clickDelayMs: Flow<Long> = prefs.clickDelayMs
     val whitelistEnabled: Flow<Boolean> = prefs.whitelistEnabled
     val whitelistPkgs: Flow<Set<String>> = prefs.whitelistPkgs
+    val strictClose: Flow<Boolean> = prefs.strictClose
 
     suspend fun addRule(rule: RuleEntity): Long = ruleDao.insert(rule)
 
@@ -49,6 +50,23 @@ class Repository(
     suspend fun setClickDelay(ms: Long) = prefs.setClickDelay(ms)
     suspend fun setWhitelistEnabled(v: Boolean) = prefs.setWhitelistEnabled(v)
     suspend fun setWhitelist(pkgs: Set<String>) = prefs.setWhitelist(pkgs)
+    suspend fun setStrictClose(v: Boolean) = prefs.setStrictClose(v)
+
+    /**
+     * v2 迁移：一次性移除历史版本内置的"关闭"/"close"/"x"等默认规则，
+     * 避免它们与新的严格模式重复或误触。用户自定义的规则不受影响。
+     */
+    suspend fun migrateV2IfNeeded() {
+        if (prefs.migratedV2.first()) return
+        val legacy = setOf("关闭", "close", "×", "✕", "✖", "x")
+        ruleDao.all().forEach { r ->
+            if (r.learned) return@forEach
+            if (r.text.trim().lowercase() in legacy.map { it.lowercase() }) {
+                ruleDao.delete(r)
+            }
+        }
+        prefs.markMigratedV2()
+    }
 
     /** 将某个包名加入白名单（已存在则忽略） */
     suspend fun addToWhitelist(pkg: String) {
