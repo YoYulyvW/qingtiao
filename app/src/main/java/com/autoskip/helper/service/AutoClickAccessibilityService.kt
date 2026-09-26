@@ -55,6 +55,10 @@ class AutoClickAccessibilityService : AccessibilityService() {
     @Volatile private var dramaIntervalMs = 1000L
     @Volatile private var dramaTargetSpeed = "3x"
 
+    /** 上次长按时间（冷却，避免重复长按） */
+    private var lastLongPressTime = 0L
+    private val LONG_PRESS_COOLDOWN = 8000L
+
     /** 倍速按钮文字格式：数字 + x，如 1x / 1.25x / 3x */
     private val SPEED_REGEX = Regex("^[0-9]+(\\.[0-9]+)?x$", RegexOption.IGNORE_CASE)
 
@@ -122,23 +126,54 @@ class AutoClickAccessibilityService : AccessibilityService() {
         pkg.startsWith("com.douyin.")
 
     /** 短剧页面核心处理 */
-    private fun handleDrama(pkg: String, diag: Boolean) {
+    private suspend fun handleDrama(pkg: String, diag: Boolean) {
         val root = rootInActiveWindow ?: run {
             if (diag) DramaDebug.add("pkg=$pkg 但 root 为空")
             return
         }
         val nodes = collectAllNodes(root)
 
-        // 1) 找底部倍速按钮
+        // 0) 长按菜单是否已弹出？（有"倍速"标题）
+        val hasMenu = nodes.any { it.text?.toString()?.trim() == "倍速" }
+        if (hasMenu) {
+            val menuTarget = speedToMenuText(dramaTargetSpeed)
+            val target = nodes.firstOrNull { it.text?.toString()?.trim() == menuTarget }
+            if (target != null) {
+                DramaDebug.add("菜单已弹出: 点击 $menuTarget")
+                clickNode(findClickableAncestor(target) ?: target)
+            } else {
+                DramaDebug.add("菜单已弹出，但找不到 $menuTarget")
+            }
+            return
+        }
+
+        // 1) 找底部倍速按钮（若存在，优先点击循环切换）
         val speedNode = findSpeedButton(nodes)
         if (speedNode != null) {
-            val cur = speedNode.text?.toString()?.trim() ?: return
+            val cur = (speedNode.text?.toString() ?: speedNode.contentDescription?.toString())?.trim() ?: return
             if (cur.equals(dramaTargetSpeed, ignoreCase = true)) {
                 if (diag) DramaDebug.add("已在目标倍速 $cur，不点（节点数 ${nodes.size}）")
                 return
             }
             DramaDebug.add("倍速 $cur → 点击切换（目标 $dramaTargetSpeed）")
             clickNode(speedNode)
+            return
+        }
+
+        // 1.5) 是短剧页面但读不到倍速按钮 → 长按屏幕中央唤出菜单
+        val isDramaPage = nodes.any {
+            val t = it.text?.toString() ?: ""
+            t.contains("集全") || (t.contains("免费") && t.length < 6)
+        }
+        if (isDramaPage) {
+            val now = System.currentTimeMillis()
+            if (now - lastLongPressTime > LONG_PRESS_COOLDOWN) {
+                lastLongPressTime = now
+                DramaDebug.add("短剧页面，长按屏幕中央唤出菜单")
+                longPressCenter()
+            } else if (diag) {
+                DramaDebug.add("短剧页面，长按冷却中")
+            }
             return
         }
 
@@ -239,6 +274,45 @@ class AutoClickAccessibilityService : AccessibilityService() {
             depth++
         }
         return null
+    }
+
+    /** 长按屏幕中央偏左（避开右侧互动栏），唤出倍速菜单 */
+    private suspend fun longPressCenter() {
+        try {
+            val w = resources.displayMetrics.widthPixels.toFloat()
+            val h = resources.displayMetrics.heightPixels.toFloat()
+            // 水平 30%、垂直 55%：纯视频区，避开点赞/评论/分享栏和作者信息
+            val x = w * 0.30f
+            val y = h * 0.55f
+            val path = Path().apply { moveTo(x, y) }
+            // 长按 800ms（长按阈值通常 500ms）
+            val stroke = GestureDescription.StrokeDescription(path, 0, 800)
+            val gesture = GestureDescription.Builder().addStroke(stroke).build()
+            // 带超时保护：2 秒未回调就放弃，避免协程永久挂起
+            kotlinx.coroutines.withTimeoutOrNull(2000L) {
+                kotlinx.coroutines.suspendCancellableCoroutine<Unit> { cont ->
+                    dispatchGesture(gesture, object : GestureResultCallback() {
+                        override fun onCompleted(d: GestureDescription?) {
+                            if (cont.isActive) cont.resumeWith(Result.success(Unit))
+                        }
+                        override fun onCancelled(d: GestureDescription?) {
+                            if (cont.isActive) cont.resumeWith(Result.success(Unit))
+                        }
+                    }, null)
+                }
+            }
+        } catch (e: Exception) {
+            DramaDebug.add("长按失败: ${e.message}")
+        }
+    }
+
+    /**
+     * 倍速值转菜单文字：界面显示 "3x"，菜单里是 "3.0"。
+     * 3x→3.0, 1x→1.0, 0.75x→0.75, 1.25x→1.25
+     */
+    private fun speedToMenuText(speed: String): String {
+        val num = speed.removeSuffix("x").removeSuffix("X")
+        return if (num.contains(".")) num else "$num.0"
     }
 
     /** 点击节点 */

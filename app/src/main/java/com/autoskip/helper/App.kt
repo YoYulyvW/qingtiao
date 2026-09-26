@@ -23,6 +23,7 @@ class App : Application() {
         instance = this
         appScope.launch { runCatching { repo.migrateV2IfNeeded() } }
         appScope.launch { runCatching { repo.migrateV3IfNeeded() } }
+        appScope.launch { runCatching { repo.migrateV4IfNeeded() } }
         appScope.launch { runCatching { repo.seedWhitelistIfNeeded() } }
         seedDefaultRulesIfEmpty()
     }

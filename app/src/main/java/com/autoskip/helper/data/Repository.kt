@@ -62,6 +62,21 @@ class Repository(
     suspend fun setDramaTargetSpeed(s: String) = prefs.setDramaTargetSpeed(s)
 
     /**
+     * v4 迁移：删除"倍速"类规则（1x/1.25x/1.5x/2x/3x 等），
+     * 避免与"短剧自动倍速"功能冲突。只删非学习规则。
+     */
+    suspend fun migrateV4IfNeeded() {
+        if (prefs.migratedV4.first()) return
+        val speedRegex = Regex("^[0-9]+(\\.[0-9]+)?[xX]$")
+        ruleDao.all().forEach { r ->
+            if (!r.learned && speedRegex.matches(r.text.trim())) {
+                ruleDao.delete(r)
+            }
+        }
+        prefs.markMigratedV4()
+    }
+
+    /**
      * v3 迁移：把旧版内置默认规则替换成新规则列表（全部精确匹配）。
      * 只删除"旧内置"的规则，保留用户自定义规则与学习规则。
      */

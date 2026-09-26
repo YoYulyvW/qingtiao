@@ -22,6 +22,7 @@ class Prefs(private val context: Context) {
     private val KEY_MIGRATED_V2 = booleanPreferencesKey("migrated_v2")
     private val KEY_WL_SEEDED = booleanPreferencesKey("whitelist_seeded")
     private val KEY_MIGRATED_V3 = booleanPreferencesKey("migrated_v3")
+    private val KEY_MIGRATED_V4 = booleanPreferencesKey("migrated_v4")
     // 短剧自动3倍速
     private val KEY_DRAMA_ENABLED = booleanPreferencesKey("drama_enabled")
     private val KEY_DRAMA_AUTO_MOUNT = booleanPreferencesKey("drama_auto_mount")
@@ -67,6 +68,11 @@ class Prefs(private val context: Context) {
     val migratedV3: Flow<Boolean> = context.dataStore.data.map { it[KEY_MIGRATED_V3] ?: false }
     suspend fun markMigratedV3() {
         context.dataStore.edit { it[KEY_MIGRATED_V3] = true }
+    }
+
+    val migratedV4: Flow<Boolean> = context.dataStore.data.map { it[KEY_MIGRATED_V4] ?: false }
+    suspend fun markMigratedV4() {
+        context.dataStore.edit { it[KEY_MIGRATED_V4] = true }
     }
 
     /** 短剧自动3倍速：总开关 */
