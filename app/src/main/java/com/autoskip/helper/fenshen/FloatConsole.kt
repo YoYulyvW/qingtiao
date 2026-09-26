@@ -126,8 +126,7 @@ class FloatConsole(
     }
 
     private fun copyLogs() {
-        val text = allLogs.joinToString("
-")
+        val text = allLogs.joinToString("\n")
         val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         cm.setPrimaryClip(ClipData.newPlainText("autoskip_log", text))
         Toast.makeText(context, "日志已复制（${allLogs.size} 行）", Toast.LENGTH_SHORT).show()
@@ -146,8 +145,7 @@ class FloatConsole(
     fun appendLog(msg: String) {
         handler.post {
             allLogs.add(msg)
-            logText?.text = allLogs.joinToString("
-")
+            logText?.text = allLogs.joinToString("\n")
             // 自动滚动到底部
             logScroll?.post { logScroll?.fullScroll(View.FOCUS_DOWN) }
         }
