@@ -146,8 +146,26 @@ class FloatConsole(
         handler.post {
             allLogs.add(msg)
             logText?.text = allLogs.joinToString("\n")
+            adjustLogHeight()
             // 自动滚动到底部
             logScroll?.post { logScroll?.fullScroll(View.FOCUS_DOWN) }
+        }
+    }
+
+    /** 动态限制日志区高度：内容少则自适应，内容多则封顶（屏幕 32%）后滚动 */
+    private fun adjustLogHeight() {
+        val scroll = logScroll ?: return
+        val tv = logText ?: return
+        tv.post {
+            val maxH = (context.resources.displayMetrics.heightPixels * 0.32f).toInt()
+            val contentH = tv.height
+            val targetH = if (contentH > maxH) maxH
+                          else android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+            val lp = scroll.layoutParams
+            if (lp.height != targetH) {
+                lp.height = targetH
+                scroll.layoutParams = lp
+            }
         }
     }
 
