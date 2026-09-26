@@ -69,7 +69,7 @@ class FenShenAccessibilityService : AccessibilityService() {
 
     private suspend fun dispatch(gesture: GestureDescription): Boolean =
         suspendCancellableCoroutine { cont ->
-            val ok = dispatchGesture(gesture, object : GestureResultCallback() {
+            val ok = dispatchGesture(gesture, object : GestureDescription.GestureResultCallback() {
                 override fun onCompleted(gestureDescription: GestureDescription?) {
                     if (cont.isActive) cont.resume(true)
                 }

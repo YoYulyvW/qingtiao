@@ -118,8 +118,7 @@ class FloatConsole(
         handler.post {
             logLines.addLast(msg)
             while (logLines.size > 3) logLines.removeFirst()
-            logText?.text = logLines.joinToString("
-")
+            logText?.text = logLines.joinToString("\n")
         }
     }
 
