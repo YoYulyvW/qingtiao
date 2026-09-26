@@ -113,7 +113,8 @@ class AutoClickAccessibilityService : AccessibilityService() {
                 val repo = App.instance.repo
                 scope.launch {
                     repo.addLog(log)
-                    repo.bumpHit(result.rule.id)
+                    // id = -1 是图标兜底的虚拟规则，不入库
+                    if (result.rule.id > 0) repo.bumpHit(result.rule.id)
                 }
                 Log.i(TAG, "已点击 pkg=" + pkg + " rule=" + result.rule.text + " text=" + result.matchedText)
             } catch (e: Exception) {
