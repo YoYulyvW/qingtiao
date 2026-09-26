@@ -3,6 +3,7 @@ package com.autoskip.helper.ui.screens
 import android.content.Context
 import android.content.Intent
 import android.provider.Settings
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -157,8 +158,9 @@ fun HomeScreen(vm: MainViewModel, onOpenFenShen: () -> Unit = {}) {
 
         // 自动分身入口
         Card(
-            Modifier.fillMaxWidth(),
-            onClick = onOpenFenShen,
+            Modifier
+                .fillMaxWidth()
+                .clickable { onOpenFenShen() },
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.secondaryContainer
             )

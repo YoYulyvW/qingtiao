@@ -38,7 +38,7 @@ class FenShenEngine(private val context: Context) {
         Log.i(TAG, msg)
         floatConsole?.appendLog(msg)
         _state.value = _state.value.copy(lastLog = msg)
-        logBuilder?.append(msg).append("\n")
+        logBuilder?.append(msg)?.append("\n")
     }
 
     private fun updateStatus(s: String) {
