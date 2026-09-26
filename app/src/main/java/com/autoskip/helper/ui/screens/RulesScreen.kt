@@ -1,6 +1,8 @@
 package com.autoskip.helper.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -33,13 +35,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.layout.Box
 import com.autoskip.helper.data.RuleEntity
 import com.autoskip.helper.ui.MainViewModel
 
 @Composable
 fun RulesScreen(vm: MainViewModel) {
     val rules by vm.rules.collectAsState()
+    var editing by remember { mutableStateOf<RuleEntity?>(null) }
     var showAdd by remember { mutableStateOf(false) }
 
     Box(Modifier.fillMaxSize()) {
@@ -50,7 +52,7 @@ fun RulesScreen(vm: MainViewModel) {
             item {
                 Text("规则列表", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                 Text(
-                    "文本匹配弹窗按钮；带「学习」标记的为学习模式自动生成。",
+                    "点击规则可修改；带「学习」标记的为学习模式自动生成。",
                     style = MaterialTheme.typography.bodySmall
                 )
                 Spacer(Modifier.height(8.dp))
@@ -59,7 +61,7 @@ fun RulesScreen(vm: MainViewModel) {
                 item { Text("暂无规则，点右下角 + 添加，或使用首页的学习模式。") }
             }
             items(rules, key = { it.id }) { rule ->
-                RuleItem(rule, vm)
+                RuleItem(rule, vm, onClick = { editing = rule })
             }
             item { Spacer(Modifier.height(80.dp)) }
         }
@@ -72,20 +74,36 @@ fun RulesScreen(vm: MainViewModel) {
         }
     }
 
+    // 新增
     if (showAdd) {
-        AddRuleDialog(
+        RuleDialog(
+            title = "添加规则",
+            initial = null,
             onDismiss = { showAdd = false },
-            onConfirm = { name, text, exact ->
-                vm.addRule(RuleEntity(name = name, text = text, exact = exact))
+            onConfirm = { text, exact ->
+                vm.addRule(RuleEntity(name = text, text = text, exact = exact))
                 showAdd = false
+            }
+        )
+    }
+
+    // 编辑
+    editing?.let { rule ->
+        RuleDialog(
+            title = "修改规则",
+            initial = rule,
+            onDismiss = { editing = null },
+            onConfirm = { text, exact ->
+                vm.updateRule(rule.copy(name = text, text = text, exact = exact))
+                editing = null
             }
         )
     }
 }
 
 @Composable
-private fun RuleItem(rule: RuleEntity, vm: MainViewModel) {
-    Card(Modifier.fillMaxWidth()) {
+private fun RuleItem(rule: RuleEntity, vm: MainViewModel, onClick: () -> Unit) {
+    Card(Modifier.fillMaxWidth().clickable { onClick() }) {
         Row(
             Modifier.fillMaxWidth().padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -94,7 +112,6 @@ private fun RuleItem(rule: RuleEntity, vm: MainViewModel) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(rule.text, fontWeight = FontWeight.Bold)
                     if (rule.learned) {
-                        Spacer(Modifier.height(0.dp))
                         Text(
                             "  学习",
                             color = MaterialTheme.colorScheme.primary,
@@ -123,16 +140,18 @@ private fun RuleItem(rule: RuleEntity, vm: MainViewModel) {
 }
 
 @Composable
-private fun AddRuleDialog(
+private fun RuleDialog(
+    title: String,
+    initial: RuleEntity?,
     onDismiss: () -> Unit,
-    onConfirm: (name: String, text: String, exact: Boolean) -> Unit
+    onConfirm: (text: String, exact: Boolean) -> Unit
 ) {
-    var text by remember { mutableStateOf("") }
-    var exact by remember { mutableStateOf(false) }
+    var text by remember { mutableStateOf(initial?.text ?: "") }
+    var exact by remember { mutableStateOf(initial?.exact ?: false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("添加规则") },
+        title = { Text(title) },
         text = {
             Column {
                 OutlinedTextField(
@@ -144,15 +163,14 @@ private fun AddRuleDialog(
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("精确匹配（完全一致）")
-                    Spacer(Modifier.height(0.dp))
                     Switch(checked = exact, onCheckedChange = { exact = it })
                 }
             }
         },
         confirmButton = {
             TextButton(
-                onClick = { if (text.isNotBlank()) onConfirm(text, text, exact) }
-            ) { Text("添加") }
+                onClick = { if (text.isNotBlank()) onConfirm(text, exact) }
+            ) { Text("保存") }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("取消") }

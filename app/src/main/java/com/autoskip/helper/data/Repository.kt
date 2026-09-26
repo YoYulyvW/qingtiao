@@ -53,6 +53,44 @@ class Repository(
     suspend fun setStrictClose(v: Boolean) = prefs.setStrictClose(v)
 
     /**
+     * v3 迁移：把旧版内置默认规则替换成新规则列表（全部精确匹配）。
+     * 只删除"旧内置"的规则，保留用户自定义规则与学习规则。
+     */
+    suspend fun migrateV3IfNeeded() {
+        if (prefs.migratedV3.first()) return
+        val oldDefaults = setOf(
+            "跳过", "下次再说", "不再提醒", "以后再说", "暂不",
+            "我知道了", "知道了", "残忍拒绝", "稍后再说", "取消",
+            "跳过广告", "点击跳过", "skip"
+        )
+        val newDefaults = listOf(
+            "点击免费看全集", "刷新", "跳过", "不再提醒", "清理缓存",
+            "同意", "以后再说", "下次再说"
+        )
+        val existing = ruleDao.all()
+        // 删除旧的、非学习的内置规则
+        existing.forEach { r ->
+            if (!r.learned && r.text in oldDefaults && r.text !in newDefaults) {
+                ruleDao.delete(r)
+            }
+        }
+        // 补齐新规则（精确匹配，避免重复）
+        val nowTexts = ruleDao.all().map { it.text }.toSet()
+        newDefaults.forEach { t ->
+            if (t !in nowTexts) {
+                ruleDao.insert(RuleEntity(name = t, text = t, exact = true))
+            }
+        }
+        // 把仍存在的旧规则改为精确匹配
+        ruleDao.all().forEach { r ->
+            if (!r.learned && r.text in newDefaults && !r.exact) {
+                ruleDao.update(r.copy(exact = true))
+            }
+        }
+        prefs.markMigratedV3()
+    }
+
+    /**
      * v2 迁移：一次性移除历史版本内置的"关闭"/"close"/"x"等默认规则，
      * 避免它们与新的严格模式重复或误触。用户自定义的规则不受影响。
      */

@@ -22,6 +22,7 @@ class App : Application() {
         super.onCreate()
         instance = this
         appScope.launch { runCatching { repo.migrateV2IfNeeded() } }
+        appScope.launch { runCatching { repo.migrateV3IfNeeded() } }
         appScope.launch { runCatching { repo.seedWhitelistIfNeeded() } }
         seedDefaultRulesIfEmpty()
     }
@@ -33,7 +34,8 @@ class App : Application() {
                 val dao = database.ruleDao()
                 if (dao.all().isEmpty()) {
                     Matcher.DEFAULT_TEXTS.forEach { t ->
-                        dao.insert(RuleEntity(name = t, text = t))
+                        // 内置规则：精确匹配
+                        dao.insert(RuleEntity(name = t, text = t, exact = true))
                     }
                 }
             }

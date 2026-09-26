@@ -40,6 +40,11 @@ class AutoClickAccessibilityService : AccessibilityService() {
     private var lastClickTime = 0L
     private val CLICK_COOLDOWN = 800L
 
+    // 重复弹窗检测：若同一弹窗点击后很快再次出现，说明点击无效，改用返回键
+    private var lastPopupSignature: String? = null
+    private var lastPopupTime = 0L
+    private val REPEAT_WINDOW = 3000L  // 3 秒内同一弹窗再次出现 → 判定点击无效
+
     override fun onServiceConnected() {
         super.onServiceConnected()
         instance = this
@@ -86,7 +91,39 @@ class AutoClickAccessibilityService : AccessibilityService() {
 
         val result = Matcher.match(root, cachedRules, pkg, strictClose)
         if (result != null) {
-            performClick(result, pkg)
+            // 弹窗签名：包名 + 匹配到的文字
+            val signature = pkg + "|" + result.matchedText
+            val nowT = System.currentTimeMillis()
+            val isRepeat = signature == lastPopupSignature && (nowT - lastPopupTime) < REPEAT_WINDOW
+
+            if (isRepeat) {
+                // 同一弹窗又出现了 → 上次点击无效，改用返回键
+                Log.i(TAG, "重复弹窗，改用返回键: " + signature)
+                mainHandler.postDelayed({
+                    performGlobalAction(GLOBAL_ACTION_BACK)
+                    val repo = App.instance.repo
+                    scope.launch {
+                        repo.addLog(
+                            LogEntity(
+                                packageName = pkg,
+                                appLabel = runCatching {
+                                    packageManager.getApplicationLabel(
+                                        packageManager.getApplicationInfo(pkg, 0)
+                                    ).toString()
+                                }.getOrNull(),
+                                rule = "[返回键] " + result.rule.text,
+                                matchedText = result.matchedText
+                            )
+                        )
+                    }
+                }, clickDelay)
+                lastPopupSignature = null   // 避免连续触发
+                lastClickTime = nowT
+            } else {
+                lastPopupSignature = signature
+                lastPopupTime = nowT
+                performClick(result, pkg)
+            }
         }
     }
 
