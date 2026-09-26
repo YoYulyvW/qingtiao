@@ -20,6 +20,7 @@ class Prefs(private val context: Context) {
     private val KEY_WL_PKGS = stringPreferencesKey("whitelist_pkgs")
     private val KEY_STRICT_CLOSE = booleanPreferencesKey("strict_close")
     private val KEY_MIGRATED_V2 = booleanPreferencesKey("migrated_v2")
+    private val KEY_WL_SEEDED = booleanPreferencesKey("whitelist_seeded")
 
     val enabled: Flow<Boolean> = context.dataStore.data.map { it[KEY_ENABLED] ?: true }
     val clickDelayMs: Flow<Long> = context.dataStore.data.map { (it[KEY_DELAY] ?: "600").toLongOrNull() ?: 600L }
@@ -55,6 +56,12 @@ class Prefs(private val context: Context) {
     val migratedV2: Flow<Boolean> = context.dataStore.data.map { it[KEY_MIGRATED_V2] ?: false }
     suspend fun markMigratedV2() {
         context.dataStore.edit { it[KEY_MIGRATED_V2] = true }
+    }
+
+    /** 是否已预置过默认白名单（抖音等） */
+    val whitelistSeeded: Flow<Boolean> = context.dataStore.data.map { it[KEY_WL_SEEDED] ?: false }
+    suspend fun markWhitelistSeeded() {
+        context.dataStore.edit { it[KEY_WL_SEEDED] = true }
     }
     suspend fun setWhitelist(pkgs: Set<String>) {
         context.dataStore.edit { it[KEY_WL_PKGS] = pkgs.joinToString("|") }

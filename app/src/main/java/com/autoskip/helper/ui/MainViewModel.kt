@@ -55,6 +55,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         repo.setWhitelist(repo.whitelistPkgs.first() - pkg)
     }
 
+    /** 添加一条自定义通配/包名规则 */
+    fun addWhitelistPattern(pattern: String) = viewModelScope.launch {
+        val p = pattern.trim()
+        if (p.isBlank()) return@launch
+        val cur = repo.whitelistPkgs.first()
+        if (p !in cur) repo.setWhitelist(cur + p)
+    }
+
     /** 学习模式：开启后，用户在其他 App 手动点击的按钮会被自动记录为规则 */
     fun setLearnMode(on: Boolean) {
         _learnMode.value = on

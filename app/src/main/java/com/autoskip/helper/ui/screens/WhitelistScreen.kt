@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -21,6 +22,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -100,6 +102,56 @@ fun WhitelistScreen(vm: MainViewModel) {
             }
         }
 
+        // 通配规则区：展示所有含 * 的规则 + 自定义添加
+        Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+            Column(Modifier.padding(12.dp)) {
+                Text("通配 / 自定义包名", fontWeight = FontWeight.Bold)
+                Text(
+                    "支持 * 前缀通配。如 com.qihoo.magic.* 可匹配所有分身。",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Spacer(Modifier.height(8.dp))
+
+                val patterns = wlPkgs.filter { it.contains("*") }.sorted()
+                if (patterns.isEmpty()) {
+                    Text("暂无通配规则", style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.outline)
+                } else {
+                    patterns.forEach { p ->
+                        Row(
+                            Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(p, style = MaterialTheme.typography.bodySmall)
+                            TextButton(onClick = { vm.removeFromWhitelist(p) }) {
+                                Text("删除", style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(4.dp))
+                var newPattern by remember { mutableStateOf("") }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedTextField(
+                        value = newPattern,
+                        onValueChange = { newPattern = it },
+                        label = { Text("如 com.xx.yy.*") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(Modifier.size(8.dp))
+                    Button(onClick = {
+                        vm.addWhitelistPattern(newPattern)
+                        newPattern = ""
+                    }) { Text("添加") }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
+
         OutlinedTextField(
             value = query,
             onValueChange = { query = it },
@@ -123,7 +175,7 @@ fun WhitelistScreen(vm: MainViewModel) {
             items(filtered, key = { it.packageName }) { app ->
                 AppRow(
                     app = app,
-                    checked = app.packageName in wlPkgs,
+                    checked = com.autoskip.helper.service.Matcher.matchesWhitelist(app.packageName, wlPkgs),
                     onToggle = { vm.toggleWhitelistPkg(app.packageName) }
                 )
             }

@@ -77,8 +77,8 @@ class AutoClickAccessibilityService : AccessibilityService() {
         val pkg = event.packageName?.toString() ?: return
         if (pkg == packageName) return
 
-        // 白名单模式：非白名单应用直接忽略
-        if (whitelistEnabled && pkg !in whitelistPkgs) return
+        // 白名单模式：非白名单应用直接忽略（支持通配符）
+        if (whitelistEnabled && !Matcher.matchesWhitelist(pkg, whitelistPkgs)) return
 
         val root = rootInActiveWindow ?: return
         val now = System.currentTimeMillis()

@@ -22,6 +22,7 @@ class App : Application() {
         super.onCreate()
         instance = this
         appScope.launch { runCatching { repo.migrateV2IfNeeded() } }
+        appScope.launch { runCatching { repo.seedWhitelistIfNeeded() } }
         seedDefaultRulesIfEmpty()
     }
 

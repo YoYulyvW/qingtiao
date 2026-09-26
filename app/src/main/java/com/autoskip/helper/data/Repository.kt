@@ -74,6 +74,26 @@ class Repository(
         if (pkg !in cur) prefs.setWhitelist(cur + pkg)
     }
 
+    /**
+     * 首次启动预置默认白名单：抖音及其所有分身。
+     * 抖音分身包名形如 com.qihoo.magic.xxxx_110 / _2 / _3 ...
+     * 用前缀通配 * 一次覆盖全部分身。
+     */
+    suspend fun seedWhitelistIfNeeded() {
+        if (prefs.whitelistSeeded.first()) return
+        val defaults = setOf(
+            "com.ss.android.ugc.aweme",   // 抖音主包名（官方）
+            "com.ss.android.ugc.aweme.lite", // 抖音极速版
+            "com.qihoo.magic.*",          // 360分身大师：抖音的所有分身
+            "com.douyin.*"                // 其他分身工具生成的抖音
+        )
+        val cur = prefs.whitelistPkgs.first()
+        prefs.setWhitelist(cur + defaults)
+        // 默认开启"仅白名单生效"，避免误点系统 UI
+        prefs.setWhitelistEnabled(true)
+        prefs.markWhitelistSeeded()
+    }
+
     private fun startOfToday(): Long {
         val cal = java.util.Calendar.getInstance()
         cal.set(java.util.Calendar.HOUR_OF_DAY, 0)

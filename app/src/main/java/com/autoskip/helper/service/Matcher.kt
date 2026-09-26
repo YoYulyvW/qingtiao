@@ -41,6 +41,17 @@ object Matcher {
         "关闭", "close", "取消", "返回", "dismiss", "back", "cancel"
     )
 
+    /**
+     * 白名单匹配：支持以 * 结尾的前缀通配。
+     * 例：com.qihoo.magic.* 可匹配 com.qihoo.magic.dl1WZ3Fm..._110 等所有分身
+     */
+    fun matchesWhitelist(pkg: String, whitelist: Set<String>): Boolean {
+        return whitelist.any { rule ->
+            if (rule.endsWith("*")) pkg.startsWith(rule.dropLast(1))
+            else pkg == rule
+        }
+    }
+
     /** 判断某文本是否属于"关闭/X"类 */
     fun isCloseLike(text: String?): Boolean {
         if (text.isNullOrBlank()) return false
