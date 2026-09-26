@@ -322,9 +322,7 @@ class FenShenEngine(private val context: Context) {
         val installX = w * 760f / config.testW
         val installY = h * 1620f / config.testH
 
-        val warn = NodeHelper.findByText(root, "确定") ?: NodeHelper.findByText(root, "允许")
-        if (warn != null) { NodeHelper.clickNode(warn); delay(500) }
-
+        // 系统安装弹窗：无障碍读不到节点，必须坐标点击
         floatConsole?.setVisible(false)
         delay(800)
         log("坐标点击安装: ${installX.toInt()}, ${installY.toInt()}")
@@ -394,9 +392,7 @@ class FenShenEngine(private val context: Context) {
                 }
             }
 
-            val btnAgree = NodeHelper.findByText(r2, "允许") ?: NodeHelper.findByText(r2, "始终允许") ?: NodeHelper.findByText(r2, "我知道了")
-            if (btnAgree != null) { NodeHelper.clickNode(btnAgree); delay(1000); continue }
-
+            // 系统权限弹窗（通知/定位等）：无障碍读不到节点，统一坐标点击
             if (currentPkg() != TARGET_PKG) { tap(permX, permY); delay(1000) }
             else delay(2000)
         }
