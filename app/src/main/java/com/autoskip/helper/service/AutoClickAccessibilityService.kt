@@ -89,6 +89,7 @@ class AutoClickAccessibilityService : AccessibilityService() {
      * 没有倍速按钮时（普通视频流）：若开启自动挂载，找"短剧｜xxx"挂载按钮点击。
      */
     private suspend fun dramaLoop() {
+        var lastDiag = 0L
         while (true) {
             try {
                 delay(dramaIntervalMs)
@@ -96,9 +97,14 @@ class AutoClickAccessibilityService : AccessibilityService() {
                 // 只在抖音系应用生效
                 val pkg = currentRootPackage() ?: continue
                 if (!isDouyin(pkg)) continue
-                handleDrama(pkg)
+                // 每 3 秒输出一次诊断
+                val now = System.currentTimeMillis()
+                val diag = (now - lastDiag) > 3000
+                if (diag) lastDiag = now
+                handleDrama(pkg, diag)
             } catch (e: Exception) {
                 Log.e(TAG, "dramaLoop error", e)
+                DramaDebug.add("异常: ${e.message}")
             }
         }
     }
@@ -116,8 +122,11 @@ class AutoClickAccessibilityService : AccessibilityService() {
         pkg.startsWith("com.douyin.")
 
     /** 短剧页面核心处理 */
-    private fun handleDrama(pkg: String) {
-        val root = rootInActiveWindow ?: return
+    private fun handleDrama(pkg: String, diag: Boolean) {
+        val root = rootInActiveWindow ?: run {
+            if (diag) DramaDebug.add("pkg=$pkg 但 root 为空")
+            return
+        }
         val nodes = collectAllNodes(root)
 
         // 1) 找底部倍速按钮
@@ -125,20 +134,31 @@ class AutoClickAccessibilityService : AccessibilityService() {
         if (speedNode != null) {
             val cur = speedNode.text?.toString()?.trim() ?: return
             if (cur.equals(dramaTargetSpeed, ignoreCase = true)) {
-                // 已是目标倍速 → 硬保护，绝不点击
+                if (diag) DramaDebug.add("已在目标倍速 $cur，不点（节点数 ${nodes.size}）")
                 return
             }
-            // 不是目标 → 点一下（下一轮再读）
-            Log.i(TAG, "短剧倍速: 当前 $cur → 点击切换")
+            DramaDebug.add("倍速 $cur → 点击切换（目标 $dramaTargetSpeed）")
             clickNode(speedNode)
             return
         }
 
-        // 2) 没有倍速按钮 → 可能在普通视频流，尝试自动进短剧
-        if (!dramaAutoMount) return
-        val mountNode = findDramaMount(nodes) ?: return
-        Log.i(TAG, "短剧挂载: 点击进入")
-        clickNode(mountNode)
+        // 没有倍速按钮 → 可能是普通视频流
+        if (!dramaAutoMount) {
+            if (diag) DramaDebug.add("无倍速按钮，且已关自动挂载（节点数 ${nodes.size}）")
+            return
+        }
+        val mountNode = findDramaMount(nodes)
+        if (mountNode != null) {
+            DramaDebug.add("短剧挂载: 点击进入 -> ${mountNode.text}")
+            clickNode(mountNode)
+        } else if (diag) {
+            // 输出屏幕下半部带文字的节点摘要，帮助定位
+            val sample = nodes.asSequence()
+                .mapNotNull { it.text?.toString()?.trim()?.takeIf { t -> t.isNotBlank() } }
+                .take(40).toList()
+            DramaDebug.add("未找到倍速/挂载（pkg=$pkg 节点数 ${nodes.size}）")
+            DramaDebug.add("可见文字: " + sample.joinToString(" / "))
+        }
     }
 
     /** 收集所有节点 */
