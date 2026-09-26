@@ -1,8 +1,6 @@
 package com.autoskip.helper.service
 
 import android.accessibilityservice.AccessibilityService
-import android.content.Intent
-import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -52,7 +50,6 @@ class AutoClickAccessibilityService : AccessibilityService() {
         scope.launch { repo.whitelistEnabled.collect { whitelistEnabled = it } }
         scope.launch { repo.whitelistPkgs.collect { whitelistPkgs = it } }
         scope.launch { repo.strictClose.collect { strictClose = it } }
-        startKeepAlive()
         Log.i(TAG, "无障碍服务已连接")
     }
 
@@ -142,15 +139,6 @@ class AutoClickAccessibilityService : AccessibilityService() {
         super.onDestroy()
         instance = null
         scope.cancel()
-    }
-
-    private fun startKeepAlive() {
-        val intent = Intent(this, KeepAliveService::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(intent)
-        } else {
-            startService(intent)
-        }
     }
 
     companion object {
