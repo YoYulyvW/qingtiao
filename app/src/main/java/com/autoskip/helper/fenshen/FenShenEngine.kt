@@ -131,6 +131,44 @@ class FenShenEngine(private val context: Context) {
         }
     }
 
+    /** 遍历所有窗口的节点（系统弹窗是独立窗口，rootInActiveWindow 可能拿不到） */
+    private fun allNodes(): List<android.view.accessibility.AccessibilityNodeInfo> {
+        val svc = service ?: return emptyList()
+        val out = ArrayList<android.view.accessibility.AccessibilityNodeInfo>()
+        try {
+            svc.windows?.forEach { w ->
+                val r = w.root ?: return@forEach
+                out.addAll(NodeHelper.collectAll(r))
+            }
+        } catch (_: Exception) {}
+        if (out.isEmpty()) {
+            root?.let { out.addAll(NodeHelper.collectAll(it)) }
+        }
+        return out
+    }
+
+    private fun nodeText(n: android.view.accessibility.AccessibilityNodeInfo): String =
+        n.text?.toString() ?: n.contentDescription?.toString() ?: ""
+
+    /** 在所有窗口里精确查找某文本 */
+    private fun findTextAll(t: String): android.view.accessibility.AccessibilityNodeInfo? =
+        allNodes().firstOrNull { nodeText(it) == t }
+
+    /** 在所有窗口里找"允许"按钮，明确排除"不允许" */
+    private fun findAllowButton(): android.view.accessibility.AccessibilityNodeInfo? {
+        val nodes = allNodes()
+        nodes.firstOrNull { nodeText(it) == "允许" }?.let { return it }
+        nodes.firstOrNull { nodeText(it) == "始终允许" }?.let { return it }
+        nodes.firstOrNull { nodeText(it) == "仅在使用该应用时允许" }?.let { return it }
+        nodes.firstOrNull { nodeText(it) == "我知道了" }?.let { return it }
+        // 模糊匹配："允许" 且不含 "不"
+        nodes.firstOrNull {
+            val t = nodeText(it)
+            t.contains("允许") && !t.contains("不")
+        }?.let { return it }
+        return null
+    }
+
     private fun buildSuffix(): String {
         val d = Date()
         return config.suffixFmt
@@ -401,26 +439,24 @@ class FenShenEngine(private val context: Context) {
 
             // ===== 系统弹窗优先级最高（可能盖在分身大师界面上）=====
 
-            // 1) 系统"确定"弹窗（旧版应用提示等）：节点优先，最多点 5 次
-            val btnConfirm = NodeHelper.findByText(r2, "确定")
+            // 1) 系统"确定"弹窗（旧版应用警告等）：遍历所有窗口查找，最多点 5 次
+            val btnConfirm = findTextAll("确定")
             if (btnConfirm != null) {
                 confirmCount++
                 if (confirmCount <= 5) {
-                    log("点击确定（第 $confirmCount 次）")
+                    log("节点点击确定（第 $confirmCount 次）")
                     NodeHelper.clickNode(btnConfirm)
                     delay(1000)
                     continue
                 }
             }
 
-            // 2) 系统"允许/始终允许/我知道了"权限弹窗：节点优先，最多点 5 次
-            val btnAgree = NodeHelper.findByText(r2, "允许")
-                ?: NodeHelper.findByText(r2, "始终允许")
-                ?: NodeHelper.findByText(r2, "我知道了")
+            // 2) 系统"允许"权限弹窗：遍历所有窗口查找，明确排除"不允许"，最多点 5 次
+            val btnAgree = findAllowButton()
             if (btnAgree != null) {
                 agreeCount++
                 if (agreeCount > 5) break
-                log("点击允许（第 $agreeCount 次）")
+                log("节点点击允许（第 $agreeCount 次）")
                 NodeHelper.clickNode(btnAgree)
                 delay(1000)
                 continue
@@ -436,9 +472,17 @@ class FenShenEngine(private val context: Context) {
                 }
             }
 
-            // 4) 节点都读不到（系统弹窗，如"旧版应用"警告）：坐标兜底
-            //    与"安装/打开"按钮同一位置
-            tap(installX, installY)
+            // 4) 节点都读不到 → 坐标兜底。
+            //    顺序：确定先出现 → 用安装/确定坐标；点过确定后 → 用允许坐标
+            if (confirmCount == 0 && agreeCount == 0) {
+                confirmCount++
+                log("坐标点击确定: ${installX.toInt()}, ${installY.toInt()}")
+                tap(installX, installY)
+            } else {
+                agreeCount++
+                log("坐标点击允许: ${permX.toInt()}, ${permY.toInt()}")
+                tap(permX, permY)
+            }
             delay(1200)
         }
 
