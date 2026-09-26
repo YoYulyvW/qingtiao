@@ -26,6 +26,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val whitelistEnabled = repo.whitelistEnabled.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
     val whitelistPkgs = repo.whitelistPkgs.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
     val strictClose = repo.strictClose.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+    // 短剧自动倍速
+    val dramaEnabled = repo.dramaEnabled.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+    val dramaAutoMount = repo.dramaAutoMount.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+    val dramaIntervalMs = repo.dramaIntervalMs.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 1000L)
+    val dramaTargetSpeed = repo.dramaTargetSpeed.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "3x")
 
     private val _learnMode = MutableStateFlow(false)
     val learnMode = _learnMode.asStateFlow()
@@ -45,6 +50,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun setWhitelistEnabled(v: Boolean) = viewModelScope.launch { repo.setWhitelistEnabled(v) }
 
     fun setStrictClose(v: Boolean) = viewModelScope.launch { repo.setStrictClose(v) }
+
+    fun setDramaEnabled(v: Boolean) = viewModelScope.launch { repo.setDramaEnabled(v) }
+    fun setDramaAutoMount(v: Boolean) = viewModelScope.launch { repo.setDramaAutoMount(v) }
+    fun setDramaInterval(ms: Long) = viewModelScope.launch { repo.setDramaInterval(ms) }
+    fun setDramaTargetSpeed(s: String) = viewModelScope.launch { repo.setDramaTargetSpeed(s) }
 
     fun toggleWhitelistPkg(pkg: String) = viewModelScope.launch {
         val cur = repo.whitelistPkgs.first()

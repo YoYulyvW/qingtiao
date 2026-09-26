@@ -1,6 +1,9 @@
 package com.autoskip.helper.service
 
 import android.accessibilityservice.AccessibilityService
+import android.accessibilityservice.GestureDescription
+import android.graphics.Path
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -13,6 +16,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -45,6 +49,15 @@ class AutoClickAccessibilityService : AccessibilityService() {
     private var lastPopupTime = 0L
     private val REPEAT_WINDOW = 3000L  // 3 秒内同一弹窗再次出现 → 判定点击无效
 
+    // ===== 短剧自动倍速 =====
+    @Volatile private var dramaEnabled = false
+    @Volatile private var dramaAutoMount = true
+    @Volatile private var dramaIntervalMs = 1000L
+    @Volatile private var dramaTargetSpeed = "3x"
+
+    /** 倍速按钮文字格式：数字 + x，如 1x / 1.25x / 3x */
+    private val SPEED_REGEX = Regex("^[0-9]+(\\.[0-9]+)?x$", RegexOption.IGNORE_CASE)
+
     override fun onServiceConnected() {
         super.onServiceConnected()
         instance = this
@@ -55,7 +68,153 @@ class AutoClickAccessibilityService : AccessibilityService() {
         scope.launch { repo.whitelistEnabled.collect { whitelistEnabled = it } }
         scope.launch { repo.whitelistPkgs.collect { whitelistPkgs = it } }
         scope.launch { repo.strictClose.collect { strictClose = it } }
+
+        // 短剧自动倍速配置
+        scope.launch { repo.dramaEnabled.collect { dramaEnabled = it } }
+        scope.launch { repo.dramaAutoMount.collect { dramaAutoMount = it } }
+        scope.launch { repo.dramaIntervalMs.collect { dramaIntervalMs = it } }
+        scope.launch { repo.dramaTargetSpeed.collect { dramaTargetSpeed = it } }
+
+        // 启动短剧加速轮询
+        scope.launch { dramaLoop() }
+
         Log.i(TAG, "无障碍服务已连接")
+    }
+
+    /**
+     * 短剧加速轮询主循环。
+     * 规则：每秒检测一次；找到倍速按钮时——
+     *   已经是目标倍速 → 什么都不做（保护：3x 再点会变 0.75x）
+     *   不是目标倍速   → 点一下，下一轮再读
+     * 没有倍速按钮时（普通视频流）：若开启自动挂载，找"短剧｜xxx"挂载按钮点击。
+     */
+    private suspend fun dramaLoop() {
+        while (true) {
+            try {
+                delay(dramaIntervalMs)
+                if (!dramaEnabled) continue
+                // 只在抖音系应用生效
+                val pkg = currentRootPackage() ?: continue
+                if (!isDouyin(pkg)) continue
+                handleDrama(pkg)
+            } catch (e: Exception) {
+                Log.e(TAG, "dramaLoop error", e)
+            }
+        }
+    }
+
+    /** 当前窗口根节点所在包名 */
+    private fun currentRootPackage(): String? {
+        return try { rootInActiveWindow?.packageName?.toString() } catch (e: Exception) { null }
+    }
+
+    /** 是否抖音系（含分身） */
+    private fun isDouyin(pkg: String): Boolean =
+        pkg == "com.ss.android.ugc.aweme" ||
+        pkg == "com.ss.android.ugc.aweme.lite" ||
+        pkg.startsWith("com.qihoo.magic.") ||
+        pkg.startsWith("com.douyin.")
+
+    /** 短剧页面核心处理 */
+    private fun handleDrama(pkg: String) {
+        val root = rootInActiveWindow ?: return
+        val nodes = collectAllNodes(root)
+
+        // 1) 找底部倍速按钮
+        val speedNode = findSpeedButton(nodes)
+        if (speedNode != null) {
+            val cur = speedNode.text?.toString()?.trim() ?: return
+            if (cur.equals(dramaTargetSpeed, ignoreCase = true)) {
+                // 已是目标倍速 → 硬保护，绝不点击
+                return
+            }
+            // 不是目标 → 点一下（下一轮再读）
+            Log.i(TAG, "短剧倍速: 当前 $cur → 点击切换")
+            clickNode(speedNode)
+            return
+        }
+
+        // 2) 没有倍速按钮 → 可能在普通视频流，尝试自动进短剧
+        if (!dramaAutoMount) return
+        val mountNode = findDramaMount(nodes) ?: return
+        Log.i(TAG, "短剧挂载: 点击进入")
+        clickNode(mountNode)
+    }
+
+    /** 收集所有节点 */
+    private fun collectAllNodes(root: android.view.accessibility.AccessibilityNodeInfo): List<android.view.accessibility.AccessibilityNodeInfo> {
+        val out = ArrayList<android.view.accessibility.AccessibilityNodeInfo>()
+        fun rec(n: android.view.accessibility.AccessibilityNodeInfo) {
+            out.add(n)
+            for (i in 0 until n.childCount) {
+                val c = n.getChild(i) ?: continue
+                rec(c)
+            }
+        }
+        rec(root)
+        return out
+    }
+
+    /**
+     * 找底部倍速按钮：文字形如 "1x"/"1.25x"/"3x"，且 Y 坐标在屏幕下方 85% 以下。
+     * 用位置约束避免误命中评论区里的同类文字。
+     */
+    private fun findSpeedButton(nodes: List<android.view.accessibility.AccessibilityNodeInfo>): android.view.accessibility.AccessibilityNodeInfo? {
+        val screenH = resources.displayMetrics.heightPixels
+        val minY = screenH * 0.85f
+        val rect = android.graphics.Rect()
+        for (n in nodes) {
+            val t = n.text?.toString()?.trim() ?: continue
+            if (!SPEED_REGEX.matches(t)) continue
+            n.getBoundsInScreen(rect)
+            if (rect.centerY() >= minY) {
+                return findClickableAncestor(n) ?: n
+            }
+        }
+        return null
+    }
+
+    /**
+     * 找短剧挂载按钮：文字以"短剧"开头（短剧｜xxx / 短剧 | xxx），
+     * 位置在屏幕 45%~80% 区间（发布者上方），且可点击。
+     */
+    private fun findDramaMount(nodes: List<android.view.accessibility.AccessibilityNodeInfo>): android.view.accessibility.AccessibilityNodeInfo? {
+        val screenH = resources.displayMetrics.heightPixels
+        val minY = screenH * 0.45f
+        val maxY = screenH * 0.80f
+        val rect = android.graphics.Rect()
+        val regex = Regex("^短剧[\\s\\|｜·:：]")
+        for (n in nodes) {
+            val t = n.text?.toString()?.trim() ?: continue
+            if (!regex.containsMatchIn(t)) continue
+            n.getBoundsInScreen(rect)
+            val cy = rect.centerY()
+            if (cy in minY.toInt()..maxY.toInt()) {
+                return findClickableAncestor(n) ?: n
+            }
+        }
+        return null
+    }
+
+    /** 向上找可点击祖先 */
+    private fun findClickableAncestor(node: android.view.accessibility.AccessibilityNodeInfo): android.view.accessibility.AccessibilityNodeInfo? {
+        var cur: android.view.accessibility.AccessibilityNodeInfo? = node
+        var depth = 0
+        while (cur != null && depth < 6) {
+            if (cur.isClickable && cur.isEnabled) return cur
+            cur = cur.parent
+            depth++
+        }
+        return null
+    }
+
+    /** 点击节点 */
+    private fun clickNode(node: android.view.accessibility.AccessibilityNodeInfo) {
+        try {
+            node.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK)
+        } catch (e: Exception) {
+            Log.e(TAG, "clickNode failed", e)
+        }
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {

@@ -21,6 +21,11 @@ class Repository(
     val whitelistEnabled: Flow<Boolean> = prefs.whitelistEnabled
     val whitelistPkgs: Flow<Set<String>> = prefs.whitelistPkgs
     val strictClose: Flow<Boolean> = prefs.strictClose
+    // 短剧自动3倍速
+    val dramaEnabled: Flow<Boolean> = prefs.dramaEnabled
+    val dramaAutoMount: Flow<Boolean> = prefs.dramaAutoMount
+    val dramaIntervalMs: Flow<Long> = prefs.dramaIntervalMs
+    val dramaTargetSpeed: Flow<String> = prefs.dramaTargetSpeed
 
     suspend fun addRule(rule: RuleEntity): Long = ruleDao.insert(rule)
 
@@ -51,6 +56,10 @@ class Repository(
     suspend fun setWhitelistEnabled(v: Boolean) = prefs.setWhitelistEnabled(v)
     suspend fun setWhitelist(pkgs: Set<String>) = prefs.setWhitelist(pkgs)
     suspend fun setStrictClose(v: Boolean) = prefs.setStrictClose(v)
+    suspend fun setDramaEnabled(v: Boolean) = prefs.setDramaEnabled(v)
+    suspend fun setDramaAutoMount(v: Boolean) = prefs.setDramaAutoMount(v)
+    suspend fun setDramaInterval(ms: Long) = prefs.setDramaInterval(ms)
+    suspend fun setDramaTargetSpeed(s: String) = prefs.setDramaTargetSpeed(s)
 
     /**
      * v3 迁移：把旧版内置默认规则替换成新规则列表（全部精确匹配）。

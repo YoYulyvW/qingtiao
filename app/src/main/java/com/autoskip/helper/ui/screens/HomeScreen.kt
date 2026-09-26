@@ -40,7 +40,7 @@ import com.autoskip.helper.ui.MainViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(vm: MainViewModel, onOpenFenShen: () -> Unit = {}) {
+fun HomeScreen(vm: MainViewModel, onOpenFenShen: () -> Unit = {}, onOpenDrama: () -> Unit = {}) {
     val context = LocalContext.current
     val enabled by vm.enabled.collectAsState()
     val today by vm.todayCount.collectAsState()
@@ -174,6 +174,31 @@ fun HomeScreen(vm: MainViewModel, onOpenFenShen: () -> Unit = {}) {
                     Text("自动分身（分身大师）", fontWeight = FontWeight.Bold)
                     Text(
                         "批量创建抖音分身，自动改名、安装、跳过弹窗。点击进入配置。",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+                Text("›", style = MaterialTheme.typography.headlineSmall)
+            }
+        }
+
+        // 短剧自动倍速入口
+        Card(
+            Modifier
+                .fillMaxWidth()
+                .clickable { onOpenDrama() },
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.tertiaryContainer
+            )
+        ) {
+            Row(
+                Modifier.fillMaxWidth().padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("短剧自动倍速", fontWeight = FontWeight.Bold)
+                    Text(
+                        "刷到短剧自动切到 3 倍速；已在目标倍速时不会重复点击。点击进入配置。",
                         style = MaterialTheme.typography.bodySmall
                     )
                 }

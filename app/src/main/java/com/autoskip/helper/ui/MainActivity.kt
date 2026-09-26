@@ -23,6 +23,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.autoskip.helper.fenshen.FenShenScreen
+import com.autoskip.helper.ui.screens.DramaScreen
 import com.autoskip.helper.ui.screens.HomeScreen
 import com.autoskip.helper.ui.screens.LogsScreen
 import com.autoskip.helper.ui.screens.RulesScreen
@@ -47,9 +48,14 @@ class MainActivity : ComponentActivity() {
 private fun AppRoot(vm: MainViewModel) {
     var tab by remember { mutableStateOf(0) }
     var showFenShen by remember { mutableStateOf(false) }
+    var showDrama by remember { mutableStateOf(false) }
 
     if (showFenShen) {
         FenShenScreen(onBack = { showFenShen = false })
+        return
+    }
+    if (showDrama) {
+        DramaScreen(onBack = { showDrama = false }, vm = vm)
         return
     }
 
@@ -85,7 +91,7 @@ private fun AppRoot(vm: MainViewModel) {
     ) { padding ->
         Box(Modifier.padding(padding)) {
             when (tab) {
-                0 -> HomeScreen(vm, onOpenFenShen = { showFenShen = true })
+                0 -> HomeScreen(vm, onOpenFenShen = { showFenShen = true }, onOpenDrama = { showDrama = true })
                 1 -> RulesScreen(vm)
                 2 -> WhitelistScreen(vm)
                 else -> LogsScreen(vm)

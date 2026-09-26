@@ -22,6 +22,11 @@ class Prefs(private val context: Context) {
     private val KEY_MIGRATED_V2 = booleanPreferencesKey("migrated_v2")
     private val KEY_WL_SEEDED = booleanPreferencesKey("whitelist_seeded")
     private val KEY_MIGRATED_V3 = booleanPreferencesKey("migrated_v3")
+    // 短剧自动3倍速
+    private val KEY_DRAMA_ENABLED = booleanPreferencesKey("drama_enabled")
+    private val KEY_DRAMA_AUTO_MOUNT = booleanPreferencesKey("drama_auto_mount")
+    private val KEY_DRAMA_INTERVAL = stringPreferencesKey("drama_interval_ms")
+    private val KEY_DRAMA_TARGET = stringPreferencesKey("drama_target_speed")
 
     val enabled: Flow<Boolean> = context.dataStore.data.map { it[KEY_ENABLED] ?: true }
     val clickDelayMs: Flow<Long> = context.dataStore.data.map { (it[KEY_DELAY] ?: "600").toLongOrNull() ?: 600L }
@@ -63,6 +68,20 @@ class Prefs(private val context: Context) {
     suspend fun markMigratedV3() {
         context.dataStore.edit { it[KEY_MIGRATED_V3] = true }
     }
+
+    /** 短剧自动3倍速：总开关 */
+    val dramaEnabled: Flow<Boolean> = context.dataStore.data.map { it[KEY_DRAMA_ENABLED] ?: false }
+    /** 自动点击挂载按钮（关闭则仅手动进入短剧后加速） */
+    val dramaAutoMount: Flow<Boolean> = context.dataStore.data.map { it[KEY_DRAMA_AUTO_MOUNT] ?: true }
+    /** 检测间隔（毫秒） */
+    val dramaIntervalMs: Flow<Long> = context.dataStore.data.map { (it[KEY_DRAMA_INTERVAL] ?: "1000").toLongOrNull() ?: 1000L }
+    /** 目标倍速文字，如 "3x" */
+    val dramaTargetSpeed: Flow<String> = context.dataStore.data.map { it[KEY_DRAMA_TARGET] ?: "3x" }
+
+    suspend fun setDramaEnabled(v: Boolean) { context.dataStore.edit { it[KEY_DRAMA_ENABLED] = v } }
+    suspend fun setDramaAutoMount(v: Boolean) { context.dataStore.edit { it[KEY_DRAMA_AUTO_MOUNT] = v } }
+    suspend fun setDramaInterval(ms: Long) { context.dataStore.edit { it[KEY_DRAMA_INTERVAL] = ms.toString() } }
+    suspend fun setDramaTargetSpeed(s: String) { context.dataStore.edit { it[KEY_DRAMA_TARGET] = s } }
 
     /** 是否已预置过默认白名单（抖音等） */
     val whitelistSeeded: Flow<Boolean> = context.dataStore.data.map { it[KEY_WL_SEEDED] ?: false }
