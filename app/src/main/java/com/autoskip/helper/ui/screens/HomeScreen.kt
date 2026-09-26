@@ -16,6 +16,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
@@ -36,8 +37,9 @@ import androidx.compose.ui.unit.dp
 import com.autoskip.helper.service.AutoClickAccessibilityService
 import com.autoskip.helper.ui.MainViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(vm: MainViewModel) {
+fun HomeScreen(vm: MainViewModel, onOpenFenShen: () -> Unit = {}) {
     val context = LocalContext.current
     val enabled by vm.enabled.collectAsState()
     val today by vm.todayCount.collectAsState()
@@ -150,6 +152,30 @@ fun HomeScreen(vm: MainViewModel) {
                     valueRange = 0f..2000f,
                     steps = 19
                 )
+            }
+        }
+
+        // 自动分身入口
+        Card(
+            Modifier.fillMaxWidth(),
+            onClick = onOpenFenShen,
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.secondaryContainer
+            )
+        ) {
+            Row(
+                Modifier.fillMaxWidth().padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("自动分身（分身大师）", fontWeight = FontWeight.Bold)
+                    Text(
+                        "批量创建抖音分身，自动改名、安装、跳过弹窗。点击进入配置。",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+                Text("›", style = MaterialTheme.typography.headlineSmall)
             }
         }
 

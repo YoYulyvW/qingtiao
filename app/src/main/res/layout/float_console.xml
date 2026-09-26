@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/fc_panel"
+    android:layout_width="220dp"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="#CC000000"
+    android:padding="8dp">
+
+    <TextView
+        android:id="@+id/fc_status"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="准备中..."
+        android:textColor="#00FF00"
+        android:textSize="12sp" />
+
+    <TextView
+        android:id="@+id/fc_log"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text=""
+        android:textColor="#FFFFFF"
+        android:textSize="10sp"
+        android:maxLines="3" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginTop="4dp">
+
+        <Button
+            android:id="@+id/fc_pause"
+            android:layout_width="60dp"
+            android:layout_height="36dp"
+            android:text="暂停"
+            android:textSize="11sp" />
+
+        <Button
+            android:id="@+id/fc_stop"
+            android:layout_width="60dp"
+            android:layout_height="36dp"
+            android:text="终止"
+            android:textSize="11sp"
+            android:layout_marginStart="8dp" />
+
+        <Button
+            android:id="@+id/fc_close"
+            android:layout_width="60dp"
+            android:layout_height="36dp"
+            android:text="关闭"
+            android:textSize="11dp"
+            android:layout_marginStart="8dp" />
+    </LinearLayout>
+</LinearLayout>
