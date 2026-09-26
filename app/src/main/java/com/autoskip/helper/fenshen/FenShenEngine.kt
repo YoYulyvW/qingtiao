@@ -79,6 +79,7 @@ class FenShenEngine(private val context: Context) {
         var consecutiveFail = 0
         var done = 0
         val maxSafety = 1000 // 安全上限，防止死循环
+        val runStart = System.currentTimeMillis()
         while (done < maxSafety) {
             try { checkState() } catch (e: StopException) { log("脚本被用户终止"); break }
 
@@ -95,6 +96,7 @@ class FenShenEngine(private val context: Context) {
                 updateStatus("进度 ${done + 1}/${cfg.totalCount} | 成功 ${_state.value.successCount} 失败 ${_state.value.failCount}")
             }
 
+            val taskStart = System.currentTimeMillis()
             var ok = false
             reachedStopIndex = false
             val attempts = cfg.retryTimes + 1
@@ -113,18 +115,20 @@ class FenShenEngine(private val context: Context) {
             }
 
             if (reachedStopIndex) {
-                log("检测到分身序号已达截止值，停止")
+                val t = (System.currentTimeMillis() - taskStart) / 1000.0
+                log("检测到分身序号已达截止值，停止（第 ${done + 1} 个耗时 ${fmt1(t)} 秒）")
                 break
             }
 
+            val taskSec = (System.currentTimeMillis() - taskStart) / 1000.0
             if (ok) {
                 _state.value = _state.value.copy(successCount = _state.value.successCount + 1)
                 consecutiveFail = 0
-                log("第 ${_state.value.currentIndex} 个完成")
+                log("第 ${_state.value.currentIndex} 个完成，耗时 ${fmt1(taskSec)} 秒")
             } else {
                 _state.value = _state.value.copy(failCount = _state.value.failCount + 1)
                 consecutiveFail++
-                log("第 ${_state.value.currentIndex} 个失败（连续失败 $consecutiveFail）")
+                log("第 ${_state.value.currentIndex} 个失败，耗时 ${fmt1(taskSec)} 秒（连续失败 $consecutiveFail）")
             }
             done++
 
@@ -143,8 +147,11 @@ class FenShenEngine(private val context: Context) {
             if (_state.value.stopped) break
         }
 
+        val totalSec = (System.currentTimeMillis() - runStart) / 1000.0
+        val avg = if (done > 0) totalSec / done else 0.0
         log("任务结束")
         log("成功: ${_state.value.successCount} / 失败: ${_state.value.failCount}")
+        log("总耗时 ${fmt1(totalSec)} 秒，平均每个 ${fmt1(avg)} 秒")
         updateStatus("完成 成功${_state.value.successCount} 失败${_state.value.failCount}")
         _state.value = _state.value.copy(running = false)
     }
@@ -210,6 +217,9 @@ class FenShenEngine(private val context: Context) {
         val m = Regex("抖音\\s*(\\d+)").find(name) ?: return null
         return m.groupValues[1].toIntOrNull()
     }
+
+    /** 格式化秒数保留 1 位小数（Locale.US 避免逗号） */
+    private fun fmt1(v: Double): String = String.format(java.util.Locale.US, "%.1f", v)
 
     private fun buildSuffix(): String {
         val d = Date()

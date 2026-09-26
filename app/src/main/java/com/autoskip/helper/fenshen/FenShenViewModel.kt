@@ -16,6 +16,9 @@ class FenShenViewModel(app: Application) : AndroidViewModel(app) {
     private val prefs = FenShenPrefs(app)
     val state = engine.state
 
+    /** 当前悬浮窗（保留引用，避免重复开始叠加多个） */
+    private var currentConsole: FloatConsole? = null
+
     /** 已保存的配置（UI 读取用于回填） */
     val savedConfig = prefs.config
 
@@ -54,21 +57,28 @@ class FenShenViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { prefs.save(config) }
         // 注意：必须用 IO 线程执行引擎，否则节点遍历会阻塞主线程，导致悬浮窗按钮点不动
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            // 关闭上一次残留的悬浮窗，避免叠加
+            currentConsole?.dismiss()
+            currentConsole = null
+
             val fc = FloatConsole(
                 ctx,
                 onPauseToggle = { engine.setPaused(it) },
                 onStop = { engine.requestStop() },
-                onClose = { engine.requestStop() }
+                onClose = {
+                    engine.requestStop()
+                    currentConsole = null
+                }
             )
+            currentConsole = fc
             engine.attachConsole(fc)
             if (hasOverlayPermission()) fc.show() else onNeedFloat()
             try {
                 engine.run(config)
             } catch (e: Exception) {
                 // 出错已写入状态
-            } finally {
-                fc.dismiss()
             }
+            // 任务结束后不关闭悬浮窗，由用户点"关闭"按钮手动关闭
         }
     }
 

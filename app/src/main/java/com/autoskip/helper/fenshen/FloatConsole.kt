@@ -1,5 +1,7 @@
 package com.autoskip.helper.fenshen
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.graphics.PixelFormat
 import android.os.Build
@@ -11,13 +13,13 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.widget.Button
-import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
+import android.widget.Toast
 import com.autoskip.helper.R
 
 /**
- * 悬浮控制台：实时状态 + 日志 + 暂停/终止/关闭。
- * 对应 Auto.js 的 floaty.rawWindow。
+ * 悬浮控制台：实时状态 + 可滚动日志 + 复制。
  */
 class FloatConsole(
     private val context: Context,
@@ -30,9 +32,12 @@ class FloatConsole(
     private var rootView: View? = null
     private var statusText: TextView? = null
     private var logText: TextView? = null
+    private var logScroll: ScrollView? = null
     private var pauseBtn: Button? = null
     private var paused = false
-    private val logLines = ArrayDeque<String>()
+
+    /** 完整日志（不再截断） */
+    private val allLogs = ArrayList<String>()
 
     private var showing = false
 
@@ -46,6 +51,7 @@ class FloatConsole(
                 rootView = view
                 statusText = view.findViewById(R.id.fc_status)
                 logText = view.findViewById(R.id.fc_log)
+                logScroll = view.findViewById(R.id.fc_scroll)
                 pauseBtn = view.findViewById(R.id.fc_pause)
 
                 val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
@@ -64,21 +70,19 @@ class FloatConsole(
                 lp.x = 16
                 lp.y = 160
 
-                view.findViewById<Button>(R.id.fc_pause).apply { isFocusable = false }
-                view.findViewById<Button>(R.id.fc_stop).apply { isFocusable = false }
-                view.findViewById<Button>(R.id.fc_close).apply { isFocusable = false }
                 view.findViewById<Button>(R.id.fc_pause).setOnClickListener {
                     paused = !paused
                     pauseBtn?.text = if (paused) "继续" else "暂停"
                     onPauseToggle(paused)
                 }
                 view.findViewById<Button>(R.id.fc_stop).setOnClickListener { onStop() }
+                view.findViewById<Button>(R.id.fc_copy).setOnClickListener { copyLogs() }
                 view.findViewById<Button>(R.id.fc_close).setOnClickListener {
                     dismiss()
                     onClose()
                 }
 
-                // 拖动移动：只挂在状态文字上（不干扰按钮点击）
+                // 拖动：挂在状态栏上
                 val dragHandle = view.findViewById<TextView>(R.id.fc_status)
                 var downX = 0f; var downY = 0f
                 var startX = 0; var startY = 0
@@ -121,6 +125,14 @@ class FloatConsole(
         }
     }
 
+    private fun copyLogs() {
+        val text = allLogs.joinToString("
+")
+        val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        cm.setPrimaryClip(ClipData.newPlainText("autoskip_log", text))
+        Toast.makeText(context, "日志已复制（${allLogs.size} 行）", Toast.LENGTH_SHORT).show()
+    }
+
     fun setVisible(visible: Boolean) {
         handler.post {
             rootView?.visibility = if (visible) View.VISIBLE else View.GONE
@@ -133,9 +145,11 @@ class FloatConsole(
 
     fun appendLog(msg: String) {
         handler.post {
-            logLines.addLast(msg)
-            while (logLines.size > 3) logLines.removeFirst()
-            logText?.text = logLines.joinToString("\n")
+            allLogs.add(msg)
+            logText?.text = allLogs.joinToString("
+")
+            // 自动滚动到底部
+            logScroll?.post { logScroll?.fullScroll(View.FOCUS_DOWN) }
         }
     }
 
