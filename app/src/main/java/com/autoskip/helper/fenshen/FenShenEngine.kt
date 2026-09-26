@@ -553,15 +553,15 @@ class FenShenEngine(private val context: Context) {
         }
         delay(1000)
 
-        val locX = w * 523f / config.testW
-        val locY = h * 1308f / config.testH
-        log("坐标点击位置权限: ${locX.toInt()}, ${locY.toInt()}")
+        val locX2 = w * 523f / config.testW
+        val locY2 = h * 1308f / config.testH
+        log("坐标点击位置权限: ${locX2.toInt()}, ${locY2.toInt()}")
         delay(1500)
-        tap(locX, locY)
+        tap(locX2, locY2)
         delay(2000)
 
         val locBtn = NodeHelper.findByTextMatches(root, Regex(".*仅在使用该应用时允许.*"))
-        if (locBtn != null) { log("弹窗还在，补点一次"); tap(locX, locY); delay(1500) }
+        if (locBtn != null) { log("弹窗还在，补点一次"); tap(locX2, locY2); delay(1500) }
 
         log("位置权限流程结束")
         return true

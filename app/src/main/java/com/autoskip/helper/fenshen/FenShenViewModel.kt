@@ -40,7 +40,8 @@ class FenShenViewModel(app: Application) : AndroidViewModel(app) {
 
     fun start(config: FenShenConfig, onNeedFloat: () -> Unit) {
         val ctx = getApplication<Application>()
-        viewModelScope.launch {
+        // 注意：必须用 IO 线程执行引擎，否则节点遍历会阻塞主线程，导致悬浮窗按钮点不动
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             val fc = FloatConsole(
                 ctx,
                 onPauseToggle = { engine.setPaused(it) },

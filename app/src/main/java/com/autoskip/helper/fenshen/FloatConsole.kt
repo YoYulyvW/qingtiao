@@ -64,6 +64,9 @@ class FloatConsole(
                 lp.x = 16
                 lp.y = 160
 
+                view.findViewById<Button>(R.id.fc_pause).apply { isFocusable = false }
+                view.findViewById<Button>(R.id.fc_stop).apply { isFocusable = false }
+                view.findViewById<Button>(R.id.fc_close).apply { isFocusable = false }
                 view.findViewById<Button>(R.id.fc_pause).setOnClickListener {
                     paused = !paused
                     pauseBtn?.text = if (paused) "继续" else "暂停"
@@ -75,22 +78,36 @@ class FloatConsole(
                     onClose()
                 }
 
-                // 拖动移动
-                val panel = view.findViewById<LinearLayout>(R.id.fc_panel)
+                // 拖动移动：只挂在状态文字上（不干扰按钮点击）
+                val dragHandle = view.findViewById<TextView>(R.id.fc_status)
                 var downX = 0f; var downY = 0f
                 var startX = 0; var startY = 0
-                panel.setOnTouchListener { _, e ->
+                var dragging = false
+                val touchSlop = android.view.ViewConfiguration.get(context).scaledTouchSlop
+                dragHandle.setOnTouchListener { _, e ->
                     when (e.action) {
                         MotionEvent.ACTION_DOWN -> {
                             downX = e.rawX; downY = e.rawY
                             startX = lp.x; startY = lp.y
-                            false
+                            dragging = false
+                            true
                         }
                         MotionEvent.ACTION_MOVE -> {
-                            lp.x = startX + (e.rawX - downX).toInt()
-                            lp.y = startY + (e.rawY - downY).toInt()
-                            wm?.updateViewLayout(view, lp)
-                            false
+                            val dx = e.rawX - downX
+                            val dy = e.rawY - downY
+                            if (!dragging && (kotlin.math.abs(dx) > touchSlop || kotlin.math.abs(dy) > touchSlop)) {
+                                dragging = true
+                            }
+                            if (dragging) {
+                                lp.x = startX + dx.toInt()
+                                lp.y = startY + dy.toInt()
+                                wm?.updateViewLayout(view, lp)
+                            }
+                            true
+                        }
+                        MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                            dragging = false
+                            true
                         }
                         else -> false
                     }
