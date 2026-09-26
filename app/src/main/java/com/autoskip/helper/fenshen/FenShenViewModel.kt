@@ -63,6 +63,7 @@ class FenShenViewModel(app: Application) : AndroidViewModel(app) {
 
             val fc = FloatConsole(
                 ctx,
+                logHeightDp = config.logHeightDp,
                 onPauseToggle = { engine.setPaused(it) },
                 onStop = { engine.requestStop() },
                 onClose = {

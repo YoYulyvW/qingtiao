@@ -23,6 +23,7 @@ import com.autoskip.helper.R
  */
 class FloatConsole(
     private val context: Context,
+    private val logHeightDp: Int = 90,
     private val onPauseToggle: (Boolean) -> Unit,
     private val onStop: () -> Unit,
     private val onClose: () -> Unit
@@ -53,6 +54,10 @@ class FloatConsole(
                 logText = view.findViewById(R.id.fc_log)
                 logScroll = view.findViewById(R.id.fc_scroll)
                 pauseBtn = view.findViewById(R.id.fc_pause)
+
+                // 应用用户配置的日志区高度（dp 转 px）
+                val hPx = (logHeightDp * context.resources.displayMetrics.density).toInt()
+                logScroll?.layoutParams = logScroll?.layoutParams?.apply { height = hPx }
 
                 val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
                     WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY

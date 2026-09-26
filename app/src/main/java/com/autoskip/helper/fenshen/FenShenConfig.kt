@@ -21,7 +21,9 @@ data class FenShenConfig(
     // 停止模式：true=按"分身序号"截止，false=按"数量"
     val useStopIndex: Boolean = false,
     // 截止序号：抖音序号 >= 此值就停止（如 50 → 遇到 抖音50 及以上不处理）
-    val stopIndex: Int = 50
+    val stopIndex: Int = 50,
+    // 悬浮窗日志区高度（dp），默认 90
+    val logHeightDp: Int = 90
 )
 
 /** 运行状态（供 UI 与悬浮窗读取） */

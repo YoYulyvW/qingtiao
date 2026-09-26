@@ -29,6 +29,7 @@ class FenShenPrefs(private val context: Context) {
     private val K_LOCY = stringPreferencesKey("fs_locy")
     private val K_MODE = stringPreferencesKey("fs_mode")       // "count" or "index"
     private val K_STOPINDEX = stringPreferencesKey("fs_stopindex")
+    private val K_LOGH = stringPreferencesKey("fs_logh")
 
     private val d: Flow<androidx.datastore.preferences.core.Preferences> = context.fenShenStore.data
 
@@ -49,7 +50,8 @@ class FenShenPrefs(private val context: Context) {
             locX = p[K_LOCX]?.toIntOrNull() ?: 523,
             locY = p[K_LOCY]?.toIntOrNull() ?: 1308,
             useStopIndex = (p[K_MODE] ?: "count") == "index",
-            stopIndex = p[K_STOPINDEX]?.toIntOrNull() ?: 50
+            stopIndex = p[K_STOPINDEX]?.toIntOrNull() ?: 50,
+            logHeightDp = p[K_LOGH]?.toIntOrNull() ?: 90
         )
     }
 
@@ -73,6 +75,7 @@ class FenShenPrefs(private val context: Context) {
             p[K_LOCY] = c.locY.toString()
             p[K_MODE] = if (c.useStopIndex) "index" else "count"
             p[K_STOPINDEX] = c.stopIndex.toString()
+            p[K_LOGH] = c.logHeightDp.toString()
         }
     }
 }

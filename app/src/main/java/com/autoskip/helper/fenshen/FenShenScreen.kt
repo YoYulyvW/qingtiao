@@ -79,6 +79,7 @@ fun FenShenScreen(onBack: () -> Unit, vm: FenShenViewModel = viewModel()) {
     var overlayOn by remember { mutableStateOf(false) }
     var useStopIndex by remember { mutableStateOf(false) }
     var stopIndex by remember { mutableStateOf("50") }
+    var logHeight by remember { mutableStateOf("90") }
     var loaded by remember { mutableStateOf(false) }
 
     // 首次进入：加载已保存配置
@@ -100,6 +101,7 @@ fun FenShenScreen(onBack: () -> Unit, vm: FenShenViewModel = viewModel()) {
             locY = c.locY.toString()
             useStopIndex = c.useStopIndex
             stopIndex = c.stopIndex.toString()
+            logHeight = c.logHeightDp.toString()
             loaded = true
         }
     }
@@ -125,6 +127,7 @@ fun FenShenScreen(onBack: () -> Unit, vm: FenShenViewModel = viewModel()) {
         installY = installY.toIntOrNull() ?: 1620,
         permX = permX.toIntOrNull() ?: 540,
         permY = permY.toIntOrNull() ?: 1465,
+        logHeightDp = logHeight.toIntOrNull() ?: 90,
         locX = locX.toIntOrNull() ?: 523,
         locY = locY.toIntOrNull() ?: 1308,
         useStopIndex = useStopIndex,
@@ -310,6 +313,9 @@ fun FenShenScreen(onBack: () -> Unit, vm: FenShenViewModel = viewModel()) {
                 Text("保存详细日志", Modifier.weight(1f))
                 Switch(checked = saveLog, onCheckedChange = { saveLog = it })
             }
+            LabeledField("悬浮窗日志高度(dp)", logHeight, true) { logHeight = it }
+            Text("悬浮窗日志区高度，默认 90；喜欢大可自行调高",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
 
             SectionTitle("基准分辨率")
             Text("坐标基于此分辨率填写，运行时按真机等比换算",
