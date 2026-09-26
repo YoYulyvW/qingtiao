@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.AutoSkip" parent="android:Theme.Material.NoActionBar">
+        <item name="android:statusBarColor">#FF1B5E20</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>
