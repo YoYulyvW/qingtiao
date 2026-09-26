@@ -1,4 +1,4 @@
-name: Build APK
+name: Build & Release APK
 
 on:
   push:
@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [ main, master ]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -35,6 +38,15 @@ jobs:
           key: gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: gradle-
 
+      - name: Compute version
+        id: ver
+        run: |
+          CODE=$((100 + $GITHUB_RUN_NUMBER))
+          NAME="1.0.$GITHUB_RUN_NUMBER"
+          echo "code=$CODE" >> $GITHUB_OUTPUT
+          echo "name=$NAME" >> $GITHUB_OUTPUT
+          echo "Building version $NAME ($CODE)"
+
       - name: Build Debug APK
         run: gradle assembleDebug --no-daemon --stacktrace
 
@@ -45,12 +57,36 @@ jobs:
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
 
-      - name: Build Release APK (unsigned)
+      - name: Build signed Release APK
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          APP_VERSION_CODE: ${{ steps.ver.outputs.code }}
+          APP_VERSION_NAME: ${{ steps.ver.outputs.name }}
         run: gradle assembleRelease --no-daemon --stacktrace
+
+      - name: Rename APK
+        run: |
+          mkdir -p out
+          cp app/build/outputs/apk/release/app-release.apk "out/AutoSkip-${{ steps.ver.outputs.name }}.apk"
 
       - name: Upload Release APK
         uses: actions/upload-artifact@v4
         with:
           name: AutoSkip-release-apk
-          path: app/build/outputs/apk/release/*.apk
-          if-no-files-found: warn
+          path: out/*.apk
+          if-no-files-found: error
+
+      - name: Publish to GitHub Releases
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="v${{ steps.ver.outputs.name }}"
+          gh release create "$TAG" out/*.apk \
+            --repo ${{ github.repository }} \
+            --title "自动跳过 ${{ steps.ver.outputs.name }}" \
+            --notes "自动构建：v${{ steps.ver.outputs.name }} (build ${{ steps.ver.outputs.code }})" \
+            || gh release upload "$TAG" out/*.apk --clobber --repo ${{ github.repository }}

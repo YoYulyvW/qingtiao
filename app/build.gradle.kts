@@ -12,8 +12,25 @@ android {
         applicationId = "com.autoskip.helper"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        // 版本号可被 CI 覆盖
+        versionCode = (System.getenv("APP_VERSION_CODE") ?: "1").toInt()
+        versionName = System.getenv("APP_VERSION_NAME") ?: "1.0.0"
+    }
+
+    signingConfigs {
+        create("release") {
+            val ksB64 = System.getenv("ANDROID_KEYSTORE_BASE64")
+            if (ksB64 != null) {
+                // CI：从 base64 解码出临时 keystore
+                val f = File(System.getProperty("java.io.tmpdir"), "release.p12")
+                f.writeBytes(java.util.Base64.getDecoder().decode(ksB64))
+                storeFile = f
+                storePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("ANDROID_KEY_ALIAS")
+                keyPassword = System.getenv("ANDROID_KEY_PASSWORD")
+                storeType = "pkcs12"
+            }
+        }
     }
 
     buildTypes {
@@ -23,6 +40,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            if (System.getenv("ANDROID_KEYSTORE_BASE64") != null) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 
