@@ -42,6 +42,50 @@ object Matcher {
     )
 
     /**
+     * 系统 UI 包名黑名单：永不在这些应用上点击。
+     * 覆盖多任务中心、桌面、设置等，避免误点任务卡片/图标。
+     */
+    val SYSTEM_UI_BLACKLIST = listOf(
+        "com.android.systemui",
+        "com.android.launcher",
+        "com.android.launcher3",
+        "com.sec.android.app.launcher",
+        "com.samsung.android.app.launcher",
+        "com.huawei.android.launcher",
+        "com.miui.home",
+        "com.oppo.launcher",
+        "com.vivo.launcher",
+        "com.google.android.apps.nexuslauncher",
+        "com.android.settings",
+        "com.samsung.android.app.settings",
+        "com.samsung.android.lool",
+        "com.android.quicksearchbox"
+    )
+
+    /** 验证码 / 滑块关键词：检测到则跳过整个弹窗（防误触 + 避免影响正常验证） */
+    val CAPTCHA_KEYWORDS = listOf(
+        "拖动滑块", "完成拼图", "滑动验证", "人机验证", "安全验证",
+        "拖动左侧滑块", "向右滑动", "请按住滑块", "拖动下方滑块",
+        "按住滑块拖动", "拖动到最右边"
+    )
+
+    /** 是否为系统 UI（黑名单包名） */
+    fun isSystemUi(pkg: String?): Boolean {
+        if (pkg.isNullOrBlank()) return false
+        return SYSTEM_UI_BLACKLIST.any { pkg == it || pkg.startsWith(it + ".") }
+    }
+
+    /** 节点树里是否存在验证码/滑块关键词 */
+    fun hasCaptcha(candidates: List<AccessibilityNodeInfo>): Boolean {
+        for (node in candidates) {
+            val text = node.text?.toString() ?: node.contentDescription?.toString()
+            if (text.isNullOrBlank()) continue
+            if (CAPTCHA_KEYWORDS.any { text.contains(it, ignoreCase = true) }) return true
+        }
+        return false
+    }
+
+    /**
      * 白名单匹配：支持以 * 结尾的前缀通配。
      * 例：com.qihoo.magic.* 可匹配 com.qihoo.magic.dl1WZ3Fm..._110 等所有分身
      */
@@ -80,9 +124,15 @@ object Matcher {
         strictClose: Boolean = true
     ): MatchResult? {
         if (root == null) return null
+        // 系统 UI 直接跳过（多任务中心、桌面、设置等）
+        if (isSystemUi(packageName)) return null
+
         val candidates = ArrayList<AccessibilityNodeInfo>()
         collect(root, candidates)
         if (candidates.isEmpty()) return null
+
+        // 检测到验证码/滑块弹窗 → 整个弹窗不点任何东西
+        if (hasCaptcha(candidates)) return null
 
         // 严格模式下预先计算一次"是否存在登录上下文"
         val loginCtx = if (strictClose) hasLoginContext(candidates) else true

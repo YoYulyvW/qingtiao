@@ -77,6 +77,9 @@ class AutoClickAccessibilityService : AccessibilityService() {
         val pkg = event.packageName?.toString() ?: return
         if (pkg == packageName) return
 
+        // 系统 UI（多任务中心、桌面、设置等）永不处理
+        if (Matcher.isSystemUi(pkg)) return
+
         // 白名单模式：非白名单应用直接忽略（支持通配符）
         if (whitelistEnabled && !Matcher.matchesWhitelist(pkg, whitelistPkgs)) return
 
