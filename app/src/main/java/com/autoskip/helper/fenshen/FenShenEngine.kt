@@ -23,6 +23,9 @@ class FenShenEngine(private val context: Context) {
     private var floatConsole: FloatConsole? = null
     private var logBuilder: StringBuilder? = null
 
+    /** 是否已到达"序号截止"（当前分身名里的序号 ≥ 配置值） */
+    @Volatile private var reachedStopIndex = false
+
     private val service get() = FenShenAccessibilityService.instance
     private val root get() = service?.root()
 
@@ -66,14 +69,34 @@ class FenShenEngine(private val context: Context) {
         log("任务开始")
         log("总数: ${cfg.totalCount}，后缀格式: ${cfg.suffixFmt}")
 
+        // 运行模式：按数量 or 按序号截止
+        if (cfg.useStopIndex) {
+            log("模式：分身序号 ≥ ${cfg.stopIndex} 时停止")
+        } else {
+            log("模式：共做 ${cfg.totalCount} 个")
+        }
+
         var consecutiveFail = 0
-        for (i in 0 until cfg.totalCount) {
+        var done = 0
+        val maxSafety = 1000 // 安全上限，防止死循环
+        while (done < maxSafety) {
             try { checkState() } catch (e: StopException) { log("脚本被用户终止"); break }
 
-            _state.value = _state.value.copy(currentIndex = i + 1)
-            updateStatus("进度 ${i + 1}/${cfg.totalCount} | 成功 ${_state.value.successCount} 失败 ${_state.value.failCount}")
+            // 数量模式：达到数量就停
+            if (!cfg.useStopIndex && done >= cfg.totalCount) {
+                log("已完成设定数量 ${cfg.totalCount} 个，停止")
+                break
+            }
+
+            _state.value = _state.value.copy(currentIndex = done + 1)
+            if (cfg.useStopIndex) {
+                updateStatus("第 ${done + 1} 个（截止 ${cfg.stopIndex}）| 成功 ${_state.value.successCount} 失败 ${_state.value.failCount}")
+            } else {
+                updateStatus("进度 ${done + 1}/${cfg.totalCount} | 成功 ${_state.value.successCount} 失败 ${_state.value.failCount}")
+            }
 
             var ok = false
+            reachedStopIndex = false
             val attempts = cfg.retryTimes + 1
             for (a in 0 until attempts) {
                 if (a > 0) log("第 $a 次重试...")
@@ -85,7 +108,13 @@ class FenShenEngine(private val context: Context) {
                     log("异常: ${e.message}"); ok = false
                 }
                 if (ok) break
+                if (reachedStopIndex) break   // 序号到顶，不再重试
                 delay(2000)
+            }
+
+            if (reachedStopIndex) {
+                log("检测到分身序号已达截止值，停止")
+                break
             }
 
             if (ok) {
@@ -97,8 +126,11 @@ class FenShenEngine(private val context: Context) {
                 consecutiveFail++
                 log("第 ${_state.value.currentIndex} 个失败（连续失败 $consecutiveFail）")
             }
+            done++
 
-            if (i < cfg.totalCount - 1) {
+            // 是否还有下一次
+            val hasNext = if (cfg.useStopIndex) true else done < cfg.totalCount
+            if (hasNext) {
                 try { clearAllTasks() } catch (_: Exception) {}
                 delay(2000)
             } else {
@@ -167,6 +199,16 @@ class FenShenEngine(private val context: Context) {
             t.contains("允许") && !t.contains("不")
         }?.let { return it }
         return null
+    }
+
+    /**
+     * 从分身名称中提取"抖音后面的序号"。
+     * 例：抖音12 / 抖音12-26号 / 抖音100 → 12 / 12 / 100
+     * 找不到数字返回 null。
+     */
+    private fun extractDouyinIndex(name: String): Int? {
+        val m = Regex("抖音\\s*(\\d+)").find(name) ?: return null
+        return m.groupValues[1].toIntOrNull()
     }
 
     private fun buildSuffix(): String {
@@ -340,6 +382,20 @@ class FenShenEngine(private val context: Context) {
         }
         if (nameInput != null) {
             val oldName = nameInput.text?.toString() ?: ""
+
+            // 按序号截止：解析名称里"抖音XX"的序号
+            if (config.useStopIndex) {
+                val num = extractDouyinIndex(oldName)
+                if (num != null) {
+                    log("当前分身序号: $num（截止 ${config.stopIndex}）")
+                    if (num >= config.stopIndex) {
+                        log("序号 $num ≥ ${config.stopIndex}，停止本次任务")
+                        reachedStopIndex = true
+                        return false
+                    }
+                }
+            }
+
             if (!oldName.contains(suffix)) {
                 val newName = oldName + suffix
                 NodeHelper.setText(nameInput, newName)

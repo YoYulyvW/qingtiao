@@ -17,7 +17,11 @@ data class FenShenConfig(
     val permX: Int = 540,      // 允许
     val permY: Int = 1465,
     val locX: Int = 523,       // 定位：仅在使用该应用时允许
-    val locY: Int = 1308
+    val locY: Int = 1308,
+    // 停止模式：true=按"分身序号"截止，false=按"数量"
+    val useStopIndex: Boolean = false,
+    // 截止序号：抖音序号 >= 此值就停止（如 50 → 遇到 抖音50 及以上不处理）
+    val stopIndex: Int = 50
 )
 
 /** 运行状态（供 UI 与悬浮窗读取） */

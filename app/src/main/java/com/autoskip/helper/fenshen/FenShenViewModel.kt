@@ -13,7 +13,17 @@ import kotlinx.coroutines.launch
 class FenShenViewModel(app: Application) : AndroidViewModel(app) {
 
     private val engine = FenShenEngine(app)
+    private val prefs = FenShenPrefs(app)
     val state = engine.state
+
+    /** 已保存的配置（UI 读取用于回填） */
+    val savedConfig = prefs.config
+
+    fun loadConfig(onLoaded: (FenShenConfig) -> Unit) {
+        viewModelScope.launch {
+            onLoaded(prefs.load())
+        }
+    }
 
     fun hasOverlayPermission(): Boolean {
         val ctx = getApplication<Application>()
@@ -40,6 +50,8 @@ class FenShenViewModel(app: Application) : AndroidViewModel(app) {
 
     fun start(config: FenShenConfig, onNeedFloat: () -> Unit) {
         val ctx = getApplication<Application>()
+        // 启动时持久化配置
+        viewModelScope.launch { prefs.save(config) }
         // 注意：必须用 IO 线程执行引擎，否则节点遍历会阻塞主线程，导致悬浮窗按钮点不动
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             val fc = FloatConsole(

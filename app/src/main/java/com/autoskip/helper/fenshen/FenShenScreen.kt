@@ -77,6 +77,32 @@ fun FenShenScreen(onBack: () -> Unit, vm: FenShenViewModel = viewModel()) {
 
     var serviceOn by remember { mutableStateOf(false) }
     var overlayOn by remember { mutableStateOf(false) }
+    var useStopIndex by remember { mutableStateOf(false) }
+    var stopIndex by remember { mutableStateOf("50") }
+    var loaded by remember { mutableStateOf(false) }
+
+    // 首次进入：加载已保存配置
+    LaunchedEffect(Unit) {
+        vm.loadConfig { c ->
+            totalCount = c.totalCount.toString()
+            suffixFmt = c.suffixFmt
+            installTimeout = c.installTimeoutSec.toString()
+            retryTimes = c.retryTimes.toString()
+            maxFail = c.maxFail.toString()
+            saveLog = c.saveLog
+            testW = c.testW.toString()
+            testH = c.testH.toString()
+            installX = c.installX.toString()
+            installY = c.installY.toString()
+            permX = c.permX.toString()
+            permY = c.permY.toString()
+            locX = c.locX.toString()
+            locY = c.locY.toString()
+            useStopIndex = c.useStopIndex
+            stopIndex = c.stopIndex.toString()
+            loaded = true
+        }
+    }
 
     LaunchedEffect(Unit) {
         while (true) {
@@ -100,7 +126,9 @@ fun FenShenScreen(onBack: () -> Unit, vm: FenShenViewModel = viewModel()) {
         permX = permX.toIntOrNull() ?: 540,
         permY = permY.toIntOrNull() ?: 1465,
         locX = locX.toIntOrNull() ?: 523,
-        locY = locY.toIntOrNull() ?: 1308
+        locY = locY.toIntOrNull() ?: 1308,
+        useStopIndex = useStopIndex,
+        stopIndex = stopIndex.toIntOrNull() ?: 50
     )
 
     Scaffold(
@@ -228,7 +256,48 @@ fun FenShenScreen(onBack: () -> Unit, vm: FenShenViewModel = viewModel()) {
             }
 
             SectionTitle("基础配置")
-            LabeledField("分身总数", totalCount) { totalCount = it }
+
+            // 停止条件：数量 / 截止序号 二选一
+            Text("停止条件（二选一）", style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.outline)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                androidx.compose.material3.RadioButton(
+                    selected = !useStopIndex,
+                    onClick = { useStopIndex = false }
+                )
+                Text("按数量", Modifier.weight(1f))
+                OutlinedTextField(
+                    value = totalCount,
+                    onValueChange = { totalCount = it },
+                    enabled = !useStopIndex,
+                    singleLine = true,
+                    modifier = Modifier.weight(1.6f),
+                    shape = RoundedCornerShape(10.dp),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                )
+            }
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                androidx.compose.material3.RadioButton(
+                    selected = useStopIndex,
+                    onClick = { useStopIndex = true }
+                )
+                Text("按序号截止", Modifier.weight(1f))
+                OutlinedTextField(
+                    value = stopIndex,
+                    onValueChange = { stopIndex = it },
+                    enabled = useStopIndex,
+                    singleLine = true,
+                    modifier = Modifier.weight(1.6f),
+                    shape = RoundedCornerShape(10.dp),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                )
+            }
+            Text(
+                "按序号：分身名中「抖音XX」的 XX ≥ 截止值即停止（如截止 50 → 抖音50 及以上不再处理）",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.outline
+            )
+
             LabeledField("后缀格式", suffixFmt) { suffixFmt = it }
             Text("支持 {date} 日期、{date2} 补零日期、{time} 时间",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
