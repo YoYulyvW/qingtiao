@@ -198,11 +198,11 @@ object Matcher {
         val rect = Rect()
 
         for (node in candidates) {
-            if (!node.isClickable || !node.isEnabled) continue
             val t = node.text?.toString()
             val d = node.contentDescription?.toString()
+            // 只考虑无文字、无描述的节点（图标）
             if (!t.isNullOrBlank() || !d.isNullOrBlank()) continue
-            // 图标通常没有子节点，排除掉容器
+            // 图标本身无子节点；允许 1 个子节点（有的包一层）
             if (node.childCount > 1) continue
 
             node.getBoundsInScreen(rect)
@@ -214,11 +214,16 @@ object Matcher {
             val ratio = if (w > h) w.toDouble() / h else h.toDouble() / w
             if (ratio > 2.0) continue // 太扁长的不是图标
 
-            // 越接近方形、面积越小，越像关闭图标
-            val score = ratio * 10000 + w + h
+            // 关键修复：自身可点击 或 祖先可点击 都算
+            val clickTarget = findClickable(node) ?: continue
+            if (!clickTarget.isEnabled) continue
+
+            // 越接近方形、面积越小、越靠上，越像关闭图标
+            val centerY = rect.centerY()
+            val score = ratio * 10000 + w + h + centerY * 0.5
             if (score < bestScore) {
                 bestScore = score
-                best = node
+                best = clickTarget
             }
         }
 
