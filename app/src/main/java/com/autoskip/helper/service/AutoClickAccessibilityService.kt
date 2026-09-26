@@ -29,6 +29,10 @@ class AutoClickAccessibilityService : AccessibilityService() {
     @Volatile private var clickDelay = 600L
     @Volatile private var cachedRules: List<RuleEntity> = emptyList()
 
+    /** 白名单模式：仅对白名单内的包名生效 */
+    @Volatile private var whitelistEnabled = false
+    @Volatile private var whitelistPkgs: Set<String> = emptySet()
+
     /** 学习模式回调：抓到用户点击的节点时触发 */
     @Volatile var learnCallback: ((MatchedNode) -> Unit)? = null
 
@@ -42,6 +46,8 @@ class AutoClickAccessibilityService : AccessibilityService() {
         scope.launch { repo.enabled.collect { enabled = it } }
         scope.launch { repo.clickDelayMs.collect { clickDelay = it } }
         scope.launch { repo.rules.collect { cachedRules = it } }
+        scope.launch { repo.whitelistEnabled.collect { whitelistEnabled = it } }
+        scope.launch { repo.whitelistPkgs.collect { whitelistPkgs = it } }
         startKeepAlive()
         Log.i(TAG, "无障碍服务已连接")
     }
@@ -66,6 +72,9 @@ class AutoClickAccessibilityService : AccessibilityService() {
 
         val pkg = event.packageName?.toString() ?: return
         if (pkg == packageName) return
+
+        // 白名单模式：非白名单应用直接忽略
+        if (whitelistEnabled && pkg !in whitelistPkgs) return
 
         val root = rootInActiveWindow ?: return
         val now = System.currentTimeMillis()

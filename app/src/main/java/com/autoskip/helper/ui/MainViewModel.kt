@@ -8,6 +8,7 @@ import com.autoskip.helper.data.RuleEntity
 import com.autoskip.helper.service.AutoClickAccessibilityService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -22,6 +23,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val todayCount = repo.todayCount.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
     val enabled = repo.enabled.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
     val clickDelay = repo.clickDelayMs.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 600L)
+    val whitelistEnabled = repo.whitelistEnabled.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+    val whitelistPkgs = repo.whitelistPkgs.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
 
     private val _learnMode = MutableStateFlow(false)
     val learnMode = _learnMode.asStateFlow()
@@ -38,6 +41,17 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun clearLogs() = viewModelScope.launch { repo.clearLogs() }
 
+    fun setWhitelistEnabled(v: Boolean) = viewModelScope.launch { repo.setWhitelistEnabled(v) }
+
+    fun toggleWhitelistPkg(pkg: String) = viewModelScope.launch {
+        val cur = repo.whitelistPkgs.first()
+        if (pkg in cur) repo.setWhitelist(cur - pkg) else repo.setWhitelist(cur + pkg)
+    }
+
+    fun removeFromWhitelist(pkg: String) = viewModelScope.launch {
+        repo.setWhitelist(repo.whitelistPkgs.first() - pkg)
+    }
+
     /** 学习模式：开启后，用户在其他 App 手动点击的按钮会被自动记录为规则 */
     fun setLearnMode(on: Boolean) {
         _learnMode.value = on
@@ -45,7 +59,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         svc.learnCallback = if (on) {
             { node ->
                 viewModelScope.launch {
+                    // 学习到规则时，自动把该应用加入白名单
                     repo.addLearnedRuleIfAbsent(node.text, node.viewId, node.packageName)
+                    repo.addToWhitelist(node.packageName)
                 }
             }
         } else null

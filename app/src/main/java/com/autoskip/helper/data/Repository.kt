@@ -1,6 +1,7 @@
 package com.autoskip.helper.data
 
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 class Repository(
@@ -17,6 +18,8 @@ class Repository(
 
     val enabled: Flow<Boolean> = prefs.enabled
     val clickDelayMs: Flow<Long> = prefs.clickDelayMs
+    val whitelistEnabled: Flow<Boolean> = prefs.whitelistEnabled
+    val whitelistPkgs: Flow<Set<String>> = prefs.whitelistPkgs
 
     suspend fun addRule(rule: RuleEntity): Long = ruleDao.insert(rule)
 
@@ -44,6 +47,14 @@ class Repository(
     suspend fun clearLogs() = logDao.clearAll()
     suspend fun setEnabled(v: Boolean) = prefs.setEnabled(v)
     suspend fun setClickDelay(ms: Long) = prefs.setClickDelay(ms)
+    suspend fun setWhitelistEnabled(v: Boolean) = prefs.setWhitelistEnabled(v)
+    suspend fun setWhitelist(pkgs: Set<String>) = prefs.setWhitelist(pkgs)
+
+    /** 将某个包名加入白名单（已存在则忽略） */
+    suspend fun addToWhitelist(pkg: String) {
+        val cur = prefs.whitelistPkgs.first()
+        if (pkg !in cur) prefs.setWhitelist(cur + pkg)
+    }
 
     private fun startOfToday(): Long {
         val cal = java.util.Calendar.getInstance()

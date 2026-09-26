@@ -10,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -24,6 +25,7 @@ import androidx.compose.ui.Modifier
 import com.autoskip.helper.ui.screens.HomeScreen
 import com.autoskip.helper.ui.screens.LogsScreen
 import com.autoskip.helper.ui.screens.RulesScreen
+import com.autoskip.helper.ui.screens.WhitelistScreen
 import com.autoskip.helper.ui.theme.AutoSkipTheme
 
 class MainActivity : ComponentActivity() {
@@ -62,6 +64,12 @@ private fun AppRoot(vm: MainViewModel) {
                 NavigationBarItem(
                     selected = tab == 2,
                     onClick = { tab = 2 },
+                    icon = { Icon(Icons.Filled.Shield, contentDescription = null) },
+                    label = { Text("白名单") }
+                )
+                NavigationBarItem(
+                    selected = tab == 3,
+                    onClick = { tab = 3 },
                     icon = { Icon(Icons.Filled.List, contentDescription = null) },
                     label = { Text("记录") }
                 )
@@ -72,6 +80,7 @@ private fun AppRoot(vm: MainViewModel) {
             when (tab) {
                 0 -> HomeScreen(vm)
                 1 -> RulesScreen(vm)
+                2 -> WhitelistScreen(vm)
                 else -> LogsScreen(vm)
             }
         }
