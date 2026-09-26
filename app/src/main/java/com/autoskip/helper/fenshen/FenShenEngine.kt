@@ -418,15 +418,18 @@ class FenShenEngine(private val context: Context) {
 
         delay(2000)
 
-        // 等待进入主界面（与 Auto.js 一致：节点优先，坐标兜底）
+        // 等待进入主界面
         val permX = w * 540f / config.testW
         val permY = h * 1465f / config.testH
-        var confirmCount = 0
-        var agreeCount = 0
+        val locX = w * 523f / config.testW
+        val locY = h * 1308f / config.testH
+        // 阶段计数：0=未点，1=已点确定，2=已点允许1，3=已点允许2，4+=定位
+        var coordStep = 0
         for (step in 0 until 180) {
             checkState()
             val r2 = root
 
+            // 抖音同意 / 主界面 → 结束
             val agree = NodeHelper.findById(r2, "fj6")
             if (agree != null) { log("点击抖音同意(id=fj6)"); NodeHelper.clickNode(agree); delay(1000); break }
 
@@ -437,53 +440,54 @@ class FenShenEngine(private val context: Context) {
                 NodeHelper.existsByText(r2, "推荐")
             if (isMain) { log("已进入抖音主界面"); break }
 
-            // ===== 系统弹窗优先级最高（可能盖在分身大师界面上）=====
-
-            // 1) 系统"确定"弹窗（旧版应用警告等）：遍历所有窗口查找，最多点 5 次
-            val btnConfirm = findTextAll("确定")
-            if (btnConfirm != null) {
-                confirmCount++
-                if (confirmCount <= 5) {
-                    log("节点点击确定（第 $confirmCount 次）")
-                    NodeHelper.clickNode(btnConfirm)
-                    delay(1000)
+            // 还在分身大师页面 → 点"打开应用"（节点优先）
+            if (currentPkg() == TARGET_PKG) {
+                val openApp = NodeHelper.findById(r2, "rl_open_disguise")
+                    ?: NodeHelper.findByText(r2, "打开应用")
+                if (openApp != null) {
+                    log("点击打开应用")
+                    NodeHelper.clickNode(openApp)
+                    delay(2500)
                     continue
                 }
             }
 
-            // 2) 系统"允许"权限弹窗：遍历所有窗口查找，明确排除"不允许"，最多点 5 次
+            // 节点优先（少数 ROM 系统弹窗可读）
+            val btnConfirm = findTextAll("确定")
+            if (btnConfirm != null) {
+                log("节点点击确定")
+                NodeHelper.clickNode(btnConfirm)
+                delay(1000)
+                continue
+            }
             val btnAgree = findAllowButton()
             if (btnAgree != null) {
-                agreeCount++
-                if (agreeCount > 5) break
-                log("节点点击允许（第 $agreeCount 次）")
+                log("节点点击允许")
                 NodeHelper.clickNode(btnAgree)
                 delay(1000)
                 continue
             }
 
-            // 3) 分身大师的"打开应用"按钮
-            if (currentPkg() == TARGET_PKG) {
-                val openApp = NodeHelper.findById(r2, "rl_open_disguise") ?: NodeHelper.findByText(r2, "打开应用")
-                if (openApp != null) {
-                    log("点击打开应用")
-                    NodeHelper.clickNode(openApp)
-                    delay(3000); continue
+            // 系统弹窗节点读不到 → 纯坐标按阶段推进：
+            // 确定(与安装/打开同坐标) → 允许 ×2 → 定位
+            when {
+                coordStep == 0 -> {
+                    coordStep = 1
+                    log("坐标点击确定/打开: ${installX.toInt()}, ${installY.toInt()}")
+                    tap(installX, installY)
+                }
+                coordStep < 3 -> {
+                    coordStep++
+                    log("坐标点击允许(第 ${coordStep - 1} 次): ${permX.toInt()}, ${permY.toInt()}")
+                    tap(permX, permY)
+                }
+                else -> {
+                    coordStep++
+                    log("坐标点击定位: ${locX.toInt()}, ${locY.toInt()}")
+                    tap(locX, locY)
                 }
             }
-
-            // 4) 节点都读不到 → 坐标兜底。
-            //    顺序：确定先出现 → 用安装/确定坐标；点过确定后 → 用允许坐标
-            if (confirmCount == 0 && agreeCount == 0) {
-                confirmCount++
-                log("坐标点击确定: ${installX.toInt()}, ${installY.toInt()}")
-                tap(installX, installY)
-            } else {
-                agreeCount++
-                log("坐标点击允许: ${permX.toInt()}, ${permY.toInt()}")
-                tap(permX, permY)
-            }
-            delay(1200)
+            delay(1500)
         }
 
         // 等待页面稳定
