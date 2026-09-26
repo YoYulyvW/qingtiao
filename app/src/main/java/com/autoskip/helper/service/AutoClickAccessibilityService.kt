@@ -152,12 +152,24 @@ class AutoClickAccessibilityService : AccessibilityService() {
             DramaDebug.add("短剧挂载: 点击进入 -> ${mountNode.text}")
             clickNode(mountNode)
         } else if (diag) {
-            // 输出屏幕下半部带文字的节点摘要，帮助定位
-            val sample = nodes.asSequence()
-                .mapNotNull { it.text?.toString()?.trim()?.takeIf { t -> t.isNotBlank() } }
-                .take(40).toList()
             DramaDebug.add("未找到倍速/挂载（pkg=$pkg 节点数 ${nodes.size}）")
-            DramaDebug.add("可见文字: " + sample.joinToString(" / "))
+
+            // 专门 dump 屏幕底部 25% 区域的节点（倍速按钮必在此处）
+            val screenH = resources.displayMetrics.heightPixels
+            val minY = screenH * 0.75f
+            val rect = android.graphics.Rect()
+            val bottomInfo = ArrayList<String>()
+            for (n in nodes) {
+                n.getBoundsInScreen(rect)
+                if (rect.centerY() < minY) continue
+                val t = n.text?.toString()?.trim()
+                val d = n.contentDescription?.toString()?.trim()
+                val id = n.viewIdResourceName?.substringAfterLast('/')
+                if (t.isNullOrBlank() && d.isNullOrBlank() && id.isNullOrBlank()) continue
+                bottomInfo.add("[${t ?: ""}|${d ?: ""}|${id ?: ""}]")
+                if (bottomInfo.size >= 25) break
+            }
+            DramaDebug.add("底部节点(text|desc|id): " + bottomInfo.joinToString(" "))
         }
     }
 
@@ -184,7 +196,8 @@ class AutoClickAccessibilityService : AccessibilityService() {
         val minY = screenH * 0.85f
         val rect = android.graphics.Rect()
         for (n in nodes) {
-            val t = n.text?.toString()?.trim() ?: continue
+            // 同时看 text 和 contentDescription
+            val t = (n.text?.toString() ?: n.contentDescription?.toString())?.trim() ?: continue
             if (!SPEED_REGEX.matches(t)) continue
             n.getBoundsInScreen(rect)
             if (rect.centerY() >= minY) {
