@@ -272,20 +272,39 @@ class FenShenEngine(private val context: Context) {
 
     private suspend fun clearAllTasks() {
         log("准备清理后台任务...")
-        service?.globalRecents()
-        delay(2000)
-        val r = root
-        val clearBtn = NodeHelper.findById(r, "clear_all")
-            ?: NodeHelper.findByText(r, "全部关闭")
-            ?: NodeHelper.findByText(r, "清除全部")
-            ?: NodeHelper.findByText(r, "关闭全部")
-        if (clearBtn != null) {
-            log("找到全部关闭，点击清理")
-            NodeHelper.clickNode(clearBtn)
-            delay(3000)
-            return
+        for (attempt in 1..2) {
+            service?.globalRecents()
+            delay(2000)
+            val r = root
+            val clearBtn = NodeHelper.findById(r, "clear_all")
+                ?: NodeHelper.findByText(r, "全部关闭")
+                ?: NodeHelper.findByText(r, "清除全部")
+                ?: NodeHelper.findByText(r, "关闭全部")
+            if (clearBtn != null) {
+                log("找到全部关闭，点击清理（第 $attempt 次尝试）")
+                NodeHelper.clickNode(clearBtn)
+                delay(3000)
+                return
+            }
+
+            // 任务界面本身就是空的
+            val noApp = NodeHelper.findByTextContains(r, "无最近使用的应用程序") != null ||
+                NodeHelper.findByTextContains(r, "无最近任务") != null
+            if (noApp) {
+                log("任务界面已空")
+                service?.globalHome()
+                delay(1500)
+                return
+            }
+
+            log("第 $attempt 次未找到清理按钮")
+            if (attempt == 1) {
+                // 先回桌面，稍后重开任务中心再试
+                service?.globalHome()
+                delay(2000)
+            }
         }
-        log("未找到清理按钮，回到桌面")
+        log("两次都未找到清理按钮，回到桌面继续")
         service?.globalHome()
         delay(1500)
     }
@@ -383,24 +402,24 @@ class FenShenEngine(private val context: Context) {
         if (nameInput != null) {
             val oldName = nameInput.text?.toString() ?: ""
 
-            // 按序号截止：解析名称里"抖音XX"的序号
-            if (config.useStopIndex) {
-                val num = extractDouyinIndex(oldName)
-                if (num != null) {
-                    log("当前分身序号: $num（截止 ${config.stopIndex}）")
-                    if (num >= config.stopIndex) {
-                        log("序号 $num ≥ ${config.stopIndex}，停止本次任务")
-                        reachedStopIndex = true
-                        return false
-                    }
-                }
-            }
-
+            // 始终追加后缀（序号模式下最后一个也要加）
             if (!oldName.contains(suffix)) {
                 val newName = oldName + suffix
                 NodeHelper.setText(nameInput, newName)
                 log("名称: $newName")
             } else log("名称已含后缀，跳过")
+
+            // 按序号截止：加完后缀后再判断
+            if (config.useStopIndex) {
+                val num = extractDouyinIndex(oldName)
+                if (num != null) {
+                    log("当前分身序号: $num（截止 ${config.stopIndex}）")
+                    if (num >= config.stopIndex) {
+                        log("序号 $num ≥ ${config.stopIndex}，本次为最后一个")
+                        reachedStopIndex = true
+                    }
+                }
+            }
         } else log("未找到输入框，跳过改名")
         delay(1000)
         checkState()
