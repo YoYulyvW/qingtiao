@@ -240,32 +240,40 @@ class AutoClickAccessibilityService : AccessibilityService() {
     }
 
     /**
-     * 找短剧挂载按钮。
-     * 特征：一个节点文字为"短剧"，其右侧同一水平线上有"|"节点（两节点是分开的）。
-     * 位置约束：屏幕 42%~82% 区间（发布者上方）。
+     * 找短剧挂载按钮（严格版）。
+     * 三重特征同时满足才算：
+     *   1. 存在文字为"短剧"的节点
+     *   2. 其右侧同一水平线（±40px）150px 内有"|"节点
+     *   3. 该位置在"@发布者"节点的【正上方】，且 X 轴与发布者大致对齐
+     * 这样能排除掉描述区里出现的"短剧"字样。
      */
     private fun findDramaMount(nodes: List<android.view.accessibility.AccessibilityNodeInfo>): android.view.accessibility.AccessibilityNodeInfo? {
-        val screenH = resources.displayMetrics.heightPixels
-        val minY = (screenH * 0.42f).toInt()
-        val maxY = (screenH * 0.82f).toInt()
         val rect = android.graphics.Rect()
 
-        // 1) 收集所有"短剧"节点（Y 在区间内）
+        // 先找发布者节点：文字以 @ 开头
+        val authorNode = nodes.firstOrNull {
+            val t = it.text?.toString()?.trim() ?: ""
+            t.startsWith("@") && t.length > 1
+        }
+        val authorRect = android.graphics.Rect()
+        val hasAuthor = authorNode != null
+        if (hasAuthor) authorNode!!.getBoundsInScreen(authorRect)
+
+        // 收集所有"短剧"节点
         val dramaNodes = ArrayList<android.view.accessibility.AccessibilityNodeInfo>()
         for (n in nodes) {
             val t = n.text?.toString()?.trim() ?: continue
             if (t != "短剧") continue
-            n.getBoundsInScreen(rect)
-            val cy = rect.centerY()
-            if (cy in minY..maxY) dramaNodes.add(n)
+            dramaNodes.add(n)
         }
 
-        // 2) 对每个"短剧"节点，检查右侧 150px 内、同高度(±40px) 是否有"|"节点
         for (d in dramaNodes) {
             val dRect = android.graphics.Rect()
             d.getBoundsInScreen(dRect)
             val cy = dRect.centerY()
             val cx = dRect.centerX()
+
+            // 条件A：右侧 150px 内、同高度(±40px) 有 "|"
             val hasBar = nodes.any { n ->
                 val t = n.text?.toString()?.trim() ?: return@any false
                 if (t != "|" && t != "｜" && t != "I" && t != "l") return@any false
@@ -274,19 +282,31 @@ class AutoClickAccessibilityService : AccessibilityService() {
                 kotlin.math.abs(r.centerY() - cy) < 40 &&
                     r.centerX() > cx && (r.centerX() - cx) < 150
             }
-            if (hasBar) {
-                return findClickableAncestor(d) ?: d
+            if (!hasBar) continue
+
+            // 条件B：在发布者【上方】（短剧的 Y < 发布者的 Y），且 X 轴大致对齐（左侧）
+            if (hasAuthor) {
+                val isAbove = cy < authorRect.centerY()
+                val xAligned = kotlin.math.abs(cx - authorRect.centerX()) < 400 ||
+                    kotlin.math.abs(dRect.left - authorRect.left) < 300
+                if (!isAbove || !xAligned) continue
+            } else {
+                // 没有发布者时，退化为位置区间约束
+                val screenH = resources.displayMetrics.heightPixels
+                if (cy < screenH * 0.42f || cy > screenH * 0.82f) continue
             }
+
+            return findClickableAncestor(d) ?: d
         }
 
-        // 3) 备用：单节点文本形如 "短剧｜xxx"
+        // 备用：单节点文本形如 "短剧｜xxx"，且位于发布者上方
         val fallback = Regex("^短剧[\\s\\|｜·:：].+")
         for (n in nodes) {
             val t = n.text?.toString()?.trim() ?: continue
             if (!fallback.containsMatchIn(t)) continue
             n.getBoundsInScreen(rect)
-            val cy = rect.centerY()
-            if (cy in minY..maxY) return findClickableAncestor(n) ?: n
+            if (hasAuthor && rect.centerY() >= authorRect.centerY()) continue
+            return findClickableAncestor(n) ?: n
         }
         return null
     }
