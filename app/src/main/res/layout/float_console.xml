@@ -29,8 +29,7 @@
             android:layout_height="wrap_content"
             android:text=""
             android:textColor="#FFFFFF"
-            android:textSize="10sp"
-            android:textIsSelectable="true" />
+            android:textSize="10sp" />
     </ScrollView>
 
     <LinearLayout

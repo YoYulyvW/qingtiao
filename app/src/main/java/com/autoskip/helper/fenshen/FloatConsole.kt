@@ -37,8 +37,16 @@ class FloatConsole(
     private var pauseBtn: Button? = null
     private var paused = false
 
-    /** 完整日志（不再截断） */
+    /** 完整日志（用于复制） */
     private val allLogs = ArrayList<String>()
+
+    /** 显示层：只保留最近 N 行，避免 TextView 越来越长导致重绘卡顿 */
+    private val shownLogs = ArrayDeque<String>()
+    private val MAX_SHOWN = 200
+
+    /** 待刷新标记 + 节流，避免每条日志都全量 setText */
+    private var pendingRefresh = false
+    private val refreshRunnable = Runnable { flushLogs() }
 
     private var showing = false
 
@@ -68,7 +76,8 @@ class FloatConsole(
                     WindowManager.LayoutParams.WRAP_CONTENT,
                     WindowManager.LayoutParams.WRAP_CONTENT,
                     type,
-                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                        WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
                     PixelFormat.TRANSLUCENT
                 )
                 lp.gravity = Gravity.TOP or Gravity.START
@@ -143,21 +152,39 @@ class FloatConsole(
         }
     }
 
+    private var lastStatus = ""
     fun updateStatus(s: String) {
+        if (s == lastStatus) return
+        lastStatus = s
         handler.post { statusText?.text = s }
     }
 
     fun appendLog(msg: String) {
         handler.post {
             allLogs.add(msg)
-            logText?.text = allLogs.joinToString("\n")
-            // 自动滚动到底部（日志区高度固定，超出内部滚动）
-            logScroll?.post { logScroll?.fullScroll(View.FOCUS_DOWN) }
+            shownLogs.addLast(msg)
+            while (shownLogs.size > MAX_SHOWN) shownLogs.removeFirst()
+
+            // 节流：250ms 内多次调用只刷新一次
+            if (!pendingRefresh) {
+                pendingRefresh = true
+                handler.postDelayed(refreshRunnable, 250)
+            }
         }
+    }
+
+    /** 实际刷新文本（节流后执行） */
+    private fun flushLogs() {
+        pendingRefresh = false
+        logText?.text = shownLogs.joinToString("\n")
+        // 自动滚动到底部
+        logScroll?.post { logScroll?.fullScroll(View.FOCUS_DOWN) }
     }
 
     fun dismiss() {
         handler.post {
+            handler.removeCallbacks(refreshRunnable)
+            pendingRefresh = false
             try {
                 rootView?.let { wm?.removeView(it) }
             } catch (_: Exception) {}
