@@ -380,15 +380,16 @@ class FenShenEngine(private val context: Context) {
 
         delay(2000)
 
-        // 等待进入主界面
+        // 等待进入主界面（与 Auto.js 一致：节点优先，坐标兜底）
         val permX = w * 540f / config.testW
         val permY = h * 1465f / config.testH
-        // 恢复系统权限弹窗的节点兜底（部分 ROM 可读）
-        
+        var confirmCount = 0
+        var agreeCount = 0
         var waitCount = 0
         for (step in 0 until 180) {
             checkState()
             val r2 = root
+
             val agree = NodeHelper.findById(r2, "fj6")
             if (agree != null) { log("点击抖音同意(id=fj6)"); NodeHelper.clickNode(agree); delay(1000); break }
 
@@ -399,6 +400,34 @@ class FenShenEngine(private val context: Context) {
                 NodeHelper.existsByText(r2, "推荐")
             if (isMain) { log("已进入抖音主界面"); break }
 
+            // ===== 系统弹窗优先级最高（可能盖在分身大师界面上）=====
+
+            // 1) 系统"确定"弹窗（旧版应用提示等）：节点优先，最多点 5 次
+            val btnConfirm = NodeHelper.findByText(r2, "确定")
+            if (btnConfirm != null) {
+                confirmCount++
+                if (confirmCount <= 5) {
+                    log("点击确定（第 $confirmCount 次）")
+                    NodeHelper.clickNode(btnConfirm)
+                    delay(1000)
+                    continue
+                }
+            }
+
+            // 2) 系统"允许/始终允许/我知道了"权限弹窗：节点优先，最多点 5 次
+            val btnAgree = NodeHelper.findByText(r2, "允许")
+                ?: NodeHelper.findByText(r2, "始终允许")
+                ?: NodeHelper.findByText(r2, "我知道了")
+            if (btnAgree != null) {
+                agreeCount++
+                if (agreeCount > 5) break
+                log("点击允许（第 $agreeCount 次）")
+                NodeHelper.clickNode(btnAgree)
+                delay(1000)
+                continue
+            }
+
+            // 3) 分身大师的"打开应用"按钮
             if (currentPkg() == TARGET_PKG) {
                 waitCount++
                 val openApp = NodeHelper.findById(r2, "rl_open_disguise") ?: NodeHelper.findByText(r2, "打开应用")
@@ -412,9 +441,9 @@ class FenShenEngine(private val context: Context) {
                 }
             }
 
-            // 系统权限弹窗（通知/定位等）：无障碍读不到节点，统一坐标点击
-            if (currentPkg() != TARGET_PKG) { tap(permX, permY); delay(1000) }
-            else delay(2000)
+            // 4) 节点都找不到：坐标兜底（用"安装/确定"同一位置）
+            tap(installX, installY)
+            delay(1000)
         }
 
         // 等待页面稳定
