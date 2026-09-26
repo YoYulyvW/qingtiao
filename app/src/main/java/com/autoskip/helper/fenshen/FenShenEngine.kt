@@ -117,6 +117,20 @@ class FenShenEngine(private val context: Context) {
         _state.value = _state.value.copy(running = false)
     }
 
+    /** 获取物理全屏尺寸（对应 Auto.js 的 device.width/height，含状态栏和导航栏） */
+    private fun realScreenSize(): Pair<Float, Float> {
+        val wm = context.getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager
+        return if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            val b = wm.currentWindowMetrics.bounds
+            Pair(b.width().toFloat(), b.height().toFloat())
+        } else {
+            val p = android.graphics.Point()
+            @Suppress("DEPRECATION")
+            wm.defaultDisplay.getRealSize(p)
+            Pair(p.x.toFloat(), p.y.toFloat())
+        }
+    }
+
     private fun buildSuffix(): String {
         val d = Date()
         return config.suffixFmt
@@ -152,8 +166,7 @@ class FenShenEngine(private val context: Context) {
 
     private suspend fun smartSwipe() {
         val svc = service ?: return
-        val w = context.resources.displayMetrics.widthPixels.toFloat()
-        val h = context.resources.displayMetrics.heightPixels.toFloat()
+        val (w, h) = realScreenSize()
         svc.swipe(w / 2, h * 0.8f, w / 2, h * 0.3f, 400)
     }
 
@@ -237,8 +250,7 @@ class FenShenEngine(private val context: Context) {
             reAdd != null -> { NodeHelper.clickNode(reAdd); log("点击再分一个"); delay(1000) }
             else -> {
                 log("未找到添加按钮，盲点兜底")
-                val w = context.resources.displayMetrics.widthPixels.toFloat()
-                val h = context.resources.displayMetrics.heightPixels.toFloat()
+                val (w, h) = realScreenSize()
                 tap(w * 0.2f, h * 0.22f)
                 delay(1000)
             }
@@ -317,12 +329,18 @@ class FenShenEngine(private val context: Context) {
         if (!isInstalled) { log("未检测到系统安装弹窗"); return false }
         log("检测到系统安装弹窗")
 
-        val w = context.resources.displayMetrics.widthPixels.toFloat()
-        val h = context.resources.displayMetrics.heightPixels.toFloat()
+        val (w, h) = realScreenSize()
         val installX = w * 760f / config.testW
         val installY = h * 1620f / config.testH
 
-        // 系统安装弹窗：无障碍读不到节点，必须坐标点击
+        // 系统安装弹窗：节点优先，找不到则坐标点击（与 Auto.js 一致）
+        val warn = NodeHelper.findByText(root, "确定") ?: NodeHelper.findByText(root, "允许")
+        if (warn != null) {
+            log("节点点击确定/允许")
+            NodeHelper.clickNode(warn)
+            delay(500)
+        }
+
         floatConsole?.setVisible(false)
         delay(800)
         log("坐标点击安装: ${installX.toInt()}, ${installY.toInt()}")
@@ -365,6 +383,8 @@ class FenShenEngine(private val context: Context) {
         // 等待进入主界面
         val permX = w * 540f / config.testW
         val permY = h * 1465f / config.testH
+        // 恢复系统权限弹窗的节点兜底（部分 ROM 可读）
+        
         var waitCount = 0
         for (step in 0 until 180) {
             checkState()
