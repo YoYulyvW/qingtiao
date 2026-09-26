@@ -65,7 +65,7 @@ fun HomeScreen(vm: MainViewModel, onOpenFenShen: () -> Unit = {}) {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text("自动跳过", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Text("开饭小工具", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
 
         // 服务状态卡
         Card(

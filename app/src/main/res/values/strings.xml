@@ -1,7 +1,7 @@
 <resources>
-    <string name="app_name">自动跳过</string>
-    <string name="service_label">自动跳过 · 无障碍服务</string>
+    <string name="app_name">开饭小工具</string>
+    <string name="service_label">开饭小工具 · 自动跳过</string>
     <string name="service_description">识别并自动点击应用弹窗中的“跳过 / 关闭 / 下次再说”等按钮，仅在本地运行，不联网、不上传任何数据。</string>
-    <string name="service_label_fenshen">自动跳过 · 分身自动化</string>
+    <string name="service_label_fenshen">开饭小工具 · 分身自动化</string>
     <string name="service_desc_fenshen">用于「自动分身」功能，执行点击、滑动等操作。仅在本地运行，不联网、不上传任何数据。</string>
 </resources>
