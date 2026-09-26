@@ -419,12 +419,10 @@ class FenShenEngine(private val context: Context) {
         delay(2000)
 
         // 等待进入主界面
+        // 权限弹窗"允许"坐标（与 Auto.js 的 PERMISSION_X/Y 一致）
         val permX = w * 540f / config.testW
         val permY = h * 1465f / config.testH
-        val locX = w * 523f / config.testW
-        val locY = h * 1308f / config.testH
-        // 阶段计数：0=未点，1=已点确定，2=已点允许1，3=已点允许2，4+=定位
-        var coordStep = 0
+        var permClickCount = 0
         for (step in 0 until 180) {
             checkState()
             val r2 = root
@@ -448,46 +446,40 @@ class FenShenEngine(private val context: Context) {
                     log("点击打开应用")
                     NodeHelper.clickNode(openApp)
                     delay(2500)
-                    continue
+                } else {
+                    // 分身大师空闲等待中，不点坐标（避免误触）
+                    delay(1500)
                 }
+                continue
             }
 
-            // 节点优先（少数 ROM 系统弹窗可读）
+            // 节点优先：先"确定"（系统警告弹窗），再"允许"（权限弹窗）
             val btnConfirm = findTextAll("确定")
             if (btnConfirm != null) {
                 log("节点点击确定")
                 NodeHelper.clickNode(btnConfirm)
-                delay(1000)
+                delay(1200)
                 continue
             }
             val btnAgree = findAllowButton()
             if (btnAgree != null) {
                 log("节点点击允许")
                 NodeHelper.clickNode(btnAgree)
-                delay(1000)
+                delay(1200)
                 continue
             }
 
-            // 系统弹窗节点读不到 → 纯坐标按阶段推进：
-            // 确定(与安装/打开同坐标) → 允许 ×2 → 定位
-            when {
-                coordStep == 0 -> {
-                    coordStep = 1
-                    log("坐标点击确定/打开: ${installX.toInt()}, ${installY.toInt()}")
-                    tap(installX, installY)
-                }
-                coordStep < 3 -> {
-                    coordStep++
-                    log("坐标点击允许(第 ${coordStep - 1} 次): ${permX.toInt()}, ${permY.toInt()}")
-                    tap(permX, permY)
-                }
-                else -> {
-                    coordStep++
-                    log("坐标点击定位: ${locX.toInt()}, ${locY.toInt()}")
-                    tap(locX, locY)
-                }
+            // 节点都读不到 → 坐标兜底：统一用"允许"坐标（与 Auto.js 一致）
+            // 注意：绝不能点(760,1620)，那在权限弹窗上是"不允许"
+            permClickCount++
+            if (permClickCount <= 8) {
+                log("坐标点击允许(第 $permClickCount 次): ${permX.toInt()}, ${permY.toInt()}")
+                tap(permX, permY)
+            } else {
+                log("已点击 8 次仍未进入主界面，结束本次")
+                break
             }
-            delay(1500)
+            delay(1800)
         }
 
         // 等待页面稳定
