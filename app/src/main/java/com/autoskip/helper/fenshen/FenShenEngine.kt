@@ -205,11 +205,17 @@ class FenShenEngine(private val context: Context) {
     private suspend fun smartSwipe() {
         val svc = service ?: return
         val (w, h) = realScreenSize()
-        svc.swipe(w / 2, h * 0.8f, w / 2, h * 0.3f, 400)
+        val sx = w / 2
+        val sy = h * 0.8f
+        val ey = h * 0.3f
+        log("滑动: (${sx.toInt()},${sy.toInt()}) → (${sx.toInt()},${ey.toInt()})")
+        val ok = svc.swipe(sx, sy, sx, ey, 400)
+        log(if (ok) "滑动完成" else "滑动失败")
     }
 
     private suspend fun tap(x: Float, y: Float) {
-        service?.tap(x, y)
+        val ok = service?.tap(x, y)
+        if (ok != true) log("点击坐标(${x.toInt()},${y.toInt()})失败")
     }
 
     private suspend fun waitFor(timeoutSec: Int, fn: () -> Boolean): Boolean {
@@ -368,8 +374,8 @@ class FenShenEngine(private val context: Context) {
         log("检测到系统安装弹窗")
 
         val (w, h) = realScreenSize()
-        val installX = w * 760f / config.testW
-        val installY = h * 1620f / config.testH
+        val installX = w * config.installX / config.testW
+        val installY = h * config.installY / config.testH
 
         // 系统安装弹窗：节点优先，找不到则坐标点击（与 Auto.js 一致）
         val warn = NodeHelper.findByText(root, "确定") ?: NodeHelper.findByText(root, "允许")
@@ -420,8 +426,8 @@ class FenShenEngine(private val context: Context) {
 
         // 等待进入主界面
         // 权限弹窗"允许"坐标（与 Auto.js 的 PERMISSION_X/Y 一致）
-        val permX = w * 540f / config.testW
-        val permY = h * 1465f / config.testH
+        val permX = w * config.permX / config.testW
+        val permY = h * config.permY / config.testH
         var permClickCount = 0
         for (step in 0 until 180) {
             checkState()
@@ -545,8 +551,8 @@ class FenShenEngine(private val context: Context) {
         }
         delay(1000)
 
-        val locX2 = w * 523f / config.testW
-        val locY2 = h * 1308f / config.testH
+        val locX2 = w * config.locX / config.testW
+        val locY2 = h * config.locY / config.testH
         log("坐标点击位置权限: ${locX2.toInt()}, ${locY2.toInt()}")
         delay(1500)
         tap(locX2, locY2)

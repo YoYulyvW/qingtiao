@@ -1,6 +1,8 @@
 package com.autoskip.helper.fenshen
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -8,24 +10,33 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -35,10 +46,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,6 +68,12 @@ fun FenShenScreen(onBack: () -> Unit, vm: FenShenViewModel = viewModel()) {
     var saveLog by remember { mutableStateOf(true) }
     var testW by remember { mutableStateOf("1080") }
     var testH by remember { mutableStateOf("1920") }
+    var installX by remember { mutableStateOf("760") }
+    var installY by remember { mutableStateOf("1620") }
+    var permX by remember { mutableStateOf("540") }
+    var permY by remember { mutableStateOf("1465") }
+    var locX by remember { mutableStateOf("523") }
+    var locY by remember { mutableStateOf("1308") }
 
     var serviceOn by remember { mutableStateOf(false) }
     var overlayOn by remember { mutableStateOf(false) }
@@ -67,16 +86,70 @@ fun FenShenScreen(onBack: () -> Unit, vm: FenShenViewModel = viewModel()) {
         }
     }
 
+    fun buildConfig() = FenShenConfig(
+        totalCount = totalCount.toIntOrNull() ?: 20,
+        suffixFmt = suffixFmt.ifBlank { "-{date}号" },
+        installTimeoutSec = installTimeout.toIntOrNull() ?: 60,
+        retryTimes = retryTimes.toIntOrNull() ?: 0,
+        maxFail = maxFail.toIntOrNull() ?: 3,
+        saveLog = saveLog,
+        testW = testW.toIntOrNull() ?: 1080,
+        testH = testH.toIntOrNull() ?: 1920,
+        installX = installX.toIntOrNull() ?: 760,
+        installY = installY.toIntOrNull() ?: 1620,
+        permX = permX.toIntOrNull() ?: 540,
+        permY = permY.toIntOrNull() ?: 1465,
+        locX = locX.toIntOrNull() ?: 523,
+        locY = locY.toIntOrNull() ?: 1308
+    )
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("自动分身（分身大师）") },
+                title = { Text("自动分身 · 分身大师", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Filled.ArrowBack, contentDescription = "返回")
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = Color.White,
+                    navigationIconContentColor = Color.White
+                )
             )
+        },
+        bottomBar = {
+            // 开始/终止按钮常驻底部
+            Surface(shadowElevation = 8.dp) {
+                Box(Modifier.fillMaxWidth().padding(16.dp)) {
+                    if (state.running) {
+                        Button(
+                            onClick = { vm.stop() },
+                            modifier = Modifier.fillMaxWidth().height(52.dp),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error
+                            )
+                        ) {
+                            Icon(Icons.Filled.Stop, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("终止运行", fontSize = 16.sp)
+                        }
+                    } else {
+                        Button(
+                            onClick = { vm.start(buildConfig()) { vm.requestOverlayPermission() } },
+                            enabled = serviceOn,
+                            modifier = Modifier.fillMaxWidth().height(52.dp),
+                            shape = RoundedCornerShape(14.dp)
+                        ) {
+                            Icon(Icons.Filled.PlayArrow, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("开始运行", fontSize = 16.sp)
+                        }
+                    }
+                }
+            }
         }
     ) { padding ->
         Column(
@@ -85,51 +158,68 @@ fun FenShenScreen(onBack: () -> Unit, vm: FenShenViewModel = viewModel()) {
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // 权限状态
+            // 权限状态卡
             Card(
                 Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = if (serviceOn && overlayOn) MaterialTheme.colorScheme.surfaceVariant
+                    containerColor = if (serviceOn && overlayOn)
+                        MaterialTheme.colorScheme.primaryContainer
                     else MaterialTheme.colorScheme.errorContainer
                 )
             ) {
                 Column(Modifier.padding(16.dp)) {
-                    Text(
-                        when {
-                            !serviceOn && !overlayOn -> "需要开启：无障碍服务 + 悬浮窗权限"
-                            !serviceOn -> "需要开启：分身无障碍服务"
-                            !overlayOn -> "需要开启：悬浮窗权限"
-                            else -> "权限已就绪 ✓"
-                        },
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        if (!serviceOn) {
-                            Button(onClick = {
-                                val i = android.content.Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS)
-                                i.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                                context.startActivity(i)
-                            }) { Text("开启无障碍") }
-                        }
-                        if (!overlayOn) {
-                            Button(onClick = { vm.requestOverlayPermission() }) { Text("开启悬浮窗") }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            if (serviceOn && overlayOn) Icons.Filled.CheckCircle else Icons.Filled.Warning,
+                            contentDescription = null
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            when {
+                                !serviceOn && !overlayOn -> "需要：无障碍服务 + 悬浮窗权限"
+                                !serviceOn -> "需要：分身无障碍服务"
+                                !overlayOn -> "需要：悬浮窗权限"
+                                else -> "权限已就绪"
+                            },
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    if (!serviceOn || !overlayOn) {
+                        Spacer(Modifier.height(10.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            if (!serviceOn) {
+                                Button(onClick = {
+                                    val i = android.content.Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                                    i.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    context.startActivity(i)
+                                }) { Text("开启无障碍") }
+                            }
+                            if (!overlayOn) {
+                                Button(onClick = { vm.requestOverlayPermission() }) { Text("开启悬浮窗") }
+                            }
                         }
                     }
                 }
             }
 
-            // 运行状态
+            // 运行状态卡
             if (state.running || state.currentIndex > 0) {
-                Card(Modifier.fillMaxWidth()) {
+                Card(
+                    Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
                     Column(Modifier.padding(16.dp)) {
                         Text(state.statusText, fontWeight = FontWeight.Bold)
-                        Spacer(Modifier.height(4.dp))
-                        Text("成功 ${state.successCount} / 失败 ${state.failCount}", style = MaterialTheme.typography.bodySmall)
+                        Spacer(Modifier.height(6.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                            Text("成功 ${state.successCount}", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                            Text("失败 ${state.failCount}", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                        }
                         if (state.lastLog.isNotBlank()) {
-                            Spacer(Modifier.height(4.dp))
+                            Spacer(Modifier.height(6.dp))
                             Text(state.lastLog, style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.outline, maxLines = 2)
                         }
@@ -137,104 +227,120 @@ fun FenShenScreen(onBack: () -> Unit, vm: FenShenViewModel = viewModel()) {
                 }
             }
 
-            Text("基础配置", fontWeight = FontWeight.Bold)
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text("分身总数", Modifier.padding(end = 8.dp))
-                OutlinedTextField(
-                    value = totalCount, onValueChange = { totalCount = it },
-                    singleLine = true, modifier = Modifier.weight(1f),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                )
-            }
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text("后缀格式", Modifier.padding(end = 8.dp))
-                OutlinedTextField(
-                    value = suffixFmt, onValueChange = { suffixFmt = it },
-                    singleLine = true, modifier = Modifier.weight(1f)
-                )
-            }
-            Text("支持 {date} 日期、{date2} 补零日期、{time} 时间", style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.outline)
+            SectionTitle("基础配置")
+            LabeledField("分身总数", totalCount) { totalCount = it }
+            LabeledField("后缀格式", suffixFmt) { suffixFmt = it }
+            Text("支持 {date} 日期、{date2} 补零日期、{time} 时间",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
 
-            Text("高级配置", fontWeight = FontWeight.Bold)
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text("安装超时(秒)", Modifier.padding(end = 8.dp))
-                OutlinedTextField(
-                    value = installTimeout, onValueChange = { installTimeout = it },
-                    singleLine = true, modifier = Modifier.weight(1f),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                )
-            }
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text("失败重试次数", Modifier.padding(end = 8.dp))
-                OutlinedTextField(
-                    value = retryTimes, onValueChange = { retryTimes = it },
-                    singleLine = true, modifier = Modifier.weight(1f),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                )
-            }
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text("连续失败停止", Modifier.padding(end = 8.dp))
-                OutlinedTextField(
-                    value = maxFail, onValueChange = { maxFail = it },
-                    singleLine = true, modifier = Modifier.weight(1f),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                )
-            }
+            SectionTitle("高级配置")
+            LabeledField("安装超时(秒)", installTimeout, true) { installTimeout = it }
+            LabeledField("失败重试次数", retryTimes, true) { retryTimes = it }
+            LabeledField("连续失败停止", maxFail, true) { maxFail = it }
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text("保存详细日志", Modifier.weight(1f))
                 Switch(checked = saveLog, onCheckedChange = { saveLog = it })
             }
 
-            Text("测试机分辨率（一般不用改）", style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.outline)
+            SectionTitle("基准分辨率")
+            Text("坐标基于此分辨率填写，运行时按真机等比换算",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 OutlinedTextField(
                     value = testW, onValueChange = { testW = it },
-                    singleLine = true, modifier = Modifier.weight(1f),
+                    label = { Text("宽") }, singleLine = true,
+                    modifier = Modifier.weight(1f),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
                 Text("  ×  ", Modifier.padding(horizontal = 4.dp))
                 OutlinedTextField(
                     value = testH, onValueChange = { testH = it },
-                    singleLine = true, modifier = Modifier.weight(1f),
+                    label = { Text("高") }, singleLine = true,
+                    modifier = Modifier.weight(1f),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
             }
 
+            SectionTitle("系统弹窗坐标")
+            Text("设备不同可在此微调；用截图工具的坐标读数填入",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+            Text("安装 / 打开 / 确定 / 不允许", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+            CoordRow("X", installX, "Y", installY, { installX = it }, { installY = it })
+            Spacer(Modifier.height(6.dp))
+            Text("允许（权限弹窗）", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+            CoordRow("X", permX, "Y", permY, { permX = it }, { permY = it })
+            Spacer(Modifier.height(6.dp))
+            Text("定位（仅在使用该应用时允许）", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+            CoordRow("X", locX, "Y", locY, { locX = it }, { locY = it })
+
             Spacer(Modifier.height(8.dp))
-
-            if (state.running) {
-                Button(
-                    onClick = { vm.stop() },
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("终止运行") }
-            } else {
-                Button(
-                    onClick = {
-                        val cfg = FenShenConfig(
-                            totalCount = totalCount.toIntOrNull() ?: 20,
-                            suffixFmt = suffixFmt.ifBlank { "-{date}号" },
-                            installTimeoutSec = installTimeout.toIntOrNull() ?: 60,
-                            retryTimes = retryTimes.toIntOrNull() ?: 0,
-                            maxFail = maxFail.toIntOrNull() ?: 3,
-                            saveLog = saveLog,
-                            testW = testW.toIntOrNull() ?: 1080,
-                            testH = testH.toIntOrNull() ?: 1920
-                        )
-                        vm.start(cfg) { vm.requestOverlayPermission() }
-                    },
-                    enabled = serviceOn,
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("开始运行") }
-            }
-
-            Spacer(Modifier.height(24.dp))
             Text(
-                "提示：运行时会弹出悬浮窗显示进度，可暂停/终止。请保持分身大师和抖音的分身权限正常。",
+                "提示：运行时弹出悬浮窗显示实时进度，可暂停/终止。请保持分身大师与抖音的分身权限正常。",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.outline
             )
+            Spacer(Modifier.height(8.dp))
         }
+    }
+}
+
+@Composable
+private fun SectionTitle(text: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            Modifier
+                .width(4.dp)
+                .height(18.dp)
+                .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(2.dp))
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(text, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+    }
+}
+
+@Composable
+private fun LabeledField(
+    label: String,
+    value: String,
+    numberOnly: Boolean = false,
+    onChange: (String) -> Unit
+) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, Modifier.width(120.dp))
+        OutlinedTextField(
+            value = value,
+            onValueChange = onChange,
+            singleLine = true,
+            modifier = Modifier.weight(1f),
+            shape = RoundedCornerShape(10.dp),
+            keyboardOptions = if (numberOnly)
+                KeyboardOptions(keyboardType = KeyboardType.Number)
+            else KeyboardOptions.Default
+        )
+    }
+}
+
+@Composable
+private fun CoordRow(
+    label1: String, v1: String,
+    label2: String, v2: String,
+    on1: (String) -> Unit, on2: (String) -> Unit
+) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedTextField(
+            value = v1, onValueChange = on1,
+            label = { Text(label1) }, singleLine = true,
+            modifier = Modifier.weight(1f),
+            shape = RoundedCornerShape(10.dp),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+        )
+        OutlinedTextField(
+            value = v2, onValueChange = on2,
+            label = { Text(label2) }, singleLine = true,
+            modifier = Modifier.weight(1f),
+            shape = RoundedCornerShape(10.dp),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+        )
     }
 }
