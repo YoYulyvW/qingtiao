@@ -1,3 +1,5 @@
+import java.util.Base64
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -23,7 +25,7 @@ android {
             if (ksB64 != null) {
                 // CI：从 base64 解码出临时 keystore
                 val f = File(System.getProperty("java.io.tmpdir"), "release.p12")
-                f.writeBytes(java.util.Base64.getDecoder().decode(ksB64))
+                f.writeBytes(Base64.getDecoder().decode(ksB64))
                 storeFile = f
                 storePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
                 keyAlias = System.getenv("ANDROID_KEY_ALIAS")
