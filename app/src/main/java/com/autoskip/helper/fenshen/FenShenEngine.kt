@@ -385,7 +385,6 @@ class FenShenEngine(private val context: Context) {
         val permY = h * 1465f / config.testH
         var confirmCount = 0
         var agreeCount = 0
-        var waitCount = 0
         for (step in 0 until 180) {
             checkState()
             val r2 = root
@@ -429,21 +428,18 @@ class FenShenEngine(private val context: Context) {
 
             // 3) 分身大师的"打开应用"按钮
             if (currentPkg() == TARGET_PKG) {
-                waitCount++
                 val openApp = NodeHelper.findById(r2, "rl_open_disguise") ?: NodeHelper.findByText(r2, "打开应用")
                 if (openApp != null) {
                     log("点击打开应用")
                     NodeHelper.clickNode(openApp)
                     delay(3000); continue
-                } else {
-                    if (waitCount > 15 && waitCount % 5 == 0) tap(w / 2, h * 0.75f)
-                    delay(2000); continue
                 }
             }
 
-            // 4) 节点都找不到：坐标兜底（用"安装/确定"同一位置）
+            // 4) 节点都读不到（系统弹窗，如"旧版应用"警告）：坐标兜底
+            //    与"安装/打开"按钮同一位置
             tap(installX, installY)
-            delay(1000)
+            delay(1200)
         }
 
         // 等待页面稳定
