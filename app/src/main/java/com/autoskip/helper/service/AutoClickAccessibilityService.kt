@@ -76,6 +76,9 @@ class AutoClickAccessibilityService : AccessibilityService() {
     private var currentEpisode: String? = null
     /** 长按前保存的集数（菜单会遮住屏幕，届时读不到集数） */
     private var pendingEpisode: String? = null
+    /** 已发起长按、等待菜单弹出的时间戳（>0 表示"菜单即将出现"，禁止再长按） */
+    private var expectingMenuTime = 0L
+    private val EXPECT_MENU_WINDOW = 6000L
 
     /** 倍速按钮文字格式：数字 + x，如 1x / 1.25x / 3x */
     private val SPEED_REGEX = Regex("^[0-9]+(\\.[0-9]+)?x$", RegexOption.IGNORE_CASE)
@@ -167,9 +170,16 @@ class AutoClickAccessibilityService : AccessibilityService() {
         // 提取当前集数（发布者下方，形如"第1集"）
         currentEpisode = extractEpisode(nodes)
 
-        // 0) 长按菜单是否已弹出？（有"倍速"标题）
-        val hasMenu = nodes.any { it.text?.toString()?.trim() == "倍速" }
+        // 0) 长按菜单是否已弹出？（多重特征，任一命中即视为菜单）
+        val hasMenu = nodes.any {
+            val t = it.text?.toString()?.trim() ?: ""
+            t == "倍速" || t == "清屏播放" || t == "合拍" ||
+                t == "转发到日常" || t == "举报" ||
+                t == "0.75" || t == "1.0" || t == "1.25" ||
+                t == "1.5" || t == "2.0" || t == "3.0"
+        }
         if (hasMenu) {
+            expectingMenuTime = 0L   // 菜单已确认出现，清除等待标记
             // 只在首次看到菜单时处理（menuClickedTime 非 0 表示本次已处理）
             if (menuClickedTime == 0L) {
                 val menuTarget = speedToMenuText(dramaTargetSpeed)
@@ -211,6 +221,12 @@ class AutoClickAccessibilityService : AccessibilityService() {
             t.contains("集全") || (t.contains("免费") && t.length < 6)
         }
         if (isDramaPage) {
+            // 已发起长按、正等菜单出现 → 绝不重复长按（避免点到菜单项）
+            val now0 = System.currentTimeMillis()
+            if (expectingMenuTime != 0L && now0 - expectingMenuTime < EXPECT_MENU_WINDOW) {
+                if (diag) DramaDebug.add("已长按，等待菜单出现中（${(now0 - expectingMenuTime) / 1000} 秒）")
+                return
+            }
             // 当前集已切过倍速 → 不再长按
             if (currentEpisode != null && currentEpisode == lastSpedEpisode) {
                 if (diag) DramaDebug.add("集 ${currentEpisode} 已切过倍速，跳过")
@@ -220,6 +236,7 @@ class AutoClickAccessibilityService : AccessibilityService() {
             if (now - lastDramaClickTime > DRAMA_CLICK_COOLDOWN) {
                 lastDramaClickTime = now
                 pendingEpisode = currentEpisode   // 保存集数，菜单弹出后用它
+                expectingMenuTime = now           // 标记"等菜单出现"
                 DramaDebug.add("短剧页面（集 ${currentEpisode ?: "?"}），长按视频中心唤出菜单")
                 longPressCenter()
             } else if (diag) {
