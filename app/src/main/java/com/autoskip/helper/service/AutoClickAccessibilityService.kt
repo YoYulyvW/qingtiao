@@ -83,6 +83,18 @@ class AutoClickAccessibilityService : AccessibilityService() {
     /** 倍速按钮文字格式：数字 + x，如 1x / 1.25x / 3x */
     private val SPEED_REGEX = Regex("^[0-9]+(\\.[0-9]+)?x$", RegexOption.IGNORE_CASE)
 
+    /** 菜单项黑名单：这些文字绝不能点（误点会触发分享/举报等） */
+    private val MENU_BLACKLIST = setOf(
+        "推荐", "转发到日常", "合拍", "举报", "清屏播放",
+        "收藏", "分享", "复制链接", "保存本地", "不感兴趣",
+        "倍速", "0.75", "1.0", "1.25", "1.5", "2.0", "3.0"
+    )
+
+    /** 卡死看门狗：最近一次"有进展"的时间戳 */
+    @Volatile private var lastProgressTime = 0L
+    /** 菜单关闭看门狗：最近一次检测到菜单存在的时间 */
+    @Volatile private var menuVisibleSince = 0L
+
     override fun onServiceConnected() {
         super.onServiceConnected()
         instance = this
@@ -109,6 +121,8 @@ class AutoClickAccessibilityService : AccessibilityService() {
 
         // 启动短剧加速轮询
         scope.launch { dramaLoop() }
+        // 启动看门狗（独立协程，主循环卡住时也能兜底）
+        scope.launch { menuWatchdog() }
 
         Log.i(TAG, "无障碍服务已连接")
     }
@@ -135,6 +149,7 @@ class AutoClickAccessibilityService : AccessibilityService() {
                 // 白名单模式：非白名单应用忽略（与规则一致，支持通配符）
                 if (whitelistEnabled && !Matcher.matchesWhitelist(pkg, whitelistPkgs)) continue
                 val now = System.currentTimeMillis()
+                lastProgressTime = now   // 看门狗用：标记循环有进展
                 // 心跳：每 5 秒输出一次，证明循环没卡住
                 if (now - lastHeartbeat > 5000) {
                     lastHeartbeat = now
@@ -147,6 +162,44 @@ class AutoClickAccessibilityService : AccessibilityService() {
             } catch (e: Exception) {
                 Log.e(TAG, "dramaLoop error", e)
                 DramaDebug.add("异常: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * 看门狗：独立协程，每 2 秒检查一次。
+     * 若菜单出现后超过 6 秒仍未消失 → 强制按返回键关闭，并复位状态。
+     * 即使主循环(dramaLoop)卡住，这个协程也能兜底恢复。
+     */
+    private suspend fun menuWatchdog() {
+        while (true) {
+            try {
+                delay(2000)
+                if (!dramaEnabled) continue
+                val now = System.currentTimeMillis()
+
+                // 判据1：主循环超过 6 秒无进展 → 判定卡死，强制恢复
+                val stuck = lastProgressTime > 0 && now - lastProgressTime > 6000
+                // 判据2：菜单已出现但超过 6 秒未消失
+                val menuTooLong = menuVisibleSince > 0 && now - menuVisibleSince > 6000
+
+                if (stuck || menuTooLong) {
+                    DramaDebug.add(
+                        if (stuck) "看门狗: 主循环卡死>6秒，强制返回键"
+                        else "看门狗: 菜单超过6秒未关，强制返回键"
+                    )
+                    kotlinx.coroutines.withContext(Dispatchers.Main) {
+                        performGlobalAction(GLOBAL_ACTION_BACK)
+                    }
+                    // 复位所有状态，让主循环重新开始
+                    menuVisibleSince = 0
+                    menuClickedTime = 0
+                    expectingMenuTime = 0
+                    lastDramaClickTime = 0
+                    lastProgressTime = System.currentTimeMillis()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "watchdog error", e)
             }
         }
     }
@@ -191,26 +244,33 @@ class AutoClickAccessibilityService : AccessibilityService() {
         }
         if (hasMenu) {
             expectingMenuTime = 0L   // 菜单已确认出现，清除等待标记
+            // 看门狗：记录菜单出现时间
+            if (menuVisibleSince == 0L) menuVisibleSince = System.currentTimeMillis()
+
             // 只在首次看到菜单时处理（menuClickedTime 非 0 表示本次已处理）
             if (menuClickedTime == 0L) {
                 val menuTarget = speedToMenuText(dramaTargetSpeed)
-                val target = nodes.firstOrNull { it.text?.toString()?.trim() == menuTarget }
+                val target = nodes.firstOrNull {
+                    val t = it.text?.toString()?.trim() ?: ""
+                    // 只点目标倍速，且必须不在黑名单里
+                    t == menuTarget && t !in MENU_BLACKLIST
+                }
                 if (target != null) {
                     val ep = pendingEpisode ?: currentEpisode
                     DramaDebug.add("菜单已弹出: 点击 $menuTarget（集 ${ep ?: "?"}）")
                     clickNode(findClickableAncestor(target) ?: target)
                     if (ep != null) lastSpedEpisode = ep
                 } else {
-                    DramaDebug.add("菜单已弹出，找不到 $menuTarget")
+                    DramaDebug.add("菜单已弹出，找不到 $menuTarget（或命中黑名单）")
                 }
                 menuClickedTime = System.currentTimeMillis()
-                // 启动"延时关闭检查"（不依赖轮询，更可靠）
                 startMenuCloseCheck()
             }
             return
         } else {
             // 菜单已消失
             menuClickedTime = 0L
+            menuVisibleSince = 0L
         }
 
         // 1) 找底部倍速按钮（若某版本能读到文字）
