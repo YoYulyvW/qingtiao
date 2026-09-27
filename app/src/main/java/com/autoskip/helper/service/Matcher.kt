@@ -2,12 +2,22 @@ package com.autoskip.helper.service
 
 import android.graphics.Rect
 import android.view.accessibility.AccessibilityNodeInfo
+import com.autoskip.helper.data.CondAction
+import com.autoskip.helper.data.CondRuleEntity
 import com.autoskip.helper.data.RuleEntity
 
 /** 匹配结果 */
 data class MatchResult(
     val node: AccessibilityNodeInfo,
     val rule: RuleEntity,
+    val matchedText: String
+)
+
+/** 条件规则匹配结果 */
+data class CondMatchResult(
+    val actionType: String,
+    val node: AccessibilityNodeInfo?,   // CLICK_TEXT / CLICK_ICON 时的目标
+    val rule: CondRuleEntity,
     val matchedText: String
 )
 
@@ -234,6 +244,117 @@ object Matcher {
 
         val target = best ?: return null
         return buildIconResult(target, "[图标关闭]")
+    }
+
+    /**
+     * 匹配条件规则。
+     * 规则：屏幕上"有" hasText，且（若填了 andText）还包含 andText → 执行 action。
+     */
+    fun matchCondRule(
+        root: AccessibilityNodeInfo?,
+        condRules: List<CondRuleEntity>,
+        packageName: String?
+    ): CondMatchResult? {
+        if (root == null) return null
+        if (isSystemUi(packageName)) return null
+
+        val candidates = ArrayList<AccessibilityNodeInfo>()
+        collect(root, candidates)
+        if (candidates.isEmpty()) return null
+
+        // 收集全屏所有文字
+        val allTexts = candidates.mapNotNull { n ->
+            (n.text?.toString() ?: n.contentDescription?.toString())?.trim()?.takeIf { it.isNotBlank() }
+        }
+
+        for (rule in condRules) {
+            if (!rule.enabled) continue
+            if (!rule.packageName.isNullOrBlank() && packageName != null &&
+                rule.packageName != packageName) continue
+
+            // 【有】hasText 必须出现
+            if (rule.hasText.isBlank()) continue
+            if (allTexts.none { it.contains(rule.hasText, ignoreCase = true) }) continue
+
+            // 【且】andText（可选）也必须出现
+            if (!rule.andText.isNullOrBlank() &&
+                allTexts.none { it.contains(rule.andText, ignoreCase = true) }) continue
+
+            // 条件满足 → 执行动作
+            when (rule.actionType) {
+                CondAction.BACK -> {
+                    return CondMatchResult(CondAction.BACK, null, rule, rule.hasText)
+                }
+                CondAction.CLICK_TEXT -> {
+                    val target = rule.actionText?.trim()
+                    if (target.isNullOrBlank()) continue
+                    val node = candidates.firstOrNull {
+                        val t = it.text?.toString() ?: it.contentDescription?.toString() ?: ""
+                        t.trim().contains(target, ignoreCase = true)
+                    } ?: continue
+                    val clickable = findClickable(node)
+                    if (clickable != null && clickable.isEnabled) {
+                        return CondMatchResult(CondAction.CLICK_TEXT, clickable, rule, target)
+                    }
+                }
+                CondAction.CLICK_ICON -> {
+                    val icon = findIconClose(candidates, root)
+                    if (icon != null) {
+                        return CondMatchResult(CondAction.CLICK_ICON, icon, rule, "[图标关闭]")
+                    }
+                }
+            }
+        }
+        return null
+    }
+
+    /** 提取"找图标关闭"逻辑，供条件规则复用 */
+    private fun findIconClose(candidates: List<AccessibilityNodeInfo>, root: AccessibilityNodeInfo): AccessibilityNodeInfo? {
+        // 优先 contentDescription
+        for (node in candidates) {
+            val desc = node.contentDescription?.toString() ?: continue
+            if (CLOSE_DESCRIPTIONS.any { desc.contains(it, ignoreCase = true) }) {
+                val clickable = findClickable(node)
+                if (clickable != null && clickable.isEnabled) return clickable
+            }
+        }
+        // 其次小图标
+        val screen = Rect()
+        root.getBoundsInScreen(screen)
+        val screenW = screen.width()
+        val screenH = screen.height()
+        val maxW = (screenW * 0.25).toInt()
+        val maxH = (screenH * 0.15).toInt()
+        val minSize = 20
+        var best: AccessibilityNodeInfo? = null
+        var bestScore = Double.MAX_VALUE
+        val rect = Rect()
+        for (node in candidates) {
+            val t = node.text?.toString()
+            val d = node.contentDescription?.toString()
+            if (!t.isNullOrBlank() || !d.isNullOrBlank()) continue
+            if (node.childCount > 2) continue
+            node.getBoundsInScreen(rect)
+            val w = rect.width()
+            val h = rect.height()
+            if (w < minSize || h < minSize) continue
+            if (w > maxW || h > maxH) continue
+            val ratio = if (w > h) w.toDouble() / h else h.toDouble() / w
+            if (ratio > 2.5) continue
+            val clickTarget = findClickable(node) ?: continue
+            if (!clickTarget.isEnabled) continue
+            val cx = rect.centerX()
+            val cy = rect.centerY()
+            val distToEdge = minOf(cx, screenW - cx)
+            val score = (cy.toDouble() / screenH) * 1000 +
+                        (distToEdge.toDouble() / screenW) * 500 +
+                        ratio * 100 + w + h
+            if (score < bestScore) {
+                bestScore = score
+                best = clickTarget
+            }
+        }
+        return best
     }
 
     /** 用虚拟规则包装图标点击结果（id = -1，不参与规则命中统计） */

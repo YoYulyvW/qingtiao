@@ -39,7 +39,7 @@ import com.autoskip.helper.data.RuleEntity
 import com.autoskip.helper.ui.MainViewModel
 
 @Composable
-fun RulesScreen(vm: MainViewModel) {
+fun RulesScreen(vm: MainViewModel, onOpenCondRules: () -> Unit = {}) {
     val rules by vm.rules.collectAsState()
     var editing by remember { mutableStateOf<RuleEntity?>(null) }
     var showAdd by remember { mutableStateOf(false) }
@@ -56,6 +56,32 @@ fun RulesScreen(vm: MainViewModel) {
                     style = MaterialTheme.typography.bodySmall
                 )
                 Spacer(Modifier.height(8.dp))
+            }
+            item {
+                Card(
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable { onOpenCondRules() },
+                    colors = androidx.compose.material3.CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                    )
+                ) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text("条件规则", fontWeight = FontWeight.Bold)
+                            Text(
+                                "有 X 且 Y → 执行动作（点文字/点图标X/返回键）",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                        Text("›", style = MaterialTheme.typography.headlineSmall)
+                    }
+                }
+                Spacer(Modifier.height(4.dp))
             }
             if (rules.isEmpty()) {
                 item { Text("暂无规则，点右下角 + 添加，或使用首页的学习模式。") }

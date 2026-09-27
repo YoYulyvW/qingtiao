@@ -30,6 +30,7 @@ class AutoClickAccessibilityService : AccessibilityService() {
     @Volatile private var enabled = true
     @Volatile private var clickDelay = 600L
     @Volatile private var cachedRules: List<RuleEntity> = emptyList()
+    @Volatile private var cachedCondRules: List<com.autoskip.helper.data.CondRuleEntity> = emptyList()
 
     /** 白名单模式：仅对白名单内的包名生效 */
     @Volatile private var whitelistEnabled = false
@@ -86,6 +87,7 @@ class AutoClickAccessibilityService : AccessibilityService() {
         scope.launch { repo.enabled.collect { enabled = it } }
         scope.launch { repo.clickDelayMs.collect { clickDelay = it } }
         scope.launch { repo.rules.collect { cachedRules = it } }
+        scope.launch { repo.condRules.collect { cachedCondRules = it } }
         scope.launch { repo.whitelistEnabled.collect { whitelistEnabled = it } }
         scope.launch { repo.whitelistPkgs.collect { whitelistPkgs = it } }
         scope.launch { repo.strictClose.collect { strictClose = it } }
@@ -477,6 +479,15 @@ class AutoClickAccessibilityService : AccessibilityService() {
         val now = System.currentTimeMillis()
         if (now - lastClickTime < CLICK_COOLDOWN) return
 
+        // 0) 条件规则优先（更具体："有X且Y→动作"）
+        if (cachedCondRules.isNotEmpty()) {
+            val cond = Matcher.matchCondRule(root, cachedCondRules, pkg)
+            if (cond != null) {
+                performCondAction(cond, pkg)
+                return
+            }
+        }
+
         val result = Matcher.match(root, cachedRules, pkg, strictClose)
         if (result != null) {
             // 弹窗签名：包名 + 匹配到的文字
@@ -513,6 +524,54 @@ class AutoClickAccessibilityService : AccessibilityService() {
                 performClick(result, pkg)
             }
         }
+    }
+
+    /** 执行条件规则的动作 */
+    private fun performCondAction(cond: CondMatchResult, pkg: String) {
+        lastClickTime = System.currentTimeMillis()
+        mainHandler.postDelayed({
+            try {
+                when (cond.actionType) {
+                    com.autoskip.helper.data.CondAction.BACK -> {
+                        performGlobalAction(GLOBAL_ACTION_BACK)
+                        Log.i(TAG, "条件规则[返回键]: ${cond.rule.name}")
+                    }
+                    com.autoskip.helper.data.CondAction.CLICK_TEXT -> {
+                        cond.node?.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK)
+                        Log.i(TAG, "条件规则[点击文字]: ${cond.matchedText}")
+                    }
+                    com.autoskip.helper.data.CondAction.CLICK_ICON -> {
+                        cond.node?.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK)
+                        Log.i(TAG, "条件规则[点击图标]: ${cond.rule.name}")
+                    }
+                }
+
+                val appLabel = runCatching {
+                    packageManager.getApplicationLabel(
+                        packageManager.getApplicationInfo(pkg, 0)
+                    ).toString()
+                }.getOrNull()
+
+                val actionDesc = when (cond.actionType) {
+                    com.autoskip.helper.data.CondAction.BACK -> "返回键"
+                    com.autoskip.helper.data.CondAction.CLICK_TEXT -> "点击 ${cond.matchedText}"
+                    else -> "点击图标"
+                }
+                val log = LogEntity(
+                    packageName = pkg,
+                    appLabel = appLabel,
+                    rule = "[条件] ${cond.rule.name}",
+                    matchedText = actionDesc
+                )
+                val repo = App.instance.repo
+                scope.launch {
+                    repo.addLog(log)
+                    repo.bumpCondHit(cond.rule.id)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "条件规则执行失败", e)
+            }
+        }, clickDelay)
     }
 
     private fun performClick(result: MatchResult, pkg: String) {

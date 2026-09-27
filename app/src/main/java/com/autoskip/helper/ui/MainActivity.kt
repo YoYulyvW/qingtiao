@@ -23,6 +23,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.autoskip.helper.fenshen.FenShenScreen
+import com.autoskip.helper.ui.screens.CondRulesScreen
 import com.autoskip.helper.ui.screens.DramaScreen
 import com.autoskip.helper.ui.screens.HomeScreen
 import com.autoskip.helper.ui.screens.LogsScreen
@@ -49,6 +50,7 @@ private fun AppRoot(vm: MainViewModel) {
     var tab by remember { mutableStateOf(0) }
     var showFenShen by remember { mutableStateOf(false) }
     var showDrama by remember { mutableStateOf(false) }
+    var showCondRules by remember { mutableStateOf(false) }
 
     if (showFenShen) {
         FenShenScreen(onBack = { showFenShen = false })
@@ -56,6 +58,10 @@ private fun AppRoot(vm: MainViewModel) {
     }
     if (showDrama) {
         DramaScreen(onBack = { showDrama = false }, vm = vm)
+        return
+    }
+    if (showCondRules) {
+        CondRulesScreen(onBack = { showCondRules = false }, vm = vm)
         return
     }
 
@@ -92,7 +98,7 @@ private fun AppRoot(vm: MainViewModel) {
         Box(Modifier.padding(padding)) {
             when (tab) {
                 0 -> HomeScreen(vm, onOpenFenShen = { showFenShen = true }, onOpenDrama = { showDrama = true })
-                1 -> RulesScreen(vm)
+                1 -> RulesScreen(vm, onOpenCondRules = { showCondRules = true })
                 2 -> WhitelistScreen(vm)
                 else -> LogsScreen(vm)
             }

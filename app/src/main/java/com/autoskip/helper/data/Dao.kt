@@ -36,6 +36,27 @@ interface RuleDao {
 }
 
 @Dao
+interface CondRuleDao {
+    @Query("SELECT * FROM cond_rules ORDER BY enabled DESC, createdAt DESC")
+    fun observeAll(): Flow<List<CondRuleEntity>>
+
+    @Query("SELECT * FROM cond_rules WHERE enabled = 1")
+    suspend fun enabledRules(): List<CondRuleEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(rule: CondRuleEntity): Long
+
+    @Update
+    suspend fun update(rule: CondRuleEntity)
+
+    @Delete
+    suspend fun delete(rule: CondRuleEntity)
+
+    @Query("UPDATE cond_rules SET hitCount = hitCount + 1 WHERE id = :id")
+    suspend fun bumpHit(id: Long)
+}
+
+@Dao
 interface LogDao {
     @Query("SELECT * FROM logs ORDER BY timestamp DESC LIMIT 500")
     fun observeRecent(): Flow<List<LogEntity>>

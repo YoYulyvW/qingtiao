@@ -6,13 +6,14 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 
 @Database(
-    entities = [RuleEntity::class, LogEntity::class],
-    version = 1,
+    entities = [RuleEntity::class, LogEntity::class, CondRuleEntity::class],
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun ruleDao(): RuleDao
     abstract fun logDao(): LogDao
+    abstract fun condRuleDao(): CondRuleDao
 
     companion object {
         @Volatile private var INSTANCE: AppDatabase? = null

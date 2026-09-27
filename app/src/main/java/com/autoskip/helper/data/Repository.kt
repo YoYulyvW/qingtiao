@@ -7,9 +7,11 @@ import kotlinx.coroutines.flow.map
 class Repository(
     private val ruleDao: RuleDao,
     private val logDao: LogDao,
+    private val condRuleDao: CondRuleDao,
     val prefs: Prefs
 ) {
     val rules: Flow<List<RuleEntity>> = ruleDao.observeAll()
+    val condRules: Flow<List<CondRuleEntity>> = condRuleDao.observeAll()
     val recentLogs: Flow<List<LogEntity>> = logDao.observeRecent()
     val totalCount: Flow<Int> = logDao.observeTotal()
 
@@ -33,6 +35,12 @@ class Repository(
     val dramaClicks: Flow<Int> = prefs.dramaClicks
 
     suspend fun addRule(rule: RuleEntity): Long = ruleDao.insert(rule)
+
+    // 条件规则
+    suspend fun addCondRule(rule: CondRuleEntity): Long = condRuleDao.insert(rule)
+    suspend fun updateCondRule(rule: CondRuleEntity) = condRuleDao.update(rule)
+    suspend fun deleteCondRule(rule: CondRuleEntity) = condRuleDao.delete(rule)
+    suspend fun bumpCondHit(id: Long) = condRuleDao.bumpHit(id)
 
     /** 学习模式：若同文本+同包名的规则不存在，则新增一条学习规则 */
     suspend fun addLearnedRuleIfAbsent(text: String, viewId: String?, pkg: String) {

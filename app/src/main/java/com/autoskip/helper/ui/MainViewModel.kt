@@ -18,6 +18,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val repo = (app as App).repo
 
     val rules = repo.rules.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val condRules = repo.condRules.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val logs = repo.recentLogs.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val totalCount = repo.totalCount.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
     val todayCount = repo.todayCount.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
@@ -44,6 +45,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun updateRule(rule: RuleEntity) = viewModelScope.launch { repo.updateRule(rule) }
 
     fun deleteRule(rule: RuleEntity) = viewModelScope.launch { repo.deleteRule(rule) }
+
+    fun addCondRule(rule: com.autoskip.helper.data.CondRuleEntity) = viewModelScope.launch { repo.addCondRule(rule) }
+    fun updateCondRule(rule: com.autoskip.helper.data.CondRuleEntity) = viewModelScope.launch { repo.updateCondRule(rule) }
+    fun deleteCondRule(rule: com.autoskip.helper.data.CondRuleEntity) = viewModelScope.launch { repo.deleteCondRule(rule) }
 
     fun clearLogs() = viewModelScope.launch { repo.clearLogs() }
 
