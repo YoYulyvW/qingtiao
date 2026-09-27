@@ -248,7 +248,7 @@ class AutoClickAccessibilityService : AccessibilityService() {
         // ★ 长按后窗口期：完全不碰节点树。
         //   长按会弹菜单+播放窗口动画，此期间读节点树会与无障碍框架死锁（卡死）。
         val nowMs = System.currentTimeMillis()
-        if (expectingMenuTime != 0L && nowMs - expectingMenuTime < 4000L) {
+        if (expectingMenuTime != 0L && nowMs - expectingMenuTime < 2500L) {
             if (diag) DramaDebug.add("长按后等待窗口稳定（${(nowMs - expectingMenuTime) / 1000} 秒）")
             return
         }
@@ -335,11 +335,18 @@ class AutoClickAccessibilityService : AccessibilityService() {
             val curNum = extractEpisodeNumber(nodes)
             val curAuthor = extractAuthor(nodes)
 
-            // 新剧检测：① 集数回退 ② 发布者变化
+            // 新剧检测：① 集数回退 ② 发布者变化 ③ 集数跨度异常大
             val newByEpisode = curNum != null && lastLongPressEpNum > 0 && curNum < lastLongPressEpNum
             val newByAuthor = curAuthor != null && lastAuthor != null && curAuthor != lastAuthor
-            if (newByEpisode || newByAuthor) {
-                DramaDebug.add("检测到新剧（${if (newByEpisode) "集数回退" else "发布者变化"}），重置呼出计数")
+            val newByGap = curNum != null && lastLongPressEpNum > 0 &&
+                (curNum - lastLongPressEpNum) > 30   // 跨度>30 视为跨剧
+            if (newByEpisode || newByAuthor || newByGap) {
+                val reason = when {
+                    newByEpisode -> "集数回退"
+                    newByAuthor -> "发布者变化"
+                    else -> "集数跨度大"
+                }
+                DramaDebug.add("检测到新剧（$reason），重置呼出计数与菜单类型")
                 lastLongPressEpNum = -1
                 menuHasImg = false
             }
@@ -363,10 +370,11 @@ class AutoClickAccessibilityService : AccessibilityService() {
                 return
             }
 
-            // 短时冷却（防止同一集内快速重复长按）
+            // 短时冷却：仅同一集内生效（换集后立即允许长按，避免等待）
             val now = System.currentTimeMillis()
-            if (now - lastDramaClickTime < 3000) {
-                if (diag) DramaDebug.add("长按冷却中")
+            val sameEpisode = curNum != null && curNum == pendingEpisodeNum
+            if (sameEpisode && now - lastDramaClickTime < 3000) {
+                if (diag) DramaDebug.add("同集长按冷却中")
                 return
             }
 
