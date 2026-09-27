@@ -291,6 +291,17 @@ class AutoClickAccessibilityService : AccessibilityService() {
             if (diag) DramaDebug.add("pkg=$pkg 但 root 为空")
             return
         }
+        // ★ 重新校验：当前活动窗口必须仍是抖音系（防多任务/桌面的陈旧 root 误触发长按）
+        val activePkg = try { root.packageName?.toString() } catch (e: Exception) { null }
+        if (activePkg == null || !isDouyin(activePkg) || Matcher.isSystemUi(activePkg)) {
+            if (diag) DramaDebug.add("当前活动窗口非抖音（$activePkg），跳过")
+            return
+        }
+        // ★ 多窗口含系统UI（多任务/桌面）→ 也跳过
+        if (hasSystemUiWindow()) {
+            if (diag) DramaDebug.add("检测到系统UI窗口（多任务/桌面），跳过")
+            return
+        }
         val nodes = collectAllNodes(root)
 
         // 提取当前集数（发布者下方，形如"第1集"）
