@@ -59,6 +59,17 @@ class AutoClickAccessibilityService : AccessibilityService() {
     private var lastLongPressTime = 0L
     private val LONG_PRESS_COOLDOWN = 8000L
 
+    // ===== 倍速按钮坐标点击（因按钮是 ImageView，无文字，只能按坐标点）=====
+    @Volatile private var dramaBaseW = 1080
+    @Volatile private var dramaBaseH = 2340
+    @Volatile private var dramaTapX = 652      // 基准分辨率下的 X
+    @Volatile private var dramaTapY = 1137     // 基准分辨率下的 Y
+    @Volatile private var dramaClicks = 4      // 连点次数（1x→3x 需 4 次）
+    private var lastDramaClickTime = 0L
+    private val DRAMA_CLICK_COOLDOWN = 12000L  // 长按冷却
+    /** 菜单已点击的时间戳（>0 表示本轮已点过倍速，需检查菜单是否缩回） */
+    private var menuClickedTime = 0L
+
     /** 倍速按钮文字格式：数字 + x，如 1x / 1.25x / 3x */
     private val SPEED_REGEX = Regex("^[0-9]+(\\.[0-9]+)?x$", RegexOption.IGNORE_CASE)
 
@@ -78,6 +89,11 @@ class AutoClickAccessibilityService : AccessibilityService() {
         scope.launch { repo.dramaAutoMount.collect { dramaAutoMount = it } }
         scope.launch { repo.dramaIntervalMs.collect { dramaIntervalMs = it } }
         scope.launch { repo.dramaTargetSpeed.collect { dramaTargetSpeed = it } }
+        scope.launch { repo.dramaBaseW.collect { dramaBaseW = it } }
+        scope.launch { repo.dramaBaseH.collect { dramaBaseH = it } }
+        scope.launch { repo.dramaTapX.collect { dramaTapX = it } }
+        scope.launch { repo.dramaTapY.collect { dramaTapY = it } }
+        scope.launch { repo.dramaClicks.collect { dramaClicks = it } }
 
         // 启动短剧加速轮询
         scope.launch { dramaLoop() }
@@ -136,43 +152,60 @@ class AutoClickAccessibilityService : AccessibilityService() {
         // 0) 长按菜单是否已弹出？（有"倍速"标题）
         val hasMenu = nodes.any { it.text?.toString()?.trim() == "倍速" }
         if (hasMenu) {
-            val menuTarget = speedToMenuText(dramaTargetSpeed)
-            val target = nodes.firstOrNull { it.text?.toString()?.trim() == menuTarget }
-            if (target != null) {
-                DramaDebug.add("菜单已弹出: 点击 $menuTarget")
-                clickNode(findClickableAncestor(target) ?: target)
+            if (menuClickedTime == 0L) {
+                // 首次看到菜单 → 点击目标倍速
+                val menuTarget = speedToMenuText(dramaTargetSpeed)
+                val target = nodes.firstOrNull { it.text?.toString()?.trim() == menuTarget }
+                if (target != null) {
+                    DramaDebug.add("菜单已弹出: 点击 $menuTarget")
+                    clickNode(findClickableAncestor(target) ?: target)
+                } else {
+                    DramaDebug.add("菜单已弹出，找不到 $menuTarget")
+                }
+                menuClickedTime = System.currentTimeMillis()
             } else {
-                DramaDebug.add("菜单已弹出，但找不到 $menuTarget")
+                // 已点过 → 检查菜单是否缩回
+                val elapsed = System.currentTimeMillis() - menuClickedTime
+                if (elapsed > 2000) {
+                    DramaDebug.add("菜单未缩回，按返回键关闭")
+                    performGlobalAction(GLOBAL_ACTION_BACK)
+                    menuClickedTime = 0L
+                } else if (diag) {
+                    DramaDebug.add("等待菜单缩回（已 ${elapsed}ms）")
+                }
             }
             return
+        } else {
+            // 菜单已消失，重置标记
+            menuClickedTime = 0L
         }
 
-        // 1) 找底部倍速按钮（若存在，优先点击循环切换）
+        // 1) 找底部倍速按钮（若某版本能读到文字）
         val speedNode = findSpeedButton(nodes)
         if (speedNode != null) {
             val cur = (speedNode.text?.toString() ?: speedNode.contentDescription?.toString())?.trim() ?: return
             if (cur.equals(dramaTargetSpeed, ignoreCase = true)) {
-                if (diag) DramaDebug.add("已在目标倍速 $cur，不点（节点数 ${nodes.size}）")
+                if (diag) DramaDebug.add("已在目标倍速 $cur，不点")
                 return
             }
-            DramaDebug.add("倍速 $cur → 点击切换（目标 $dramaTargetSpeed）")
+            DramaDebug.add("倍速 $cur → 点击切换")
             clickNode(speedNode)
             return
         }
 
-        // 1.5) 是短剧页面但读不到倍速按钮 → 长按屏幕中央唤出菜单
+        // 2) 是短剧页面 → 长按视频中心唤出菜单
         val isDramaPage = nodes.any {
             val t = it.text?.toString() ?: ""
             t.contains("集全") || (t.contains("免费") && t.length < 6)
         }
         if (isDramaPage) {
             val now = System.currentTimeMillis()
-            if (now - lastLongPressTime > LONG_PRESS_COOLDOWN) {
-                lastLongPressTime = now
-                DramaDebug.add("短剧页面，长按屏幕中央唤出菜单")
+            if (now - lastDramaClickTime > DRAMA_CLICK_COOLDOWN) {
+                lastDramaClickTime = now
+                DramaDebug.add("短剧页面，长按视频中心唤出菜单")
                 longPressCenter()
             } else if (diag) {
-                DramaDebug.add("短剧页面，长按冷却中")
+                DramaDebug.add("长按冷却中（剩余 ${(DRAMA_CLICK_COOLDOWN - (now - lastDramaClickTime)) / 1000} 秒）")
             }
             return
         }
@@ -323,14 +356,27 @@ class AutoClickAccessibilityService : AccessibilityService() {
         return null
     }
 
-    /** 长按屏幕中央偏左（避开右侧互动栏），唤出倍速菜单 */
+    /** 物理全屏尺寸 */
+    private fun realScreenSize(): Pair<Float, Float> {
+        val wm = getSystemService(WINDOW_SERVICE) as android.view.WindowManager
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val b = wm.currentWindowMetrics.bounds
+            Pair(b.width().toFloat(), b.height().toFloat())
+        } else {
+            val p = android.graphics.Point()
+            @Suppress("DEPRECATION")
+            wm.defaultDisplay.getRealSize(p)
+            Pair(p.x.toFloat(), p.y.toFloat())
+        }
+    }
+
+    /** 长按视频中心，唤出倍速菜单 */
     private suspend fun longPressCenter() {
         try {
-            val w = resources.displayMetrics.widthPixels.toFloat()
-            val h = resources.displayMetrics.heightPixels.toFloat()
-            // 水平 30%、垂直 55%：纯视频区，避开点赞/评论/分享栏和作者信息
-            val x = w * 0.30f
-            val y = h * 0.55f
+            val (rw, rh) = realScreenSize()
+            // 视频正中心，无遮挡
+            val x = rw * 0.5f
+            val y = rh * 0.5f
             val path = Path().apply { moveTo(x, y) }
             // 长按 800ms（长按阈值通常 500ms）
             val stroke = GestureDescription.StrokeDescription(path, 0, 800)

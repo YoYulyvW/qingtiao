@@ -28,6 +28,11 @@ class Prefs(private val context: Context) {
     private val KEY_DRAMA_AUTO_MOUNT = booleanPreferencesKey("drama_auto_mount")
     private val KEY_DRAMA_INTERVAL = stringPreferencesKey("drama_interval_ms")
     private val KEY_DRAMA_TARGET = stringPreferencesKey("drama_target_speed")
+    private val KEY_DRAMA_BASEW = stringPreferencesKey("drama_basew")
+    private val KEY_DRAMA_BASEH = stringPreferencesKey("drama_baseh")
+    private val KEY_DRAMA_TAPX = stringPreferencesKey("drama_tapx")
+    private val KEY_DRAMA_TAPY = stringPreferencesKey("drama_tapy")
+    private val KEY_DRAMA_CLICKS = stringPreferencesKey("drama_clicks")
 
     val enabled: Flow<Boolean> = context.dataStore.data.map { it[KEY_ENABLED] ?: true }
     val clickDelayMs: Flow<Long> = context.dataStore.data.map { (it[KEY_DELAY] ?: "600").toLongOrNull() ?: 600L }
@@ -83,6 +88,21 @@ class Prefs(private val context: Context) {
     val dramaIntervalMs: Flow<Long> = context.dataStore.data.map { (it[KEY_DRAMA_INTERVAL] ?: "1000").toLongOrNull() ?: 1000L }
     /** 目标倍速文字，如 "3x" */
     val dramaTargetSpeed: Flow<String> = context.dataStore.data.map { it[KEY_DRAMA_TARGET] ?: "3x" }
+
+    /** 基准分辨率（坐标按此填写，运行时按真机等比换算） */
+    val dramaBaseW: Flow<Int> = context.dataStore.data.map { it[KEY_DRAMA_BASEW]?.toIntOrNull() ?: 1080 }
+    val dramaBaseH: Flow<Int> = context.dataStore.data.map { it[KEY_DRAMA_BASEH]?.toIntOrNull() ?: 2340 }
+    /** 倍速按钮中心坐标（基于基准分辨率），默认 652,1137 */
+    val dramaTapX: Flow<Int> = context.dataStore.data.map { it[KEY_DRAMA_TAPX]?.toIntOrNull() ?: 652 }
+    val dramaTapY: Flow<Int> = context.dataStore.data.map { it[KEY_DRAMA_TAPY]?.toIntOrNull() ?: 1137 }
+    /** 每次进入短剧连点次数（1x→3x 需 4 次） */
+    val dramaClicks: Flow<Int> = context.dataStore.data.map { it[KEY_DRAMA_CLICKS]?.toIntOrNull() ?: 4 }
+
+    suspend fun setDramaBaseW(v: Int) { context.dataStore.edit { it[KEY_DRAMA_BASEW] = v.toString() } }
+    suspend fun setDramaBaseH(v: Int) { context.dataStore.edit { it[KEY_DRAMA_BASEH] = v.toString() } }
+    suspend fun setDramaTapX(v: Int) { context.dataStore.edit { it[KEY_DRAMA_TAPX] = v.toString() } }
+    suspend fun setDramaTapY(v: Int) { context.dataStore.edit { it[KEY_DRAMA_TAPY] = v.toString() } }
+    suspend fun setDramaClicks(v: Int) { context.dataStore.edit { it[KEY_DRAMA_CLICKS] = v.toString() } }
 
     suspend fun setDramaEnabled(v: Boolean) { context.dataStore.edit { it[KEY_DRAMA_ENABLED] = v } }
     suspend fun setDramaAutoMount(v: Boolean) { context.dataStore.edit { it[KEY_DRAMA_AUTO_MOUNT] = v } }
