@@ -532,8 +532,8 @@ class AutoClickAccessibilityService : AccessibilityService() {
             // Y 基准：中心上移 80dp
             val cyBase = dm.heightPixels * 0.5f - 80f * density
             // X：中心 ±200dp 随机；Y：基准 ±50dp 随机
-            val randX = (Math.random() * 2 - 1) * 200f * density
-            val randY = (Math.random() * 2 - 1) * 50f * density
+            val randX = (Math.random() * 2 - 1).toFloat() * 200f * density
+            val randY = (Math.random() * 2 - 1).toFloat() * 50f * density
             val x = cx + randX
             val y = cyBase + randY
             DramaDebug.add("长按位置: (${x.toInt()},${y.toInt()})")
