@@ -680,14 +680,18 @@ class AutoClickAccessibilityService : AccessibilityService() {
         try {
             val dm = resources.displayMetrics
             val density = dm.density
-            val cx = dm.widthPixels * 0.5f
+            val screenW = dm.widthPixels
+            val screenH = dm.heightPixels
+            val cx = screenW * 0.5f
             // Y 基准：中心上移 80dp
-            val cyBase = dm.heightPixels * 0.5f - 80f * density
+            val cyBase = screenH * 0.5f - 80f * density
             // X：中心 ±200dp 随机；Y：基准 ±50dp 随机
             val randX = (Math.random() * 2 - 1).toFloat() * 200f * density
             val randY = (Math.random() * 2 - 1).toFloat() * 50f * density
-            val x = cx + randX
-            val y = cyBase + randY
+            // ★ 钳制到屏幕内（留 20px 边距），避免负坐标或越界导致手势派发失败
+            val margin = 20f
+            val x = (cx + randX).coerceIn(margin, screenW - margin)
+            val y = (cyBase + randY).coerceIn(margin, screenH - margin)
             DramaDebug.add("长按位置: (${x.toInt()},${y.toInt()})")
             val path = Path().apply { moveTo(x, y) }
             // 长按 800ms（长按阈值通常 500ms）
@@ -695,9 +699,11 @@ class AutoClickAccessibilityService : AccessibilityService() {
             val gesture = GestureDescription.Builder().addStroke(stroke).build()
             mainHandler.post {
                 try {
-                    dispatchGesture(gesture, null, null)
+                    val ok = dispatchGesture(gesture, null, null)
+                    if (!ok) DramaDebug.add("长按手势派发返回 false")
                 } catch (e: Exception) {
                     Log.e(TAG, "dispatchGesture failed", e)
+                    DramaDebug.add("长按手势异常: ${e.message}")
                 }
             }
         } catch (e: Exception) {
