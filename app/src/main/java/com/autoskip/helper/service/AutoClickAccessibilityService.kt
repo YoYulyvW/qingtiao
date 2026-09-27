@@ -69,6 +69,10 @@ class AutoClickAccessibilityService : AccessibilityService() {
     private val DRAMA_CLICK_COOLDOWN = 12000L  // 长按冷却
     /** 菜单已点击的时间戳（>0 表示本轮已点过倍速，需检查菜单是否缩回） */
     private var menuClickedTime = 0L
+    /** 已切过倍速的集数标识（如"第1集"），避免同一集重复长按 */
+    private var lastSpedEpisode: String? = null
+    /** 进入新集后需要重置该集标记的暂存（当前看到的集数） */
+    private var currentEpisode: String? = null
 
     /** 倍速按钮文字格式：数字 + x，如 1x / 1.25x / 3x */
     private val SPEED_REGEX = Regex("^[0-9]+(\\.[0-9]+)?x$", RegexOption.IGNORE_CASE)
@@ -149,6 +153,9 @@ class AutoClickAccessibilityService : AccessibilityService() {
         }
         val nodes = collectAllNodes(root)
 
+        // 提取当前集数（发布者下方，形如"第1集"）
+        currentEpisode = extractEpisode(nodes)
+
         // 0) 长按菜单是否已弹出？（有"倍速"标题）
         val hasMenu = nodes.any { it.text?.toString()?.trim() == "倍速" }
         if (hasMenu) {
@@ -157,16 +164,18 @@ class AutoClickAccessibilityService : AccessibilityService() {
                 val menuTarget = speedToMenuText(dramaTargetSpeed)
                 val target = nodes.firstOrNull { it.text?.toString()?.trim() == menuTarget }
                 if (target != null) {
-                    DramaDebug.add("菜单已弹出: 点击 $menuTarget")
+                    DramaDebug.add("菜单已弹出: 点击 $menuTarget（集 ${currentEpisode ?: "?"}）")
                     clickNode(findClickableAncestor(target) ?: target)
+                    // 记住这一集已切过
+                    if (currentEpisode != null) lastSpedEpisode = currentEpisode
                 } else {
                     DramaDebug.add("菜单已弹出，找不到 $menuTarget")
                 }
                 menuClickedTime = System.currentTimeMillis()
             } else {
-                // 已点过 → 检查菜单是否缩回
+                // 已点过 → 检查菜单是否缩回（1 秒）
                 val elapsed = System.currentTimeMillis() - menuClickedTime
-                if (elapsed > 2000) {
+                if (elapsed > 1000) {
                     DramaDebug.add("菜单未缩回，按返回键关闭")
                     performGlobalAction(GLOBAL_ACTION_BACK)
                     menuClickedTime = 0L
@@ -199,10 +208,15 @@ class AutoClickAccessibilityService : AccessibilityService() {
             t.contains("集全") || (t.contains("免费") && t.length < 6)
         }
         if (isDramaPage) {
+            // 当前集已切过倍速 → 不再长按
+            if (currentEpisode != null && currentEpisode == lastSpedEpisode) {
+                if (diag) DramaDebug.add("集 ${currentEpisode} 已切过倍速，跳过")
+                return
+            }
             val now = System.currentTimeMillis()
             if (now - lastDramaClickTime > DRAMA_CLICK_COOLDOWN) {
                 lastDramaClickTime = now
-                DramaDebug.add("短剧页面，长按视频中心唤出菜单")
+                DramaDebug.add("短剧页面（集 ${currentEpisode ?: "?"}），长按视频中心唤出菜单")
                 longPressCenter()
             } else if (diag) {
                 DramaDebug.add("长按冷却中（剩余 ${(DRAMA_CLICK_COOLDOWN - (now - lastDramaClickTime)) / 1000} 秒）")
@@ -236,6 +250,17 @@ class AutoClickAccessibilityService : AccessibilityService() {
             }
             DramaDebug.add("可见节点(text@Y%): " + info.joinToString(" "))
         }
+    }
+
+    /** 提取当前集数标识，如"第1集" */
+    private fun extractEpisode(nodes: List<android.view.accessibility.AccessibilityNodeInfo>): String? {
+        val regex = Regex("第\\s*(\\d+)\\s*集")
+        for (n in nodes) {
+            val t = n.text?.toString()?.trim() ?: continue
+            val m = regex.find(t)
+            if (m != null) return "第${m.groupValues[1]}集"
+        }
+        return null
     }
 
     /** 收集所有节点 */
