@@ -165,6 +165,8 @@ class AutoClickAccessibilityService : AccessibilityService() {
                 if (!dramaEnabled) continue
                 // 系统UI（多任务中心/桌面）前台 → 暂停，避免遍历大节点树卡顿
                 if (systemUiForeground) continue
+                // 多窗口检测：若任一窗口是系统UI（多任务/桌面），也暂停
+                if (hasSystemUiWindow()) continue
                 // 只在抖音系应用生效
                 val pkg = currentRootPackage() ?: continue
                 if (!isDouyin(pkg)) continue
@@ -220,8 +222,18 @@ class AutoClickAccessibilityService : AccessibilityService() {
 
                 val now = System.currentTimeMillis()
 
-                // ★ 只在"菜单确实显示"时才动作（menuVisibleSince 由菜单检测到才置位）。
-                //   不再用"主循环无进展"作判据，避免非菜单场景误按返回、退出短剧挂载。
+                // ★ 严格判定：只有真菜单（含"推荐/转发到日常/倍速"之一）才算
+                val root = rootInActiveWindow
+                val hasRealMenu = root != null && collectAllNodes(root).any {
+                    val t = it.text?.toString()?.trim() ?: ""
+                    t == "推荐" || t == "转发到日常" || t == "倍速"
+                }
+                if (!hasRealMenu) {
+                    // 不是菜单 → 复位计时，不动作
+                    menuVisibleSince = 0
+                    continue
+                }
+
                 val menuTooLong = menuVisibleSince > 0 && now - menuVisibleSince > 6000
 
                 if (menuTooLong) {
@@ -239,6 +251,18 @@ class AutoClickAccessibilityService : AccessibilityService() {
             } catch (e: Exception) {
                 Log.e(TAG, "watchdog error", e)
             }
+        }
+    }
+
+    /** 是否有多窗口属于系统UI（多任务中心/桌面）—— 某些 ROM 多任务不产生 systemui 包事件 */
+    private fun hasSystemUiWindow(): Boolean {
+        return try {
+            windows?.any { w ->
+                val p = w.root?.packageName?.toString() ?: return@any false
+                Matcher.isSystemUi(p)
+            } ?: false
+        } catch (e: Exception) {
+            false
         }
     }
 
