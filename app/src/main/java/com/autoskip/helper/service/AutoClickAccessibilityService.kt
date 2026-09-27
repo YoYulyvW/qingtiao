@@ -119,6 +119,7 @@ class AutoClickAccessibilityService : AccessibilityService() {
      */
     private suspend fun dramaLoop() {
         var lastDiag = 0L
+        var lastHeartbeat = 0L
         while (true) {
             try {
                 delay(dramaIntervalMs)
@@ -126,8 +127,13 @@ class AutoClickAccessibilityService : AccessibilityService() {
                 // 只在抖音系应用生效
                 val pkg = currentRootPackage() ?: continue
                 if (!isDouyin(pkg)) continue
-                // 每 3 秒输出一次诊断
                 val now = System.currentTimeMillis()
+                // 心跳：每 5 秒输出一次，证明循环没卡住
+                if (now - lastHeartbeat > 5000) {
+                    lastHeartbeat = now
+                    DramaDebug.add("轮询中…")
+                }
+                // 每 3 秒输出一次诊断
                 val diag = (now - lastDiag) > 3000
                 if (diag) lastDiag = now
                 handleDrama(pkg, diag)
@@ -499,14 +505,15 @@ class AutoClickAccessibilityService : AccessibilityService() {
             // 长按 800ms（长按阈值通常 500ms）
             val stroke = GestureDescription.StrokeDescription(path, 0, 800)
             val gesture = GestureDescription.Builder().addStroke(stroke).build()
-            // 发起手势后不等待回调，直接等 1200ms（800ms 手势 + 缓冲）
-            val posted = kotlinx.coroutines.withContext(Dispatchers.Main) {
-                dispatchGesture(gesture, null, null)
+            // 用 mainHandler.post 发起手势：不等待回调、不切换协程线程，彻底避免挂起
+            mainHandler.post {
+                try {
+                    dispatchGesture(gesture, null, null)
+                } catch (e: Exception) {
+                    Log.e(TAG, "dispatchGesture failed", e)
+                }
             }
-            if (!posted) {
-                DramaDebug.add("长按手势派发失败")
-            }
-            delay(1200)
+            delay(1300)
         } catch (e: Exception) {
             DramaDebug.add("长按失败: ${e.message}")
         }
