@@ -520,21 +520,27 @@ class AutoClickAccessibilityService : AccessibilityService() {
     }
 
     /**
-     * 长按视频中心，唤出倍速菜单。
-     * 关键：不等待手势回调（回调有时不触发会导致协程永久挂起），
-     * 发起手势后固定 delay 等它完成即可。
+     * 长按视频区域唤出倍速菜单。
+     * 随机位置：X 轴在中心 ±200dp 内随机；Y 轴在（中心上移 80dp）±50dp 内随机。
+     * 避免固定坐标落在菜单项上（如"推荐"）导致误触。
      */
     private fun longPressCenter() {
         try {
-            // 用 displayMetrics（不阻塞），不用 currentWindowMetrics（会与框架死锁）
             val dm = resources.displayMetrics
-            val x = dm.widthPixels * 0.5f
-            val y = dm.heightPixels * 0.5f
+            val density = dm.density
+            val cx = dm.widthPixels * 0.5f
+            // Y 基准：中心上移 80dp
+            val cyBase = dm.heightPixels * 0.5f - 80f * density
+            // X：中心 ±200dp 随机；Y：基准 ±50dp 随机
+            val randX = (Math.random() * 2 - 1) * 200f * density
+            val randY = (Math.random() * 2 - 1) * 50f * density
+            val x = cx + randX
+            val y = cyBase + randY
+            DramaDebug.add("长按位置: (${x.toInt()},${y.toInt()})")
             val path = Path().apply { moveTo(x, y) }
             // 长按 800ms（长按阈值通常 500ms）
             val stroke = GestureDescription.StrokeDescription(path, 0, 800)
             val gesture = GestureDescription.Builder().addStroke(stroke).build()
-            // 主线程发起手势后立即返回，不等待、不 delay
             mainHandler.post {
                 try {
                     dispatchGesture(gesture, null, null)
