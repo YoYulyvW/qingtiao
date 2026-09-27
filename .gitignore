@@ -1,11 +1,20 @@
-*.apk
-*.iml
-.gradle
-/local.properties
-/.idea
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
-local.properties
+<path>.gitignore</path>
+<type>file</type>
+<content>
+1: *.apk
+2: *.iml
+3: .gradle
+4: /local.properties
+/img
+
+5: /.idea
+6: .DS_Store
+7: /build
+8: /captures
+9: .externalNativeBuild
+10: .cxx
+11: local.properties
+12: 
+
+(End of file - total 12 lines)
+</content>
