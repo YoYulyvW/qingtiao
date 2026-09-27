@@ -185,12 +185,14 @@ object Matcher {
             }
         }
 
-        // 2. 其次：无文字、无描述的小方形可点击图标
+        // 2. 其次：无文字、无描述的小图标（放宽条件，优先靠屏幕上方/左右角）
         val screen = Rect()
         root.getBoundsInScreen(screen)
-        val maxW = (screen.width() * 0.20).toInt()
-        val maxH = (screen.height() * 0.12).toInt()
-        val minSize = 24
+        val screenW = screen.width()
+        val screenH = screen.height()
+        val maxW = (screenW * 0.25).toInt()
+        val maxH = (screenH * 0.15).toInt()
+        val minSize = 20
 
         var best: AccessibilityNodeInfo? = null
         var bestScore = Double.MAX_VALUE
@@ -201,8 +203,8 @@ object Matcher {
             val d = node.contentDescription?.toString()
             // 只考虑无文字、无描述的节点（图标）
             if (!t.isNullOrBlank() || !d.isNullOrBlank()) continue
-            // 图标本身无子节点；允许 1 个子节点（有的包一层）
-            if (node.childCount > 1) continue
+            // 图标通常无子节点；放宽到 ≤2（部分包一层）
+            if (node.childCount > 2) continue
 
             node.getBoundsInScreen(rect)
             val w = rect.width()
@@ -211,15 +213,19 @@ object Matcher {
             if (w > maxW || h > maxH) continue
 
             val ratio = if (w > h) w.toDouble() / h else h.toDouble() / w
-            if (ratio > 2.0) continue // 太扁长的不是图标
+            if (ratio > 2.5) continue // 太扁长的不是图标
 
-            // 关键修复：自身可点击 或 祖先可点击 都算
+            // 自身可点击 或 祖先可点击 都算
             val clickTarget = findClickable(node) ?: continue
             if (!clickTarget.isEnabled) continue
 
-            // 越接近方形、面积越小、越靠上，越像关闭图标
-            val centerY = rect.centerY()
-            val score = ratio * 10000 + w + h + centerY * 0.5
+            // 评分：越靠上、越靠屏幕左右边缘、越接近方形 → 越像关闭图标
+            val cx = rect.centerX()
+            val cy = rect.centerY()
+            val distToEdge = minOf(cx, screenW - cx)   // 距左右边缘距离
+            val score = (cy.toDouble() / screenH) * 1000 +   // 越靠上越好（cy 小）
+                        (distToEdge.toDouble() / screenW) * 500 +  // 越靠边越好（distToEdge 小）
+                        ratio * 100 + w + h
             if (score < bestScore) {
                 bestScore = score
                 best = clickTarget
