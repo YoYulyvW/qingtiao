@@ -61,6 +61,8 @@ fun DramaScreen(onBack: () -> Unit, vm: MainViewModel) {
     val intervalMs by vm.dramaIntervalMs.collectAsState()
     val targetSpeed by vm.dramaTargetSpeed.collectAsState()
     val debugEnabled by vm.dramaDebug.collectAsState()
+    val imgInterval by vm.dramaImgInterval.collectAsState()
+    val normalInterval by vm.dramaNormalInterval.collectAsState()
     val debugLogs by com.autoskip.helper.service.DramaDebug.logs.collectAsState()
 
     var serviceOn by remember { mutableStateOf(false) }
@@ -174,6 +176,61 @@ fun DramaScreen(onBack: () -> Unit, vm: MainViewModel) {
                             row2.forEach { s -> SpeedChip(s, targetSpeed) { vm.setDramaTargetSpeed(s) } }
                         }
                     }
+                }
+            }
+
+            // 呼出间隔
+            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
+                Column(Modifier.padding(16.dp)) {
+                    Text("菜单呼出间隔（按集数）", fontWeight = FontWeight.Bold)
+                    Text(
+                        "每 N 集呼出一次菜单设置倍速。新剧第 1 集总会呼出。",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    Spacer(Modifier.height(8.dp))
+
+                    // 识别图片版
+                    var imgText by remember { mutableStateOf(imgInterval.toString()) }
+                    LaunchedEffect(imgInterval) { imgText = imgInterval.toString() }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("识别图片版", Modifier.width(100.dp))
+                        OutlinedTextField(
+                            value = imgText,
+                            onValueChange = {
+                                imgText = it
+                                it.toIntOrNull()?.let { v -> if (v in 1..50) vm.setDramaImgInterval(v) }
+                            },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(10.dp),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                        )
+                    }
+                    Spacer(Modifier.height(8.dp))
+
+                    // 其他版
+                    var normalText by remember { mutableStateOf(normalInterval.toString()) }
+                    LaunchedEffect(normalInterval) { normalText = normalInterval.toString() }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("其他菜单版", Modifier.width(100.dp))
+                        OutlinedTextField(
+                            value = normalText,
+                            onValueChange = {
+                                normalText = it
+                                it.toIntOrNull()?.let { v -> if (v in 1..50) vm.setDramaNormalInterval(v) }
+                            },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(10.dp),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                        )
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "默认：识别图片版 1（每集），其他版 5（隔5集）",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.outline
+                    )
                 }
             }
 

@@ -92,6 +92,16 @@ class AutoClickAccessibilityService : AccessibilityService() {
 
     /** 卡死看门狗：最近一次"有进展"的时间戳 */
     @Volatile private var lastProgressTime = 0L
+
+    // ===== 呼出间隔配置 =====
+    @Volatile private var dramaImgInterval = 1     // 「识别图片」版：每N集呼出
+    @Volatile private var dramaNormalInterval = 5  // 其他版：每N集呼出
+    /** 上次长按呼出的集数数字，-1 表示未呼出过（新剧/刚进入） */
+    private var lastLongPressEpNum = -1
+    /** 本次长按前的集数数字（菜单弹出后用它记录） */
+    private var pendingEpisodeNum: Int? = null
+    /** 上次菜单是否是「识别图片」版（决定用哪个间隔） */
+    @Volatile private var menuHasImg = false
     /** 菜单关闭看门狗：最近一次检测到菜单存在的时间 */
     @Volatile private var menuVisibleSince = 0L
 
@@ -118,6 +128,8 @@ class AutoClickAccessibilityService : AccessibilityService() {
         scope.launch { repo.dramaTapY.collect { dramaTapY = it } }
         scope.launch { repo.dramaClicks.collect { dramaClicks = it } }
         scope.launch { repo.dramaDebug.collect { DramaDebug.enabled = it } }
+        scope.launch { repo.dramaImgInterval.collect { dramaImgInterval = it } }
+        scope.launch { repo.dramaNormalInterval.collect { dramaNormalInterval = it } }
 
         // 启动短剧加速轮询
         scope.launch { dramaLoop() }
@@ -244,6 +256,8 @@ class AutoClickAccessibilityService : AccessibilityService() {
         }
         if (hasMenu) {
             expectingMenuTime = 0L   // 菜单已确认出现，清除等待标记
+            // 记录菜单类型（是否含"识别图片"），决定下次间隔
+            menuHasImg = nodes.any { it.text?.toString()?.trim() == "识别图片" }
             // 看门狗：记录菜单出现时间
             if (menuVisibleSince == 0L) menuVisibleSince = System.currentTimeMillis()
 
@@ -264,6 +278,8 @@ class AutoClickAccessibilityService : AccessibilityService() {
                     DramaDebug.add("菜单已弹出，找不到 $menuTarget（或命中黑名单）")
                 }
                 menuClickedTime = System.currentTimeMillis()
+                // 记录本次呼出的集数数字（无论是否点到 3.0，都算呼出过）
+                if (pendingEpisodeNum != null) lastLongPressEpNum = pendingEpisodeNum!!
                 startMenuCloseCheck()
             }
             return
@@ -298,21 +314,46 @@ class AutoClickAccessibilityService : AccessibilityService() {
                 if (diag) DramaDebug.add("已长按，等待菜单出现中（${(now0 - expectingMenuTime) / 1000} 秒）")
                 return
             }
-            // 当前集已切过倍速 → 不再长按
-            if (currentEpisode != null && currentEpisode == lastSpedEpisode) {
-                if (diag) DramaDebug.add("集 ${currentEpisode} 已切过倍速，跳过")
+
+            val curNum = extractEpisodeNumber(nodes)
+
+            // 新剧检测：集数回退（如 50→1）视为换新剧，重置呼出计数
+            if (curNum != null && lastLongPressEpNum > 0 && curNum < lastLongPressEpNum) {
+                DramaDebug.add("检测到新剧（集数 ${lastLongPressEpNum}→$curNum），重置呼出计数")
+                lastLongPressEpNum = -1
+            }
+
+            // 本次用哪个间隔：上次菜单是"识别图片"版→img间隔，否则→普通间隔
+            val interval = if (menuHasImg) dramaImgInterval else dramaNormalInterval
+
+            val shouldPress: Boolean = when {
+                curNum == null -> {
+                    // 读不到集数 → 退化为"每集一次"（用字符串对比）
+                    currentEpisode != null && currentEpisode != lastSpedEpisode
+                }
+                lastLongPressEpNum == -1 -> true                    // 首次/新剧 → 呼出
+                curNum - lastLongPressEpNum >= interval -> true     // 达到间隔 → 呼出
+                else -> false
+            }
+
+            if (!shouldPress) {
+                if (diag) DramaDebug.add("集 ${currentEpisode ?: "?"}，距上次呼出（第 $lastLongPressEpNum 集）未达间隔 $interval，跳过")
                 return
             }
+
+            // 短时冷却（防止同一集内快速重复长按）
             val now = System.currentTimeMillis()
-            if (now - lastDramaClickTime > DRAMA_CLICK_COOLDOWN) {
-                lastDramaClickTime = now
-                pendingEpisode = currentEpisode   // 保存集数，菜单弹出后用它
-                expectingMenuTime = now           // 标记"等菜单出现"
-                DramaDebug.add("短剧页面（集 ${currentEpisode ?: "?"}），长按视频中心唤出菜单")
-                longPressCenter()
-            } else if (diag) {
-                DramaDebug.add("长按冷却中（剩余 ${(DRAMA_CLICK_COOLDOWN - (now - lastDramaClickTime)) / 1000} 秒）")
+            if (now - lastDramaClickTime < 3000) {
+                if (diag) DramaDebug.add("长按冷却中")
+                return
             }
+
+            lastDramaClickTime = now
+            pendingEpisode = currentEpisode
+            pendingEpisodeNum = curNum
+            expectingMenuTime = now
+            DramaDebug.add("短剧页面（集 ${currentEpisode ?: "?"}），长按呼出菜单（间隔 $interval）")
+            longPressCenter()
             return
         }
 
@@ -445,6 +486,13 @@ class AutoClickAccessibilityService : AccessibilityService() {
             }
         }
         return best
+    }
+
+    /** 提取当前集数的数字，如"第43集"→43；找不到返回 null */
+    private fun extractEpisodeNumber(nodes: List<android.view.accessibility.AccessibilityNodeInfo>): Int? {
+        val ep = extractEpisode(nodes) ?: return null
+        val m = Regex("(\\d+)").find(ep) ?: return null
+        return m.groupValues[1].toIntOrNull()
     }
 
     /** 收集所有节点 */

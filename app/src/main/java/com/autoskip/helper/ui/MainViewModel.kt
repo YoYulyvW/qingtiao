@@ -33,6 +33,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val dramaIntervalMs = repo.dramaIntervalMs.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 1000L)
     val dramaTargetSpeed = repo.dramaTargetSpeed.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "3x")
     val dramaDebug = repo.dramaDebug.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+    val dramaImgInterval = repo.dramaImgInterval.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 1)
+    val dramaNormalInterval = repo.dramaNormalInterval.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 5)
 
     private val _learnMode = MutableStateFlow(false)
     val learnMode = _learnMode.asStateFlow()
@@ -62,6 +64,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun setDramaInterval(ms: Long) = viewModelScope.launch { repo.setDramaInterval(ms) }
     fun setDramaTargetSpeed(s: String) = viewModelScope.launch { repo.setDramaTargetSpeed(s) }
     fun setDramaDebug(v: Boolean) = viewModelScope.launch { repo.setDramaDebug(v) }
+    fun setDramaImgInterval(v: Int) = viewModelScope.launch { repo.setDramaImgInterval(v) }
+    fun setDramaNormalInterval(v: Int) = viewModelScope.launch { repo.setDramaNormalInterval(v) }
 
     fun toggleWhitelistPkg(pkg: String) = viewModelScope.launch {
         val cur = repo.whitelistPkgs.first()
