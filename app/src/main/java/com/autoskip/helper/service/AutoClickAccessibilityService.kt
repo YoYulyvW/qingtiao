@@ -130,6 +130,10 @@ class AutoClickAccessibilityService : AccessibilityService() {
                 // 只在抖音系应用生效
                 val pkg = currentRootPackage() ?: continue
                 if (!isDouyin(pkg)) continue
+                // 系统 UI 一律忽略（与规则一致）
+                if (Matcher.isSystemUi(pkg)) continue
+                // 白名单模式：非白名单应用忽略（与规则一致，支持通配符）
+                if (whitelistEnabled && !Matcher.matchesWhitelist(pkg, whitelistPkgs)) continue
                 val now = System.currentTimeMillis()
                 // 心跳：每 5 秒输出一次，证明循环没卡住
                 if (now - lastHeartbeat > 5000) {
