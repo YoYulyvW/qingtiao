@@ -161,6 +161,13 @@ class AutoClickAccessibilityService : AccessibilityService() {
 
     /** 短剧页面核心处理 */
     private suspend fun handleDrama(pkg: String, diag: Boolean) {
+        // ★ 长按后窗口期：完全不碰节点树。
+        //   长按会弹菜单+播放窗口动画，此期间读节点树会与无障碍框架死锁（卡死）。
+        val nowMs = System.currentTimeMillis()
+        if (expectingMenuTime != 0L && nowMs - expectingMenuTime < 4000L) {
+            if (diag) DramaDebug.add("长按后等待窗口稳定（${(nowMs - expectingMenuTime) / 1000} 秒）")
+            return
+        }
         val root = rootInActiveWindow ?: run {
             if (diag) DramaDebug.add("pkg=$pkg 但 root 为空")
             return
@@ -513,16 +520,17 @@ class AutoClickAccessibilityService : AccessibilityService() {
      * 关键：不等待手势回调（回调有时不触发会导致协程永久挂起），
      * 发起手势后固定 delay 等它完成即可。
      */
-    private suspend fun longPressCenter() {
+    private fun longPressCenter() {
         try {
-            val (rw, rh) = realScreenSize()
-            val x = rw * 0.5f
-            val y = rh * 0.5f
+            // 用 displayMetrics（不阻塞），不用 currentWindowMetrics（会与框架死锁）
+            val dm = resources.displayMetrics
+            val x = dm.widthPixels * 0.5f
+            val y = dm.heightPixels * 0.5f
             val path = Path().apply { moveTo(x, y) }
             // 长按 800ms（长按阈值通常 500ms）
             val stroke = GestureDescription.StrokeDescription(path, 0, 800)
             val gesture = GestureDescription.Builder().addStroke(stroke).build()
-            // 用 mainHandler.post 发起手势：不等待回调、不切换协程线程，彻底避免挂起
+            // 主线程发起手势后立即返回，不等待、不 delay
             mainHandler.post {
                 try {
                     dispatchGesture(gesture, null, null)
@@ -530,7 +538,6 @@ class AutoClickAccessibilityService : AccessibilityService() {
                     Log.e(TAG, "dispatchGesture failed", e)
                 }
             }
-            delay(1300)
         } catch (e: Exception) {
             DramaDebug.add("长按失败: ${e.message}")
         }
