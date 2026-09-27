@@ -188,6 +188,18 @@ class AutoClickAccessibilityService : AccessibilityService() {
             try {
                 delay(2000)
                 if (!dramaEnabled) continue
+
+                // ★ 关键：只在抖音系应用里才动作，避免误伤其他 App
+                val pkg = currentRootPackage()
+                if (pkg == null || !isDouyin(pkg)) {
+                    // 不在抖音 → 复位所有状态，绝不按返回键
+                    lastProgressTime = 0
+                    menuVisibleSince = 0
+                    menuClickedTime = 0
+                    expectingMenuTime = 0
+                    continue
+                }
+
                 val now = System.currentTimeMillis()
 
                 // 判据1：主循环超过 6 秒无进展 → 判定卡死，强制恢复
