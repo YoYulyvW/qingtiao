@@ -94,6 +94,13 @@ class AutoClickAccessibilityService : AccessibilityService() {
     /** 卡死看门狗：最近一次"有进展"的时间戳 */
     @Volatile private var lastProgressTime = 0L
 
+    /** 系统UI（多任务中心/桌面）是否在前台。为 true 时暂停所有节点遍历，避免卡顿 */
+    @Volatile private var systemUiForeground = false
+
+    /** 系统UI（多任务中心/桌面）进入前台的时间戳，期间暂停轮询，避免卡顿 */
+    @Volatile private var systemUiForegroundTime = 0L
+    private val SYSTEM_UI_PAUSE_WINDOW = 5000L
+
     // ===== 呼出间隔配置 =====
     @Volatile private var dramaImgInterval = 1     // 「识别图片」版：每N集呼出
     @Volatile private var dramaNormalInterval = 5  // 其他版：每N集呼出
@@ -156,6 +163,8 @@ class AutoClickAccessibilityService : AccessibilityService() {
             try {
                 delay(dramaIntervalMs)
                 if (!dramaEnabled) continue
+                // 系统UI（多任务中心/桌面）前台 → 暂停，避免遍历大节点树卡顿
+                if (systemUiForeground) continue
                 // 只在抖音系应用生效
                 val pkg = currentRootPackage() ?: continue
                 if (!isDouyin(pkg)) continue
@@ -191,6 +200,12 @@ class AutoClickAccessibilityService : AccessibilityService() {
             try {
                 delay(2000)
                 if (!dramaEnabled) continue
+
+                // 系统UI前台 → 暂停，并重置进度时间（避免关闭多任务后误触发）
+                if (systemUiForeground) {
+                    lastProgressTime = System.currentTimeMillis()
+                    continue
+                }
 
                 // ★ 关键：只在抖音系应用里才动作，避免误伤其他 App
                 val pkg = currentRootPackage()
@@ -750,8 +765,14 @@ class AutoClickAccessibilityService : AccessibilityService() {
         val pkg = event.packageName?.toString() ?: return
         if (pkg == packageName) return
 
-        // 系统 UI（多任务中心、桌面、设置等）永不处理
-        if (Matcher.isSystemUi(pkg)) return
+        // 系统 UI 状态检测：多任务中心/桌面在前台时，暂停短剧轮询（避免卡顿）
+        if (Matcher.isSystemUi(pkg)) {
+            systemUiForeground = true
+            return
+        } else if (type == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+            // 非系统 UI 的应用进入前台 → 解除暂停
+            systemUiForeground = false
+        }
 
         // 白名单模式：非白名单应用直接忽略（支持通配符）
         if (whitelistEnabled && !Matcher.matchesWhitelist(pkg, whitelistPkgs)) return
