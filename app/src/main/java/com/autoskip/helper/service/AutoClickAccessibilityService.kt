@@ -101,6 +101,8 @@ class AutoClickAccessibilityService : AccessibilityService() {
     private var lastLongPressEpNum = -1
     /** 本次长按前的集数数字（菜单弹出后用它记录） */
     private var pendingEpisodeNum: Int? = null
+    /** 上次的发布者（@xxx），用于检测新剧 */
+    private var lastAuthor: String? = null
     /** 上次菜单是否是「识别图片」版（决定用哪个间隔） */
     @Volatile private var menuHasImg = false
     /** 菜单关闭看门狗：最近一次检测到菜单存在的时间 */
@@ -331,13 +333,17 @@ class AutoClickAccessibilityService : AccessibilityService() {
             }
 
             val curNum = extractEpisodeNumber(nodes)
+            val curAuthor = extractAuthor(nodes)
 
-            // 新剧检测：集数回退（如 50→1）视为换新剧，重置呼出计数与菜单类型
-            if (curNum != null && lastLongPressEpNum > 0 && curNum < lastLongPressEpNum) {
-                DramaDebug.add("检测到新剧（集数 ${lastLongPressEpNum}→$curNum），重置呼出计数")
+            // 新剧检测：① 集数回退 ② 发布者变化
+            val newByEpisode = curNum != null && lastLongPressEpNum > 0 && curNum < lastLongPressEpNum
+            val newByAuthor = curAuthor != null && lastAuthor != null && curAuthor != lastAuthor
+            if (newByEpisode || newByAuthor) {
+                DramaDebug.add("检测到新剧（${if (newByEpisode) "集数回退" else "发布者变化"}），重置呼出计数")
                 lastLongPressEpNum = -1
-                menuHasImg = false   // 重置菜单类型，避免跨剧残留
+                menuHasImg = false
             }
+            if (curAuthor != null) lastAuthor = curAuthor
 
             // 本次用哪个间隔：上次菜单是"识别图片"版→img间隔，否则→普通间隔
             val interval = if (menuHasImg) dramaImgInterval else dramaNormalInterval
@@ -368,6 +374,8 @@ class AutoClickAccessibilityService : AccessibilityService() {
             pendingEpisode = currentEpisode
             pendingEpisodeNum = curNum
             expectingMenuTime = now
+            // ★ 立即记录本次呼出集数（不等菜单检测，避免窗口期错过导致重复长按）
+            if (curNum != null) lastLongPressEpNum = curNum
             DramaDebug.add("短剧页面（集 ${currentEpisode ?: "?"}），长按呼出菜单（间隔 $interval，${if (menuHasImg) "识别图片版" else "普通版"}）")
             longPressCenter()
             return
@@ -505,6 +513,15 @@ class AutoClickAccessibilityService : AccessibilityService() {
             }
         }
         return best
+    }
+
+    /** 提取发布者（@开头），用于检测新剧 */
+    private fun extractAuthor(nodes: List<android.view.accessibility.AccessibilityNodeInfo>): String? {
+        for (n in nodes) {
+            val t = n.text?.toString()?.trim() ?: continue
+            if (t.startsWith("@") && t.length > 1) return t
+        }
+        return null
     }
 
     /** 提取当前集数的数字，如"第43集"→43；找不到返回 null */
