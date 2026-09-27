@@ -288,7 +288,9 @@ class AutoClickAccessibilityService : AccessibilityService() {
                     clickNode(findClickableAncestor(target) ?: target)
                     if (ep != null) lastSpedEpisode = ep
                 } else {
-                    DramaDebug.add("菜单已弹出，找不到 $menuTarget（或命中黑名单）")
+                    val menuTexts = nodes.mapNotNull { it.text?.toString()?.trim()?.takeIf { t -> t.isNotBlank() } }
+                        .filter { it in setOf("0.75","1.0","1.25","1.5","2.0","3.0") || it.contains("倍速") }
+                    DramaDebug.add("菜单已弹出，找不到 $menuTarget（实际倍速项: ${menuTexts.joinToString(",")}）")
                 }
                 menuClickedTime = System.currentTimeMillis()
                 // 记录本次呼出的集数数字（无论是否点到 3.0，都算呼出过）
@@ -330,10 +332,11 @@ class AutoClickAccessibilityService : AccessibilityService() {
 
             val curNum = extractEpisodeNumber(nodes)
 
-            // 新剧检测：集数回退（如 50→1）视为换新剧，重置呼出计数
+            // 新剧检测：集数回退（如 50→1）视为换新剧，重置呼出计数与菜单类型
             if (curNum != null && lastLongPressEpNum > 0 && curNum < lastLongPressEpNum) {
                 DramaDebug.add("检测到新剧（集数 ${lastLongPressEpNum}→$curNum），重置呼出计数")
                 lastLongPressEpNum = -1
+                menuHasImg = false   // 重置菜单类型，避免跨剧残留
             }
 
             // 本次用哪个间隔：上次菜单是"识别图片"版→img间隔，否则→普通间隔
@@ -365,7 +368,7 @@ class AutoClickAccessibilityService : AccessibilityService() {
             pendingEpisode = currentEpisode
             pendingEpisodeNum = curNum
             expectingMenuTime = now
-            DramaDebug.add("短剧页面（集 ${currentEpisode ?: "?"}），长按呼出菜单（间隔 $interval）")
+            DramaDebug.add("短剧页面（集 ${currentEpisode ?: "?"}），长按呼出菜单（间隔 $interval，${if (menuHasImg) "识别图片版" else "普通版"}）")
             longPressCenter()
             return
         }
@@ -378,6 +381,9 @@ class AutoClickAccessibilityService : AccessibilityService() {
         val mountNode = findDramaMount(nodes)
         if (mountNode != null) {
             DramaDebug.add("短剧挂载: 点击进入 -> ${mountNode.text}")
+            // 进入新剧：重置呼出计数与菜单类型
+            lastLongPressEpNum = -1
+            menuHasImg = false
             clickNode(mountNode)
         } else if (diag) {
             DramaDebug.add("未找到倍速/挂载（pkg=$pkg 节点数 ${nodes.size}）")
