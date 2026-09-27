@@ -251,28 +251,41 @@ class AutoClickAccessibilityService : AccessibilityService() {
     }
 
     /**
-     * 菜单点击后 1 秒检查是否缩回，未缩回则按返回键。
-     * 用固定延时而非轮询，避免菜单短暂重绘导致状态混乱。
+     * 菜单点击后检查是否缩回，未缩回则按返回键。
+     * 循环重试：按返回 → 等 1 秒 → 再检查，最多 3 次，直到菜单消失。
+     * 判断依据：菜单里有"倍速"标题；短剧页面有集数/发布者。
      */
     private fun startMenuCloseCheck() {
         scope.launch {
-            delay(1000)
-            try {
-                val root = rootInActiveWindow
-                if (root != null) {
+            for (attempt in 1..3) {
+                delay(1000)
+                try {
+                    val root = rootInActiveWindow ?: continue
                     val nodes = collectAllNodes(root)
                     val stillHasMenu = nodes.any { it.text?.toString()?.trim() == "倍速" }
-                    if (stillHasMenu) {
-                        DramaDebug.add("菜单1秒未缩回，按返回键")
-                        kotlinx.coroutines.withContext(Dispatchers.Main) {
-                            performGlobalAction(GLOBAL_ACTION_BACK)
-                        }
-                    } else {
-                        DramaDebug.add("菜单已缩回")
+                    if (!stillHasMenu) {
+                        DramaDebug.add("菜单已缩回（第 ${attempt} 次检查）")
+                        menuClickedTime = 0L
+                        return@launch
                     }
+                    // 菜单还在 → 按返回键
+                    DramaDebug.add("菜单未缩回，按返回键（第 $attempt 次）")
+                    kotlinx.coroutines.withContext(Dispatchers.Main) {
+                        performGlobalAction(GLOBAL_ACTION_BACK)
+                    }
+                } catch (e: Exception) {
+                    DramaDebug.add("关闭菜单异常: ${e.message}")
                 }
-            } catch (e: Exception) {
-                DramaDebug.add("关闭菜单异常: ${e.message}")
+            }
+            // 3 次后仍可能没关掉，最后再检查一次
+            delay(1000)
+            val root = rootInActiveWindow
+            val stillHasMenu = root != null &&
+                collectAllNodes(root).any { it.text?.toString()?.trim() == "倍速" }
+            if (stillHasMenu) {
+                DramaDebug.add("重试 3 次菜单仍未缩回")
+            } else {
+                DramaDebug.add("菜单已缩回")
             }
             menuClickedTime = 0L
         }
