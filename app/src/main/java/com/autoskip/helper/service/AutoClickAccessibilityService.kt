@@ -485,30 +485,28 @@ class AutoClickAccessibilityService : AccessibilityService() {
         }
     }
 
-    /** 长按视频中心，唤出倍速菜单 */
+    /**
+     * 长按视频中心，唤出倍速菜单。
+     * 关键：不等待手势回调（回调有时不触发会导致协程永久挂起），
+     * 发起手势后固定 delay 等它完成即可。
+     */
     private suspend fun longPressCenter() {
         try {
             val (rw, rh) = realScreenSize()
-            // 视频正中心，无遮挡
             val x = rw * 0.5f
             val y = rh * 0.5f
             val path = Path().apply { moveTo(x, y) }
             // 长按 800ms（长按阈值通常 500ms）
             val stroke = GestureDescription.StrokeDescription(path, 0, 800)
             val gesture = GestureDescription.Builder().addStroke(stroke).build()
-            // 带超时保护：2 秒未回调就放弃，避免协程永久挂起
-            kotlinx.coroutines.withTimeoutOrNull(2000L) {
-                kotlinx.coroutines.suspendCancellableCoroutine<Unit> { cont ->
-                    dispatchGesture(gesture, object : GestureResultCallback() {
-                        override fun onCompleted(d: GestureDescription?) {
-                            if (cont.isActive) cont.resumeWith(Result.success(Unit))
-                        }
-                        override fun onCancelled(d: GestureDescription?) {
-                            if (cont.isActive) cont.resumeWith(Result.success(Unit))
-                        }
-                    }, null)
-                }
+            // 发起手势后不等待回调，直接等 1200ms（800ms 手势 + 缓冲）
+            val posted = kotlinx.coroutines.withContext(Dispatchers.Main) {
+                dispatchGesture(gesture, null, null)
             }
+            if (!posted) {
+                DramaDebug.add("长按手势派发失败")
+            }
+            delay(1200)
         } catch (e: Exception) {
             DramaDebug.add("长按失败: ${e.message}")
         }
