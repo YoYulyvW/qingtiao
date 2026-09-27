@@ -220,20 +220,16 @@ class AutoClickAccessibilityService : AccessibilityService() {
 
                 val now = System.currentTimeMillis()
 
-                // 判据1：主循环超过 6 秒无进展 → 判定卡死，强制恢复
-                val stuck = lastProgressTime > 0 && now - lastProgressTime > 6000
-                // 判据2：菜单已出现但超过 6 秒未消失
+                // ★ 只在"菜单确实显示"时才动作（menuVisibleSince 由菜单检测到才置位）。
+                //   不再用"主循环无进展"作判据，避免非菜单场景误按返回、退出短剧挂载。
                 val menuTooLong = menuVisibleSince > 0 && now - menuVisibleSince > 6000
 
-                if (stuck || menuTooLong) {
-                    DramaDebug.add(
-                        if (stuck) "看门狗: 主循环卡死>6秒，强制返回键"
-                        else "看门狗: 菜单超过6秒未关，强制返回键"
-                    )
+                if (menuTooLong) {
+                    DramaDebug.add("看门狗: 菜单超过6秒未关，强制返回键")
                     kotlinx.coroutines.withContext(Dispatchers.Main) {
                         performGlobalAction(GLOBAL_ACTION_BACK)
                     }
-                    // 复位所有状态，让主循环重新开始
+                    // 复位状态
                     menuVisibleSince = 0
                     menuClickedTime = 0
                     expectingMenuTime = 0
@@ -339,7 +335,12 @@ class AutoClickAccessibilityService : AccessibilityService() {
             val t = it.text?.toString() ?: ""
             t.contains("集全") || (t.contains("免费") && t.length < 6)
         }
-        if (isDramaPage) {
+        // 短剧播放页顶部【没有"搜索"】（普通视频流有搜索栏）
+        val hasSearch = nodes.any {
+            val t = it.text?.toString()?.trim() ?: ""
+            t == "搜索" || t == "搜你想看的"
+        }
+        if (isDramaPage && !hasSearch) {
             // 已发起长按、正等菜单出现 → 绝不重复长按（避免点到菜单项）
             val now0 = System.currentTimeMillis()
             if (expectingMenuTime != 0L && now0 - expectingMenuTime < EXPECT_MENU_WINDOW) {
