@@ -278,15 +278,66 @@ class AutoClickAccessibilityService : AccessibilityService() {
         }
     }
 
-    /** 提取当前集数标识，如"第1集" */
+    /**
+     * 提取当前集数标识，如"第1集"。
+     * 抖音会预加载相邻集、描述区也可能出现集数，屏幕上可能有多个"第N集"节点。
+     * 策略：优先取【紧跟在发布者(@xxx)下方】的那个（当前集标题位置）；
+     *       找不到发布者时，退化为取可见屏幕内最靠上的。
+     */
     private fun extractEpisode(nodes: List<android.view.accessibility.AccessibilityNodeInfo>): String? {
         val regex = Regex("第\\s*(\\d+)\\s*集")
+        val screenH = resources.displayMetrics.heightPixels
+        val screenW = resources.displayMetrics.widthPixels
+        val rect = android.graphics.Rect()
+
+        // 1) 找发布者节点：@开头，取最靠上的那个
+        var authorBottom = Int.MIN_VALUE
         for (n in nodes) {
             val t = n.text?.toString()?.trim() ?: continue
-            val m = regex.find(t)
-            if (m != null) return "第${m.groupValues[1]}集"
+            if (!t.startsWith("@") || t.length < 2) continue
+            n.getBoundsInScreen(rect)
+            if (rect.bottom <= 0 || rect.top >= screenH) continue
+            if (rect.bottom > authorBottom) authorBottom = rect.bottom
         }
-        return null
+
+        var best: String? = null
+        var bestY = Int.MAX_VALUE
+
+        for (n in nodes) {
+            val t = n.text?.toString()?.trim() ?: continue
+            val m = regex.find(t) ?: continue
+            n.getBoundsInScreen(rect)
+            // 只考虑可见屏幕内
+            if (rect.bottom <= 0 || rect.top >= screenH) continue
+            if (rect.right <= 0 || rect.left >= screenW) continue
+
+            val hasAuthor = authorBottom != Int.MIN_VALUE
+            if (hasAuthor) {
+                // 必须位于发布者下方
+                if (rect.top < authorBottom) continue
+            }
+            // 取最靠上的（离发布者最近）
+            if (rect.top < bestY) {
+                bestY = rect.top
+                best = "第${m.groupValues[1]}集"
+            }
+        }
+
+        // 2) 若按发布者过滤后没结果，退化为可见屏幕内最靠上
+        if (best == null) {
+            for (n in nodes) {
+                val t = n.text?.toString()?.trim() ?: continue
+                val m = regex.find(t) ?: continue
+                n.getBoundsInScreen(rect)
+                if (rect.bottom <= 0 || rect.top >= screenH) continue
+                if (rect.right <= 0 || rect.left >= screenW) continue
+                if (rect.top < bestY) {
+                    bestY = rect.top
+                    best = "第${m.groupValues[1]}集"
+                }
+            }
+        }
+        return best
     }
 
     /** 收集所有节点 */
