@@ -102,6 +102,7 @@ class AutoClickAccessibilityService : AccessibilityService() {
         scope.launch { repo.dramaTapX.collect { dramaTapX = it } }
         scope.launch { repo.dramaTapY.collect { dramaTapY = it } }
         scope.launch { repo.dramaClicks.collect { dramaClicks = it } }
+        scope.launch { repo.dramaDebug.collect { DramaDebug.enabled = it } }
 
         // 启动短剧加速轮询
         scope.launch { dramaLoop() }
@@ -163,34 +164,25 @@ class AutoClickAccessibilityService : AccessibilityService() {
         // 0) 长按菜单是否已弹出？（有"倍速"标题）
         val hasMenu = nodes.any { it.text?.toString()?.trim() == "倍速" }
         if (hasMenu) {
+            // 只在首次看到菜单时处理（menuClickedTime 非 0 表示本次已处理）
             if (menuClickedTime == 0L) {
-                // 首次看到菜单 → 点击目标倍速
                 val menuTarget = speedToMenuText(dramaTargetSpeed)
                 val target = nodes.firstOrNull { it.text?.toString()?.trim() == menuTarget }
                 if (target != null) {
                     val ep = pendingEpisode ?: currentEpisode
                     DramaDebug.add("菜单已弹出: 点击 $menuTarget（集 ${ep ?: "?"}）")
                     clickNode(findClickableAncestor(target) ?: target)
-                    // 记住这一集已切过（用长按前保存的集数）
                     if (ep != null) lastSpedEpisode = ep
                 } else {
                     DramaDebug.add("菜单已弹出，找不到 $menuTarget")
                 }
                 menuClickedTime = System.currentTimeMillis()
-            } else {
-                // 已点过 → 检查菜单是否缩回（1 秒）
-                val elapsed = System.currentTimeMillis() - menuClickedTime
-                if (elapsed > 1000) {
-                    DramaDebug.add("菜单未缩回，按返回键关闭")
-                    performGlobalAction(GLOBAL_ACTION_BACK)
-                    menuClickedTime = 0L
-                } else if (diag) {
-                    DramaDebug.add("等待菜单缩回（已 ${elapsed}ms）")
-                }
+                // 启动"延时关闭检查"（不依赖轮询，更可靠）
+                startMenuCloseCheck()
             }
             return
         } else {
-            // 菜单已消失，重置标记
+            // 菜单已消失
             menuClickedTime = 0L
         }
 
@@ -255,6 +247,34 @@ class AutoClickAccessibilityService : AccessibilityService() {
                 if (info.size >= 40) break
             }
             DramaDebug.add("可见节点(text@Y%): " + info.joinToString(" "))
+        }
+    }
+
+    /**
+     * 菜单点击后 1 秒检查是否缩回，未缩回则按返回键。
+     * 用固定延时而非轮询，避免菜单短暂重绘导致状态混乱。
+     */
+    private fun startMenuCloseCheck() {
+        scope.launch {
+            delay(1000)
+            try {
+                val root = rootInActiveWindow
+                if (root != null) {
+                    val nodes = collectAllNodes(root)
+                    val stillHasMenu = nodes.any { it.text?.toString()?.trim() == "倍速" }
+                    if (stillHasMenu) {
+                        DramaDebug.add("菜单1秒未缩回，按返回键")
+                        kotlinx.coroutines.withContext(Dispatchers.Main) {
+                            performGlobalAction(GLOBAL_ACTION_BACK)
+                        }
+                    } else {
+                        DramaDebug.add("菜单已缩回")
+                    }
+                }
+            } catch (e: Exception) {
+                DramaDebug.add("关闭菜单异常: ${e.message}")
+            }
+            menuClickedTime = 0L
         }
     }
 

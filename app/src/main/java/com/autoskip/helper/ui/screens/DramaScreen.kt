@@ -60,6 +60,7 @@ fun DramaScreen(onBack: () -> Unit, vm: MainViewModel) {
     val autoMount by vm.dramaAutoMount.collectAsState()
     val intervalMs by vm.dramaIntervalMs.collectAsState()
     val targetSpeed by vm.dramaTargetSpeed.collectAsState()
+    val debugEnabled by vm.dramaDebug.collectAsState()
     val debugLogs by com.autoskip.helper.service.DramaDebug.logs.collectAsState()
 
     var serviceOn by remember { mutableStateOf(false) }
@@ -215,14 +216,18 @@ fun DramaScreen(onBack: () -> Unit, vm: MainViewModel) {
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text("识别日志", fontWeight = FontWeight.Bold)
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(if (debugEnabled) "已开启" else "已关闭",
+                                style = MaterialTheme.typography.bodySmall)
+                            Spacer(Modifier.width(6.dp))
+                            Switch(checked = debugEnabled, onCheckedChange = { vm.setDramaDebug(it) })
                             androidx.compose.material3.TextButton(onClick = {
                                 com.autoskip.helper.service.DramaDebug.clear()
                             }) { Text("清空", fontSize = 12.sp) }
                         }
                     }
                     Text(
-                        "每秒检测一次，每 3 秒输出一条诊断。用来查看识别到了什么。",
+                        "开启后才记录识别过程（关闭可省性能）。",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.outline
                     )

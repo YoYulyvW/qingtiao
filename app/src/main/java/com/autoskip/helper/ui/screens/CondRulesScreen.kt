@@ -88,8 +88,7 @@ fun CondRulesScreen(onBack: () -> Unit, vm: MainViewModel) {
                 if (condRules.isEmpty()) {
                     item {
                         Text(
-                            "暂无条件规则。点右下角 + 添加，例如：
-有「登录」且包含「帮助」→ 点图标X",
+                            "暂无条件规则。点右下角 + 添加，例如：有「登录」且包含「帮助」→ 点图标X",
                             style = MaterialTheme.typography.bodySmall
                         )
                     }

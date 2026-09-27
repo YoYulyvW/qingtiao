@@ -33,6 +33,7 @@ class Prefs(private val context: Context) {
     private val KEY_DRAMA_TAPX = stringPreferencesKey("drama_tapx")
     private val KEY_DRAMA_TAPY = stringPreferencesKey("drama_tapy")
     private val KEY_DRAMA_CLICKS = stringPreferencesKey("drama_clicks")
+    private val KEY_DRAMA_DEBUG = booleanPreferencesKey("drama_debug")
 
     val enabled: Flow<Boolean> = context.dataStore.data.map { it[KEY_ENABLED] ?: true }
     val clickDelayMs: Flow<Long> = context.dataStore.data.map { (it[KEY_DELAY] ?: "600").toLongOrNull() ?: 600L }
@@ -103,6 +104,10 @@ class Prefs(private val context: Context) {
     suspend fun setDramaTapX(v: Int) { context.dataStore.edit { it[KEY_DRAMA_TAPX] = v.toString() } }
     suspend fun setDramaTapY(v: Int) { context.dataStore.edit { it[KEY_DRAMA_TAPY] = v.toString() } }
     suspend fun setDramaClicks(v: Int) { context.dataStore.edit { it[KEY_DRAMA_CLICKS] = v.toString() } }
+
+    /** 短剧调试日志开关（默认关） */
+    val dramaDebug: Flow<Boolean> = context.dataStore.data.map { it[KEY_DRAMA_DEBUG] ?: false }
+    suspend fun setDramaDebug(v: Boolean) { context.dataStore.edit { it[KEY_DRAMA_DEBUG] = v } }
 
     suspend fun setDramaEnabled(v: Boolean) { context.dataStore.edit { it[KEY_DRAMA_ENABLED] = v } }
     suspend fun setDramaAutoMount(v: Boolean) { context.dataStore.edit { it[KEY_DRAMA_AUTO_MOUNT] = v } }

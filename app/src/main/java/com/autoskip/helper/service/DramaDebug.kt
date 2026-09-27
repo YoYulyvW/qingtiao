@@ -11,7 +11,11 @@ object DramaDebug {
     private val _logs = MutableStateFlow<List<String>>(emptyList())
     val logs: StateFlow<List<String>> = _logs
 
+    /** 日志开关：关闭时不记录（省性能） */
+    @Volatile var enabled: Boolean = false
+
     fun add(msg: String) {
+        if (!enabled) return
         val ts = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US)
             .format(java.util.Date())
         buffer.addLast("[$ts] $msg")

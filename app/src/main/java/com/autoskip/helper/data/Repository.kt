@@ -33,6 +33,7 @@ class Repository(
     val dramaTapX: Flow<Int> = prefs.dramaTapX
     val dramaTapY: Flow<Int> = prefs.dramaTapY
     val dramaClicks: Flow<Int> = prefs.dramaClicks
+    val dramaDebug: Flow<Boolean> = prefs.dramaDebug
 
     suspend fun addRule(rule: RuleEntity): Long = ruleDao.insert(rule)
 
@@ -78,6 +79,7 @@ class Repository(
     suspend fun setDramaTapX(v: Int) = prefs.setDramaTapX(v)
     suspend fun setDramaTapY(v: Int) = prefs.setDramaTapY(v)
     suspend fun setDramaClicks(v: Int) = prefs.setDramaClicks(v)
+    suspend fun setDramaDebug(v: Boolean) = prefs.setDramaDebug(v)
 
     /**
      * v4 迁移：删除"倍速"类规则（1x/1.25x/1.5x/2x/3x 等），
