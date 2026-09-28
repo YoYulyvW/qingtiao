@@ -340,12 +340,14 @@ class AutoClickAccessibilityService : AccessibilityService() {
             menuClickedTime = 0L
         }
 
-        // 0.5) 暂停恢复：检测到"暂停"控件 → 点击恢复播放
+        // 0.5) 暂停恢复：检测到"暂停"控件 → 坐标点击恢复播放
         if (dramaResumePauseOn) {
             val pauseNode = findPauseControl(nodes)
             if (pauseNode != null) {
-                DramaDebug.add("检测到暂停控件，点击恢复播放")
-                clickNode(pauseNode)
+                val r = android.graphics.Rect()
+                pauseNode.getBoundsInScreen(r)
+                DramaDebug.add("检测到暂停控件，坐标点击恢复播放 (" + r.centerX() + "," + r.centerY() + ")")
+                tapAt(r.centerX().toFloat(), r.centerY().toFloat())
                 return
             }
         }
@@ -612,11 +614,11 @@ class AutoClickAccessibilityService : AccessibilityService() {
      * ★ 只用控件 ID（fb_）识别：正常播放时没有该控件，避免误判导致暂停。
      */
     private fun findPauseControl(nodes: List<android.view.accessibility.AccessibilityNodeInfo>): android.view.accessibility.AccessibilityNodeInfo? {
-        val node = nodes.firstOrNull {
+        // 直接返回 fb_ 节点本身（用其坐标点击，不找可点击祖先）
+        return nodes.firstOrNull {
             val id = it.viewIdResourceName ?: return@firstOrNull false
             id.endsWith("/$PAUSE_ID") || id.endsWith(":$PAUSE_ID")
-        } ?: return null
-        return findClickableAncestor(node) ?: node
+        }
     }
 
     /**
@@ -771,6 +773,20 @@ class AutoClickAccessibilityService : AccessibilityService() {
             node.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK)
         } catch (e: Exception) {
             Log.e(TAG, "clickNode failed", e)
+        }
+    }
+
+    /** 坐标单击（用于响应触摸事件的容器，如抖音暂停按钮） */
+    private fun tapAt(x: Float, y: Float) {
+        try {
+            val path = Path().apply { moveTo(x, y) }
+            val stroke = GestureDescription.StrokeDescription(path, 0, 80)
+            val gesture = GestureDescription.Builder().addStroke(stroke).build()
+            mainHandler.post {
+                try { dispatchGesture(gesture, null, null) } catch (_: Exception) {}
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "tapAt failed", e)
         }
     }
 
