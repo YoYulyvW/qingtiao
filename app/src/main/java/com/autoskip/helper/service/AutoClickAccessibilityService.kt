@@ -163,6 +163,8 @@ class AutoClickAccessibilityService : AccessibilityService() {
         scope.launch(nodeDispatcher) { dramaLoop() }
         // 启动事件处理循环（同上，串行化节点访问）
         scope.launch(nodeDispatcher) { processEventLoop() }
+        // 启动主动兜底轮询：不依赖无障碍事件，定期检查屏幕，防事件流中断导致停摆
+        scope.launch(nodeDispatcher) { screenWatchdog() }
 
         Log.i(TAG, "无障碍服务已连接")
     }
@@ -760,6 +762,24 @@ class AutoClickAccessibilityService : AccessibilityService() {
                 doProcessEvent()
             } catch (e: Exception) {
                 Log.e(TAG, "processEventLoop error", e)
+            }
+        }
+    }
+
+    /**
+     * 主动兜底轮询：不依赖无障碍事件流，每 600ms 主动检查一次屏幕。
+     * 解决"事件流中断导致识别停摆、切前台才恢复"的问题。
+     * 与 processEventLoop 同跑在单线程调度器上，串行执行不冲突（有冷却保护，不会重复点击）。
+     */
+    private suspend fun screenWatchdog() {
+        while (true) {
+            try {
+                delay(600)
+                if (!enabled) continue
+                if (learnCallback != null) continue
+                doProcessEvent()
+            } catch (e: Exception) {
+                Log.e(TAG, "screenWatchdog error", e)
             }
         }
     }
