@@ -839,10 +839,14 @@ class AutoClickAccessibilityService : AccessibilityService() {
             try { result.node.getBoundsInScreen(posRect) } catch (_: Exception) {}
             val signature = pkg + "|" + result.matchedText + "|" + posRect.centerX() + "," + posRect.centerY()
             val nowT = System.currentTimeMillis()
-            // ★ 只有"关闭/拒绝/跳过"类按钮才做重复检测（点完弹窗应消失，重复出现=点击无效）
-            //   "进入类"按钮（如 点击免费看全集）点完页面正常切换，不做重复检测，避免误按返回键
-            val dismissLike = Matcher.isDismissLike(result.matchedText) || Matcher.isDismissLike(result.rule.text)
-            val isRepeat = dismissLike &&
+            // ★ 严格管控：满足全部条件才做"重复→返回键"兜底
+            //   1. 匹配到的文字属于"关闭/拒绝/跳过"类（精确匹配）
+            //   2. 节点本身真的可点击（排除页面上的普通文字节点）
+            //   3. 同一签名 3 秒内重复出现
+            val dismissLike = Matcher.isDismissLike(result.matchedText) ||
+                Matcher.isDismissLike(result.rule.text)
+            val reallyClickable = try { result.node.isClickable } catch (_: Exception) { false }
+            val isRepeat = dismissLike && reallyClickable &&
                 signature == lastPopupSignature && (nowT - lastPopupTime) < REPEAT_WINDOW
 
             if (isRepeat) {

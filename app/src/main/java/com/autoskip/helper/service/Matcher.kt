@@ -56,11 +56,14 @@ object Matcher {
         "close", "skip", "×", "✕", "✖"
     )
 
-    /** 判断文本是否属于"关闭/拒绝/跳过"类（点完弹窗应消失） */
+    /**
+     * 判断文本是否属于"关闭/拒绝/跳过"类（点完弹窗应消失）。
+     * 严格精确匹配（trim 后完全相等），避免页面出现"跳过/关闭"等普通文字被误判。
+     */
     fun isDismissLike(text: String?): Boolean {
         if (text.isNullOrBlank()) return false
         val t = text.trim()
-        return DISMISS_LIKE_TEXTS.any { t.equals(it, ignoreCase = true) || t.contains(it, ignoreCase = true) }
+        return DISMISS_LIKE_TEXTS.any { t.equals(it, ignoreCase = true) }
     }
 
     /** contentDescription 中含这些词，视为"关闭图标"（兜底） */
