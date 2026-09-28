@@ -163,13 +163,12 @@ class AutoClickAccessibilityService : AccessibilityService() {
             try {
                 delay(dramaIntervalMs)
                 if (!dramaEnabled) continue
-                // 系统UI（多任务中心/桌面）前台 → 暂停，避免遍历大节点树卡顿
-                if (systemUiForeground) continue
-                // 只在抖音系应用生效（用前台窗口包名判断，可靠）
+                // 只用"当前前台窗口"判断，无状态、绝不卡住
                 val pkg = currentRootPackage() ?: continue
-                if (!isDouyin(pkg)) continue
-                // 系统 UI 一律忽略（与规则一致）
+                // 前台是系统UI（桌面/多任务）→ 跳过这轮
                 if (Matcher.isSystemUi(pkg)) continue
+                // 非抖音系 → 跳过
+                if (!isDouyin(pkg)) continue
                 // 白名单模式：非白名单应用忽略（与规则一致，支持通配符）
                 if (whitelistEnabled && !Matcher.matchesWhitelist(pkg, whitelistPkgs)) continue
                 val now = System.currentTimeMillis()
@@ -201,15 +200,9 @@ class AutoClickAccessibilityService : AccessibilityService() {
                 delay(2000)
                 if (!dramaEnabled) continue
 
-                // 系统UI前台 → 暂停，并重置进度时间（避免关闭多任务后误触发）
-                if (systemUiForeground) {
-                    lastProgressTime = System.currentTimeMillis()
-                    continue
-                }
-
-                // ★ 关键：只在抖音系应用里才动作，避免误伤其他 App
+                // ★ 关键：只在前台是抖音系应用里才动作（无状态判断，避免卡住）
                 val pkg = currentRootPackage()
-                if (pkg == null || !isDouyin(pkg)) {
+                if (pkg == null || !isDouyin(pkg) || Matcher.isSystemUi(pkg)) {
                     // 不在抖音 → 复位所有状态，绝不按返回键
                     lastProgressTime = 0
                     menuVisibleSince = 0
