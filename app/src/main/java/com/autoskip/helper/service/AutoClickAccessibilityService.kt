@@ -166,6 +166,9 @@ class AutoClickAccessibilityService : AccessibilityService() {
         // 启动主动兜底轮询：不依赖无障碍事件，定期检查屏幕，防事件流中断导致停摆
         scope.launch(nodeDispatcher) { screenWatchdog() }
 
+        // 启动前台保活服务（提升进程优先级，防被系统冻结）
+        runCatching { KeepAliveService.start(this) }
+
         Log.i(TAG, "无障碍服务已连接")
     }
 
