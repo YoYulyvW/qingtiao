@@ -165,8 +165,7 @@ class Repository(
                 else -> it
             }
         }
-        return condRuleDao.all().joinToString("
-") { r ->
+        return condRuleDao.all().joinToString("\n") { r ->
             listOf(
                 r.name,
                 r.hasText,
@@ -192,8 +191,7 @@ class Repository(
         var added = 0
         var skipped = 0
         var failed = 0
-        text.split("
-").forEach { raw ->
+        text.split("\n").forEach { raw ->
             val line = raw.trim()
             if (line.isBlank() || line.startsWith("#")) return@forEach
             val parts = line.split("|")
