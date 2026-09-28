@@ -119,6 +119,10 @@ class AutoClickAccessibilityService : AccessibilityService() {
     /** 条件规则延时检测：记录已触发待确认的规则（签名 -> 触发时间） */
     private val pendingCondRules = HashMap<String, Long>()
 
+    /** 条件规则冷却：规则id -> 上次执行时间。防返回键后页面动画期间被重复触发。 */
+    private val condRuleLastFire = HashMap<String, Long>()
+    private val COND_FIRE_COOLDOWN = 2500L
+
     // ===== 呼出间隔配置 =====
     @Volatile private var dramaImgInterval = 1     // 「识别图片」版：每N集呼出
     @Volatile private var dramaNormalInterval = 5  // 其他版：每N集呼出
@@ -667,15 +671,14 @@ class AutoClickAccessibilityService : AccessibilityService() {
             val density = dm.density
             val screenW = dm.widthPixels
             val screenH = dm.heightPixels
-            val cx = screenW * 0.5f
-            // Y 基准：中心上移 80dp
+            // ★ X 限制在屏幕左侧 15%~55% 区域，避开右侧互动栏/头像/分享栏
+            val minX = screenW * 0.15f
+            val maxX = screenW * 0.55f
+            val x = minX + Math.random().toFloat() * (maxX - minX)
+            // Y：中心上移 80dp，±50dp 随机
             val cyBase = screenH * 0.5f - 80f * density
-            // X：中心 ±200dp 随机；Y：基准 ±50dp 随机
-            val randX = (Math.random() * 2 - 1).toFloat() * 200f * density
             val randY = (Math.random() * 2 - 1).toFloat() * 50f * density
-            // ★ 钳制到屏幕内（留 20px 边距），避免负坐标或越界导致手势派发失败
             val margin = 20f
-            val x = (cx + randX).coerceIn(margin, screenW - margin)
             val y = (cyBase + randY).coerceIn(margin, screenH - margin)
             DramaDebug.add("长按位置: (${x.toInt()},${y.toInt()})")
             val path = Path().apply { moveTo(x, y) }
@@ -807,6 +810,10 @@ class AutoClickAccessibilityService : AccessibilityService() {
                 val rule = cond.rule
                 val key = rule.id.toString()
                 val nowC = System.currentTimeMillis()
+                // ★ 冷却：刚执行过的规则，2.5秒内不再触发（防返回键后动画期间重复）
+                if (nowC - (condRuleLastFire[key] ?: 0L) < COND_FIRE_COOLDOWN) {
+                    return
+                }
                 if (rule.delaySec <= 0) {
                     pendingCondRules.remove(key)
                     performCondAction(cond, pkg)
@@ -910,6 +917,7 @@ class AutoClickAccessibilityService : AccessibilityService() {
     /** 执行条件规则的动作 */
     private fun performCondAction(cond: CondMatchResult, pkg: String) {
         lastClickTime = System.currentTimeMillis()
+        condRuleLastFire[cond.rule.id.toString()] = System.currentTimeMillis()   // ★ 记录冷却
         mainHandler.postDelayed({
             try {
                 when (cond.actionType) {
