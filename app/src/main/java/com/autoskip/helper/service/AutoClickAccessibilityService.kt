@@ -603,21 +603,14 @@ class AutoClickAccessibilityService : AccessibilityService() {
 
     /**
      * 找"暂停"控件（点击恢复播放）。
-     * 控件 ID fb_，或多处 contentDescription 含"暂停"。
+     * ★ 只用控件 ID（fb_）识别：正常播放时没有该控件，避免误判导致暂停。
      */
     private fun findPauseControl(nodes: List<android.view.accessibility.AccessibilityNodeInfo>): android.view.accessibility.AccessibilityNodeInfo? {
-        // 优先按 ID
-        nodes.firstOrNull {
+        val node = nodes.firstOrNull {
             val id = it.viewIdResourceName ?: return@firstOrNull false
             id.endsWith("/$PAUSE_ID") || id.endsWith(":$PAUSE_ID")
-        }?.let { return findClickableAncestor(it) ?: it }
-        // 备用：描述/文字含"暂停"
-        nodes.firstOrNull {
-            val d = it.contentDescription?.toString() ?: ""
-            val t = it.text?.toString() ?: ""
-            d.contains("暂停") || t == "暂停"
-        }?.let { return findClickableAncestor(it) ?: it }
-        return null
+        } ?: return null
+        return findClickableAncestor(node) ?: node
     }
 
     /**
