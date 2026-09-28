@@ -87,6 +87,25 @@ class Repository(
                 andText = "作品|粉丝",
                 actionType = CondAction.BACK,
                 delaySec = 3
+            ),
+            // 以下为原 Matcher 硬编码的"登录上下文→点图标X"，改为可见条件规则
+            CondRuleEntity(
+                name = "登录→点X",
+                hasText = "登录",
+                actionType = CondAction.CLICK_ICON,
+                delaySec = 0
+            ),
+            CondRuleEntity(
+                name = "验证码→点X",
+                hasText = "验证码",
+                actionType = CondAction.CLICK_ICON,
+                delaySec = 0
+            ),
+            CondRuleEntity(
+                name = "注册→点X",
+                hasText = "注册",
+                actionType = CondAction.CLICK_ICON,
+                delaySec = 0
             )
         )
         defaults.forEach { r ->

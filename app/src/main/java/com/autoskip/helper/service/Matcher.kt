@@ -190,81 +190,10 @@ object Matcher {
             }
         }
 
-        // 第二轮（兜底）：严格模式 + 有登录上下文 → 尝试点纯图标 X
-        if (strictClose && loginCtx) {
-            return matchIconClose(root, candidates)
-        }
+        // 第二轮（兜底）已移除：
+        // 原"登录上下文→点纯图标X"逻辑改为「条件规则」（有登录→点图标X），
+        // 用户可在条件规则页查看、修改、启停。
         return null
-    }
-
-    /**
-     * 兜底匹配：在登录/广告弹窗中，找到"关闭图标"并点击。
-     * 不限制位置（右上角、中心右侧均可），依据：无文字 + 尺寸较小 + 接近方形。
-     */
-    private fun matchIconClose(
-        root: AccessibilityNodeInfo,
-        candidates: List<AccessibilityNodeInfo>
-    ): MatchResult? {
-        // 1. 优先：contentDescription 明确含"关闭/close/返回"等
-        for (node in candidates) {
-            val desc = node.contentDescription?.toString() ?: continue
-            if (CLOSE_DESCRIPTIONS.any { desc.contains(it, ignoreCase = true) }) {
-                val clickable = findClickable(node)
-                if (clickable != null && clickable.isEnabled) {
-                    return buildIconResult(clickable, "[关闭图标]")
-                }
-            }
-        }
-
-        // 2. 其次：无文字、无描述的小图标（放宽条件，优先靠屏幕上方/左右角）
-        val screen = Rect()
-        root.getBoundsInScreen(screen)
-        val screenW = screen.width()
-        val screenH = screen.height()
-        val maxW = (screenW * 0.25).toInt()
-        val maxH = (screenH * 0.15).toInt()
-        val minSize = 20
-
-        var best: AccessibilityNodeInfo? = null
-        var bestScore = Double.MAX_VALUE
-        val rect = Rect()
-
-        for (node in candidates) {
-            val t = node.text?.toString()
-            val d = node.contentDescription?.toString()
-            // 只考虑无文字、无描述的节点（图标）
-            if (!t.isNullOrBlank() || !d.isNullOrBlank()) continue
-            // 图标通常无子节点；放宽到 ≤2（部分包一层）
-            if (node.childCount > 2) continue
-
-            node.getBoundsInScreen(rect)
-            val w = rect.width()
-            val h = rect.height()
-            if (w < minSize || h < minSize) continue
-            if (w > maxW || h > maxH) continue
-
-            val ratio = if (w > h) w.toDouble() / h else h.toDouble() / w
-            if (ratio > 2.5) continue // 太扁长的不是图标
-
-            // 自身可点击 或 祖先可点击 都算
-            val clickTarget = findClickable(node) ?: continue
-            if (!clickTarget.isEnabled) continue
-
-            // 评分：越靠上、越靠屏幕左右边缘、越接近方形 → 越像关闭图标
-            val cx = rect.centerX()
-            val cy = rect.centerY()
-            val distToEdge = minOf(cx, screenW - cx)   // 距左右边缘距离
-            val score = (cy.toDouble() / screenH) * 1000 +   // 越靠上越好（cy 小）
-                        (distToEdge.toDouble() / screenW) * 500 +  // 越靠边越好（distToEdge 小）
-                        ratio * 100 + w + h
-            if (score < bestScore) {
-                bestScore = score
-                best = clickTarget
-            }
-        }
-
-        val target = best ?: return null
-        return buildIconResult(target, "[图标关闭]")
     }
 
     /**
@@ -382,12 +311,6 @@ object Matcher {
             }
         }
         return best
-    }
-
-    /** 用虚拟规则包装图标点击结果（id = -1，不参与规则命中统计） */
-    private fun buildIconResult(node: AccessibilityNodeInfo, label: String): MatchResult {
-        val rule = RuleEntity(id = -1L, name = label, text = label)
-        return MatchResult(node, rule, label)
     }
 
     /** 向上查找可点击的祖先节点（含自身） */
