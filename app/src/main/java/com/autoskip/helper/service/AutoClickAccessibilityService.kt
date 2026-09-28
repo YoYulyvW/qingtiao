@@ -798,6 +798,35 @@ class AutoClickAccessibilityService : AccessibilityService() {
         if (whitelistEnabled && !Matcher.matchesWhitelist(pkg, whitelistPkgs)) return
 
         val root = rootInActiveWindow ?: return
+
+        // ★ 退出短剧全暂停：检测到「退出短剧 / 返回并退出」时，暂停所有操作
+        //   （短剧长按、倍数选择、条件规则、普通规则），直至恢复正常短剧页。
+        val exitNodes = collectAllNodes(root)
+        val hasExitDrama = exitNodes.any {
+            val t = it.text?.toString()?.trim() ?: ""
+            t == "退出短剧" || t == "返回并退出"
+        }
+        if (hasExitDrama) {
+            if (!exitDramaPaused) {
+                exitDramaPaused = true
+                DramaDebug.add("检测到「退出短剧」弹窗，暂停所有操作")
+            }
+            return
+        }
+        if (exitDramaPaused) {
+            // 恢复正常短剧页（出现 集 / 全 / 免费）→ 解除暂停
+            val resumed = exitNodes.any {
+                val t = it.text?.toString() ?: ""
+                Regex("第\\s*\\d+\\s*集").containsMatchIn(t) || t.contains("集全") || t.contains("免费")
+            }
+            if (resumed) {
+                exitDramaPaused = false
+                DramaDebug.add("短剧页面已恢复，继续工作")
+            } else {
+                return   // 仍在退出页/过渡页，继续暂停一切
+            }
+        }
+
         val now = System.currentTimeMillis()
         if (now - lastClickTime < CLICK_COOLDOWN) return
 
