@@ -283,12 +283,22 @@ class AutoClickAccessibilityService : AccessibilityService() {
         }
         val nodes = collectAllNodes(root)
 
-        // ★ "退出短剧"页面：暂停所有动作，直到恢复正常短剧页
+        // ★ "退出短剧"弹窗：自动点「返回并退出」，然后暂停所有动作
         val hasExitDrama = nodes.any { it.text?.toString()?.trim() == "退出短剧" }
         if (hasExitDrama) {
             if (!exitDramaPaused) {
                 exitDramaPaused = true
-                DramaDebug.add("检测到「退出短剧」页面，暂停所有动作")
+                // 找「返回并退出」按钮并点击
+                val exitBtn = nodes.firstOrNull {
+                    val t = it.text?.toString()?.trim() ?: ""
+                    t == "返回并退出" || t == "退出并返回" || t == "确认退出"
+                }
+                if (exitBtn != null) {
+                    DramaDebug.add("检测到「退出短剧」，点击「${exitBtn.text}」")
+                    clickNode(findClickableAncestor(exitBtn) ?: exitBtn)
+                } else {
+                    DramaDebug.add("检测到「退出短剧」弹窗，但未找到「返回并退出」按钮")
+                }
             }
             return
         }
