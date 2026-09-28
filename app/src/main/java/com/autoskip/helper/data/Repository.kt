@@ -89,7 +89,7 @@ class Repository(
             CondRuleEntity(
                 name = "推荐+分享到日常/举报→返回",
                 hasText = "推荐",
-                andText = "分享到日常|转发到日常|举报",
+                andText = "转发到日常|举报",
                 actionType = CondAction.BACK,
                 delaySec = 3
             ),

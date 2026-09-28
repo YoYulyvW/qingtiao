@@ -730,7 +730,9 @@ class AutoClickAccessibilityService : AccessibilityService() {
         if (now - lastClickTime < CLICK_COOLDOWN) return
 
         // 0) 条件规则优先（更具体："有X且Y→动作"）
-        if (cachedCondRules.isNotEmpty()) {
+        //   ★ 严格限制：仅抖音系 或 白名单内应用才执行，避免在其它界面误触发返回
+        val condAllowed = isDouyin(pkg) || Matcher.matchesWhitelist(pkg, whitelistPkgs)
+        if (cachedCondRules.isNotEmpty() && condAllowed) {
             val cond = Matcher.matchCondRule(root, cachedCondRules, pkg)
             if (cond != null) {
                 val rule = cond.rule
@@ -813,16 +815,24 @@ class AutoClickAccessibilityService : AccessibilityService() {
         scope.launch {
             delay(delaySec * 1000L)
             try {
-                val startTime = pendingCondRules[key] ?: return@launch
                 // 若等待期间条件已消失（被清理），放弃
                 if (!pendingCondRules.containsKey(key)) return@launch
+                // ★ 延时结束时前台必须仍是抖音系/白名单，否则放弃
+                val curPkg = currentRootPackage()
+                val stillAllowed = curPkg != null &&
+                    (isDouyin(curPkg) || Matcher.matchesWhitelist(curPkg, whitelistPkgs))
+                if (!stillAllowed) {
+                    pendingCondRules.remove(key)
+                    DramaDebug.add("条件规则延时结束但已切出抖音，放弃")
+                    return@launch
+                }
                 val root = rootInActiveWindow
                 if (root == null) {
                     pendingCondRules.remove(key)
                     return@launch
                 }
-                // 重新匹配该规则
-                val again = Matcher.matchCondRule(root, listOf(rule), pkg)
+                // 重新匹配该规则（用延时结束时的实际前台包名）
+                val again = Matcher.matchCondRule(root, listOf(rule), curPkg)
                 pendingCondRules.remove(key)
                 if (again != null) {
                     DramaDebug.add("条件规则延时 ${delaySec} 秒后仍存在，执行动作")
