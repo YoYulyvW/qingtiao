@@ -36,6 +36,9 @@ class Prefs(private val context: Context) {
     private val KEY_DRAMA_DEBUG = booleanPreferencesKey("drama_debug")
     private val KEY_DRAMA_IMG_INT = stringPreferencesKey("drama_img_int")
     private val KEY_DRAMA_NORMAL_INT = stringPreferencesKey("drama_normal_int")
+    private val KEY_DRAMA_WATCHDOG = booleanPreferencesKey("drama_watchdog")
+    private val KEY_DRAMA_LONGPRESS = booleanPreferencesKey("drama_longpress")
+    private val KEY_DRAMA_CLICKSPEED = booleanPreferencesKey("drama_clickspeed")
 
     val enabled: Flow<Boolean> = context.dataStore.data.map { it[KEY_ENABLED] ?: true }
     val clickDelayMs: Flow<Long> = context.dataStore.data.map { (it[KEY_DELAY] ?: "600").toLongOrNull() ?: 600L }
@@ -118,6 +121,16 @@ class Prefs(private val context: Context) {
     /** 其他版菜单的呼出间隔（集数），默认 5 */
     val dramaNormalInterval: Flow<Int> = context.dataStore.data.map { it[KEY_DRAMA_NORMAL_INT]?.toIntOrNull() ?: 5 }
     suspend fun setDramaNormalInterval(v: Int) { context.dataStore.edit { it[KEY_DRAMA_NORMAL_INT] = v.toString() } }
+
+    /** 看门狗开关（菜单超时自动关闭），默认开 */
+    val dramaWatchdog: Flow<Boolean> = context.dataStore.data.map { it[KEY_DRAMA_WATCHDOG] ?: true }
+    suspend fun setDramaWatchdog(v: Boolean) { context.dataStore.edit { it[KEY_DRAMA_WATCHDOG] = v } }
+    /** 自动长按开关，默认开 */
+    val dramaLongPress: Flow<Boolean> = context.dataStore.data.map { it[KEY_DRAMA_LONGPRESS] ?: true }
+    suspend fun setDramaLongPress(v: Boolean) { context.dataStore.edit { it[KEY_DRAMA_LONGPRESS] = v } }
+    /** 自动点击倍数开关，默认开 */
+    val dramaClickSpeed: Flow<Boolean> = context.dataStore.data.map { it[KEY_DRAMA_CLICKSPEED] ?: true }
+    suspend fun setDramaClickSpeed(v: Boolean) { context.dataStore.edit { it[KEY_DRAMA_CLICKSPEED] = v } }
 
     suspend fun setDramaEnabled(v: Boolean) { context.dataStore.edit { it[KEY_DRAMA_ENABLED] = v } }
     suspend fun setDramaAutoMount(v: Boolean) { context.dataStore.edit { it[KEY_DRAMA_AUTO_MOUNT] = v } }

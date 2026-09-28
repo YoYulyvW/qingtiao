@@ -36,6 +36,9 @@ class Repository(
     val dramaDebug: Flow<Boolean> = prefs.dramaDebug
     val dramaImgInterval: Flow<Int> = prefs.dramaImgInterval
     val dramaNormalInterval: Flow<Int> = prefs.dramaNormalInterval
+    val dramaWatchdog: Flow<Boolean> = prefs.dramaWatchdog
+    val dramaLongPress: Flow<Boolean> = prefs.dramaLongPress
+    val dramaClickSpeed: Flow<Boolean> = prefs.dramaClickSpeed
 
     suspend fun addRule(rule: RuleEntity): Long = ruleDao.insert(rule)
 
@@ -84,6 +87,9 @@ class Repository(
     suspend fun setDramaDebug(v: Boolean) = prefs.setDramaDebug(v)
     suspend fun setDramaImgInterval(v: Int) = prefs.setDramaImgInterval(v)
     suspend fun setDramaNormalInterval(v: Int) = prefs.setDramaNormalInterval(v)
+    suspend fun setDramaWatchdog(v: Boolean) = prefs.setDramaWatchdog(v)
+    suspend fun setDramaLongPress(v: Boolean) = prefs.setDramaLongPress(v)
+    suspend fun setDramaClickSpeed(v: Boolean) = prefs.setDramaClickSpeed(v)
 
     /**
      * v4 迁移：删除"倍速"类规则（1x/1.25x/1.5x/2x/3x 等），

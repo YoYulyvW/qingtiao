@@ -11,8 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -24,6 +22,7 @@ import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -63,6 +62,9 @@ fun DramaScreen(onBack: () -> Unit, vm: MainViewModel) {
     val debugEnabled by vm.dramaDebug.collectAsState()
     val imgInterval by vm.dramaImgInterval.collectAsState()
     val normalInterval by vm.dramaNormalInterval.collectAsState()
+    val watchdogOn by vm.dramaWatchdog.collectAsState()
+    val longPressOn by vm.dramaLongPress.collectAsState()
+    val clickSpeedOn by vm.dramaClickSpeed.collectAsState()
     val debugLogs by com.autoskip.helper.service.DramaDebug.logs.collectAsState()
 
     var serviceOn by remember { mutableStateOf(false) }
@@ -95,225 +97,133 @@ fun DramaScreen(onBack: () -> Unit, vm: MainViewModel) {
                 .fillMaxSize()
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            // 无障碍状态
+            // 无障碍状态（紧凑）
             Card(
                 Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(12.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = if (serviceOn) MaterialTheme.colorScheme.primaryContainer
                     else MaterialTheme.colorScheme.errorContainer
                 )
             ) {
-                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         if (serviceOn) Icons.Filled.CheckCircle else Icons.Filled.Warning,
-                        contentDescription = null
+                        contentDescription = null,
+                        modifier = Modifier.width(20.dp)
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
                         if (serviceOn) "无障碍服务已开启" else "需要先开启无障碍服务",
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold, fontSize = 14.sp
                     )
                 }
             }
 
-            // 总开关
-            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
-                Row(
-                    Modifier.fillMaxWidth().padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text("自动倍速总开关", fontWeight = FontWeight.Bold)
-                        Text(
-                            "开启后，在抖音短剧中自动把倍速切到你设定的值。",
-                            style = MaterialTheme.typography.bodySmall
-                        )
+            // 主开关组
+            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
+                Column {
+                    SwitchRow("自动倍速总开关", "抖音短剧中自动切到目标倍速", dramaEnabled, 14.dp) {
+                        vm.setDramaEnabled(it)
                     }
-                    Switch(checked = dramaEnabled, onCheckedChange = { vm.setDramaEnabled(it) })
+                    Divider(Modifier.padding(horizontal = 14.dp))
+                    SwitchRow("自动进入短剧", "识别「短剧｜xxx」挂载并点进去", autoMount, 14.dp) {
+                        vm.setDramaAutoMount(it)
+                    }
                 }
             }
 
-            // 自动挂载
-            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
-                Row(
-                    Modifier.fillMaxWidth().padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text("自动进入短剧", fontWeight = FontWeight.Bold)
-                        Text(
-                            "在普通视频流中自动识别「短剧｜xxx」挂载并点进去。关闭则只在你手动进入短剧后加速。",
-                            style = MaterialTheme.typography.bodySmall
-                        )
+            // 功能开关组
+            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
+                Column {
+                    SwitchRow("自动长按", "长按视频呼出倍速菜单", longPressOn, 14.dp) {
+                        vm.setDramaLongPress(it)
                     }
-                    Switch(checked = autoMount, onCheckedChange = { vm.setDramaAutoMount(it) })
+                    Divider(Modifier.padding(horizontal = 14.dp))
+                    SwitchRow("自动点击倍数", "菜单里自动点目标倍速", clickSpeedOn, 14.dp) {
+                        vm.setDramaClickSpeed(it)
+                    }
+                    Divider(Modifier.padding(horizontal = 14.dp))
+                    SwitchRow("看门狗", "菜单超时未关时自动返回键", watchdogOn, 14.dp) {
+                        vm.setDramaWatchdog(it)
+                    }
                 }
             }
 
             // 目标倍速
-            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
-                Column(Modifier.padding(16.dp)) {
-                    Text("目标倍速", fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        "可选 0.75x / 1x / 1.25x / 1.5x / 2x / 3x。推荐 3x。",
-                        style = MaterialTheme.typography.bodySmall
-                    )
+            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
+                Column(Modifier.padding(14.dp)) {
+                    Text("目标倍速", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     Spacer(Modifier.height(8.dp))
-                    val row1 = listOf("0.75x", "1x", "1.25x")
-                    val row2 = listOf("1.5x", "2x", "3x")
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            row1.forEach { s -> SpeedChip(s, targetSpeed) { vm.setDramaTargetSpeed(s) } }
-                        }
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            row2.forEach { s -> SpeedChip(s, targetSpeed) { vm.setDramaTargetSpeed(s) } }
-                        }
+                    val speeds = listOf("0.75x", "1x", "1.25x", "1.5x", "2x", "3x")
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        speeds.forEach { s -> SpeedChip(s, targetSpeed, Modifier.weight(1f)) { vm.setDramaTargetSpeed(s) } }
                     }
                 }
             }
 
             // 呼出间隔
-            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
-                Column(Modifier.padding(16.dp)) {
-                    Text("菜单呼出间隔（按集数）", fontWeight = FontWeight.Bold)
-                    Text(
-                        "每 N 集呼出一次菜单设置倍速。新剧第 1 集总会呼出。",
-                        style = MaterialTheme.typography.bodySmall
-                    )
+            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
+                Column(Modifier.padding(14.dp)) {
+                    Text("菜单呼出间隔（按集数）", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     Spacer(Modifier.height(8.dp))
-
-                    // 识别图片版
-                    var imgText by remember { mutableStateOf(imgInterval.toString()) }
-                    LaunchedEffect(imgInterval) { imgText = imgInterval.toString() }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("识别图片版", Modifier.width(100.dp))
-                        OutlinedTextField(
-                            value = imgText,
-                            onValueChange = {
-                                imgText = it
-                                it.toIntOrNull()?.let { v -> if (v in 1..50) vm.setDramaImgInterval(v) }
-                            },
-                            singleLine = true,
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(10.dp),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                        )
+                    CompactNumField("识别图片版", imgInterval.toString()) { v ->
+                        if (v in 1..50) vm.setDramaImgInterval(v)
                     }
                     Spacer(Modifier.height(8.dp))
-
-                    // 其他版
-                    var normalText by remember { mutableStateOf(normalInterval.toString()) }
-                    LaunchedEffect(normalInterval) { normalText = normalInterval.toString() }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("其他菜单版", Modifier.width(100.dp))
-                        OutlinedTextField(
-                            value = normalText,
-                            onValueChange = {
-                                normalText = it
-                                it.toIntOrNull()?.let { v -> if (v in 1..50) vm.setDramaNormalInterval(v) }
-                            },
-                            singleLine = true,
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(10.dp),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                        )
+                    CompactNumField("其他菜单版", normalInterval.toString()) { v ->
+                        if (v in 1..50) vm.setDramaNormalInterval(v)
                     }
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        "默认：识别图片版 1（每集），其他版 5（隔5集）",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.outline
-                    )
                 }
             }
 
             // 检测间隔
-            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
-                Column(Modifier.padding(16.dp)) {
-                    Text("检测间隔", fontWeight = FontWeight.Bold)
-                    Text(
-                        "越小越灵敏，推荐 500~1000 毫秒。",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    var intervalText by remember { mutableStateOf(intervalMs.toString()) }
-                    LaunchedEffect(intervalMs) { intervalText = intervalMs.toString() }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        OutlinedTextField(
-                            value = intervalText,
-                            onValueChange = {
-                                intervalText = it
-                                it.toLongOrNull()?.let { ms ->
-                                    if (ms in 200..5000) vm.setDramaInterval(ms)
-                                }
-                            },
-                            label = { Text("毫秒") },
-                            singleLine = true,
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(10.dp),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                        )
+            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
+                Column(Modifier.padding(14.dp)) {
+                    CompactNumField("检测间隔(ms)", intervalMs.toString()) { v ->
+                        if (v in 200..5000) vm.setDramaInterval(v.toLong())
                     }
                 }
             }
 
-            // 调试日志
-            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
-                Column(Modifier.padding(16.dp)) {
+            // 识别日志
+            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
+                Column(Modifier.padding(14.dp)) {
                     Row(
                         Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("识别日志", fontWeight = FontWeight.Bold)
+                        Text("识别日志", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(if (debugEnabled) "已开启" else "已关闭",
-                                style = MaterialTheme.typography.bodySmall)
-                            Spacer(Modifier.width(6.dp))
                             Switch(checked = debugEnabled, onCheckedChange = { vm.setDramaDebug(it) })
-                            androidx.compose.material3.TextButton(onClick = {
+                            TextButton(onClick = {
                                 com.autoskip.helper.service.DramaDebug.clear()
                             }) { Text("清空", fontSize = 12.sp) }
                         }
                     }
-                    Text(
-                        "开启后才记录识别过程（关闭可省性能）。",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.outline
-                    )
-                    Spacer(Modifier.height(8.dp))
-
+                    Spacer(Modifier.height(6.dp))
                     if (debugLogs.isEmpty()) {
-                        Text("暂无日志。开启总开关后，在抖音里会自动输出。",
-                            style = MaterialTheme.typography.bodySmall,
+                        Text("暂无日志", style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.outline)
                     } else {
                         Box(
                             Modifier
                                 .fillMaxWidth()
                                 .height(200.dp)
-                                .background(
-                                    MaterialTheme.colorScheme.surfaceVariant,
-                                    RoundedCornerShape(8.dp)
-                                )
+                                .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
                         ) {
                             androidx.compose.foundation.lazy.LazyColumn(
                                 Modifier.fillMaxSize().padding(8.dp)
                             ) {
                                 items(debugLogs.reversed()) { line ->
-                                    Text(
-                                        line,
-                                        fontSize = 11.sp,
+                                    Text(line, fontSize = 11.sp,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.padding(vertical = 2.dp)
-                                    )
+                                        modifier = Modifier.padding(vertical = 1.dp))
                                 }
                             }
                         }
@@ -322,32 +232,63 @@ fun DramaScreen(onBack: () -> Unit, vm: MainViewModel) {
             }
 
             Spacer(Modifier.height(8.dp))
-            Text(
-                "说明：抖音里「3x 再点会变 0.75x」，所以已到目标倍速时会自动停止点击，不会把你切回低速。",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.outline
-            )
-            Spacer(Modifier.height(16.dp))
         }
     }
 }
 
+/** 一行开关（紧凑） */
 @Composable
-private fun SpeedChip(text: String, target: String, onClick: () -> Unit) {
+private fun SwitchRow(title: String, subtitle: String, checked: Boolean, pad: androidx.compose.ui.unit.Dp, onChange: (Boolean) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = pad, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(title, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.outline)
+        }
+        Switch(checked = checked, onCheckedChange = onChange)
+    }
+}
+
+/** 紧凑数字输入行 */
+@Composable
+private fun CompactNumField(label: String, initial: String, onChange: (Int) -> Unit) {
+    var text by remember { mutableStateOf(initial) }
+    LaunchedEffect(initial) { text = initial }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(label, Modifier.width(110.dp), fontSize = 13.sp)
+        OutlinedTextField(
+            value = text,
+            onValueChange = {
+                text = it
+                it.toIntOrNull()?.let { v -> onChange(v) }
+            },
+            singleLine = true,
+            modifier = Modifier.weight(1f),
+            shape = RoundedCornerShape(8.dp),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+        )
+    }
+}
+
+@Composable
+private fun SpeedChip(text: String, target: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val selected = text.equals(target, ignoreCase = true)
     Button(
         onClick = onClick,
-        shape = RoundedCornerShape(10.dp),
+        modifier = modifier,
+        shape = RoundedCornerShape(8.dp),
         colors = androidx.compose.material3.ButtonDefaults.buttonColors(
             containerColor = if (selected) MaterialTheme.colorScheme.primary
             else MaterialTheme.colorScheme.surfaceVariant,
             contentColor = if (selected) Color.White
             else MaterialTheme.colorScheme.onSurfaceVariant
         ),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(
-            horizontal = 16.dp, vertical = 6.dp
-        )
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 4.dp, vertical = 4.dp)
     ) {
-        Text(text, fontSize = 13.sp)
+        Text(text, fontSize = 12.sp, maxLines = 1)
     }
 }

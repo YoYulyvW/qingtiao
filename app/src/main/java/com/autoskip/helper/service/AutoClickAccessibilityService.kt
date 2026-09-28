@@ -52,6 +52,9 @@ class AutoClickAccessibilityService : AccessibilityService() {
 
     // ===== 短剧自动倍速 =====
     @Volatile private var dramaEnabled = false
+    @Volatile private var dramaWatchdogOn = true
+    @Volatile private var dramaLongPressOn = true
+    @Volatile private var dramaClickSpeedOn = true
     @Volatile private var dramaAutoMount = true
     @Volatile private var dramaIntervalMs = 1000L
     @Volatile private var dramaTargetSpeed = "3x"
@@ -132,6 +135,9 @@ class AutoClickAccessibilityService : AccessibilityService() {
 
         // 短剧自动倍速配置
         scope.launch { repo.dramaEnabled.collect { dramaEnabled = it } }
+        scope.launch { repo.dramaWatchdog.collect { dramaWatchdogOn = it } }
+        scope.launch { repo.dramaLongPress.collect { dramaLongPressOn = it } }
+        scope.launch { repo.dramaClickSpeed.collect { dramaClickSpeedOn = it } }
         scope.launch { repo.dramaAutoMount.collect { dramaAutoMount = it } }
         scope.launch { repo.dramaIntervalMs.collect { dramaIntervalMs = it } }
         scope.launch { repo.dramaTargetSpeed.collect { dramaTargetSpeed = it } }
@@ -202,6 +208,8 @@ class AutoClickAccessibilityService : AccessibilityService() {
             try {
                 delay(2000)
                 if (!dramaEnabled) continue
+                // 看门狗开关关闭 → 不动作
+                if (!dramaWatchdogOn) continue
                 // 退出短剧页面 → 暂停看门狗
                 if (exitDramaPaused) continue
 
@@ -337,10 +345,14 @@ class AutoClickAccessibilityService : AccessibilityService() {
                     t == menuTarget && t !in MENU_BLACKLIST
                 }
                 if (target != null) {
-                    val ep = pendingEpisode ?: currentEpisode
-                    DramaDebug.add("菜单已弹出: 点击 $menuTarget（集 ${ep ?: "?"}）")
-                    clickNode(findClickableAncestor(target) ?: target)
-                    if (ep != null) lastSpedEpisode = ep
+                    if (dramaClickSpeedOn) {
+                        val ep = pendingEpisode ?: currentEpisode
+                        DramaDebug.add("菜单已弹出: 点击 $menuTarget（集 ${ep ?: "?"}）")
+                        clickNode(findClickableAncestor(target) ?: target)
+                        if (ep != null) lastSpedEpisode = ep
+                    } else {
+                        DramaDebug.add("菜单已弹出，但「自动点击倍数」已关闭")
+                    }
                 } else {
                     val menuTexts = nodes.mapNotNull { it.text?.toString()?.trim()?.takeIf { t -> t.isNotBlank() } }
                         .filter { it in setOf("0.75","1.0","1.25","1.5","2.0","3.0") || it.contains("倍速") }
@@ -366,8 +378,12 @@ class AutoClickAccessibilityService : AccessibilityService() {
                 if (diag) DramaDebug.add("已在目标倍速 $cur，不点")
                 return
             }
-            DramaDebug.add("倍速 $cur → 点击切换")
-            clickNode(speedNode)
+            if (dramaClickSpeedOn) {
+                DramaDebug.add("倍速 $cur → 点击切换")
+                clickNode(speedNode)
+            } else if (diag) {
+                DramaDebug.add("倍速 $cur，但「自动点击倍数」已关闭")
+            }
             return
         }
 
@@ -435,6 +451,10 @@ class AutoClickAccessibilityService : AccessibilityService() {
                 return
             }
 
+            if (!dramaLongPressOn) {
+                if (diag) DramaDebug.add("「自动长按」已关闭，不呼出菜单")
+                return
+            }
             lastDramaClickTime = now
             pendingEpisode = currentEpisode
             pendingEpisodeNum = curNum
