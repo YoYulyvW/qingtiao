@@ -389,16 +389,27 @@ class AutoClickAccessibilityService : AccessibilityService() {
         }
 
         // 2) 是短剧页面 → 长按视频中心唤出菜单
+
+        // ★ 先排除首页/普通视频流：有底部导航（首页/朋友/消息/我）或顶部导航（推荐/关注/商城）即视为普通视频流
+        val isNormalFeed = nodes.any {
+            val t = it.text?.toString()?.trim() ?: ""
+            t == "首页" || t == "朋友" || t == "消息" || t == "我" ||
+                t == "推荐" || t == "关注" || t == "商城" || t == "直播" ||
+                t == "同城" || t == "团购"
+        }
+        // 短剧页特征：明确的"集全"或"第N集"或"免费看全集"（收紧，不再用宽泛的"免费"）
         val isDramaPage = nodes.any {
             val t = it.text?.toString() ?: ""
-            t.contains("集全") || (t.contains("免费") && t.length < 6)
+            t.contains("集全") || Regex("第\\s*\\d+\\s*集").containsMatchIn(t) ||
+                t.contains("免费看全集")
         }
         // 短剧播放页顶部【没有"搜索"】（普通视频流有搜索栏）
         val hasSearch = nodes.any {
             val t = it.text?.toString()?.trim() ?: ""
             t == "搜索" || t == "搜你想看的"
         }
-        if (isDramaPage && !hasSearch) {
+        // ★ 必须：是短剧页 且 不是普通视频流 且 无搜索栏
+        if (isDramaPage && !isNormalFeed && !hasSearch) {
             // 已发起长按、正等菜单出现 → 绝不重复长按（避免点到菜单项）
             val now0 = System.currentTimeMillis()
             if (expectingMenuTime != 0L && now0 - expectingMenuTime < EXPECT_MENU_WINDOW) {
