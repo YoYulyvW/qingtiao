@@ -24,6 +24,8 @@ data class CondRuleEntity(
     val actionText: String? = null,   // 动作参数（CLICK_TEXT 时的目标文字）
     val packageName: String? = null,  // 限定包名（可选）
     val enabled: Boolean = true,
+    /** 延时检测（秒）：检测到条件后等 N 秒，仍存在才执行动作；0 = 立即执行 */
+    val delaySec: Int = 3,
     val hitCount: Int = 0,
     val createdAt: Long = System.currentTimeMillis()
 )

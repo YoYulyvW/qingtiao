@@ -123,7 +123,7 @@ class Prefs(private val context: Context) {
     suspend fun setDramaNormalInterval(v: Int) { context.dataStore.edit { it[KEY_DRAMA_NORMAL_INT] = v.toString() } }
 
     /** 看门狗开关（菜单超时自动关闭），默认开 */
-    val dramaWatchdog: Flow<Boolean> = context.dataStore.data.map { it[KEY_DRAMA_WATCHDOG] ?: true }
+    val dramaWatchdog: Flow<Boolean> = context.dataStore.data.map { it[KEY_DRAMA_WATCHDOG] ?: false }
     suspend fun setDramaWatchdog(v: Boolean) { context.dataStore.edit { it[KEY_DRAMA_WATCHDOG] = v } }
     /** 自动长按开关，默认开 */
     val dramaLongPress: Flow<Boolean> = context.dataStore.data.map { it[KEY_DRAMA_LONGPRESS] ?: true }

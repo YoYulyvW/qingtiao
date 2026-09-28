@@ -28,13 +28,17 @@ class App : Application() {
         seedDefaultRulesIfEmpty()
     }
 
-    /** 首次启动写入一批默认规则 */
+    /**
+     * 首次启动写入默认规则。
+     * 注意：逐条判重（不能只看"库是否为空"），避免与迁移协程并发执行时重复插入。
+     */
     private fun seedDefaultRulesIfEmpty() {
         appScope.launch {
             runCatching {
                 val dao = database.ruleDao()
-                if (dao.all().isEmpty()) {
-                    Matcher.DEFAULT_TEXTS.forEach { t ->
+                val existing = dao.all().map { it.text }.toSet()
+                Matcher.DEFAULT_TEXTS.forEach { t ->
+                    if (t !in existing) {
                         // 内置规则：精确匹配
                         dao.insert(RuleEntity(name = t, text = t, exact = true))
                     }

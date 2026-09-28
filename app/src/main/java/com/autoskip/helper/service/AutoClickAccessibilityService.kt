@@ -107,6 +107,9 @@ class AutoClickAccessibilityService : AccessibilityService() {
     /** 是否处于"退出短剧"页面：为 true 时暂停所有动作（含看门狗） */
     @Volatile private var exitDramaPaused = false
 
+    /** 条件规则延时检测：记录已触发待确认的规则（签名 -> 触发时间） */
+    private val pendingCondRules = HashMap<String, Long>()
+
     // ===== 呼出间隔配置 =====
     @Volatile private var dramaImgInterval = 1     // 「识别图片」版：每N集呼出
     @Volatile private var dramaNormalInterval = 5  // 其他版：每N集呼出
@@ -847,9 +850,27 @@ class AutoClickAccessibilityService : AccessibilityService() {
         if (cachedCondRules.isNotEmpty()) {
             val cond = Matcher.matchCondRule(root, cachedCondRules, pkg)
             if (cond != null) {
-                performCondAction(cond, pkg)
+                val rule = cond.rule
+                val key = rule.id.toString()
+                val nowC = System.currentTimeMillis()
+                if (rule.delaySec <= 0) {
+                    // 无延时，立即执行
+                    pendingCondRules.remove(key)
+                    performCondAction(cond, pkg)
+                    return
+                }
+                // 有延时：第一次检测到 → 记录时间，启动延时任务
+                if (!pendingCondRules.containsKey(key)) {
+                    pendingCondRules[key] = nowC
+                    scheduleCondCheck(cond, pkg, rule.delaySec)
+                }
                 return
+            } else {
+                // 条件不满足 → 清理所有待确认（含已消失的）
+                pendingCondRules.clear()
             }
+        } else {
+            pendingCondRules.clear()
         }
 
         val result = Matcher.match(root, cachedRules, pkg, strictClose)
@@ -896,6 +917,39 @@ class AutoClickAccessibilityService : AccessibilityService() {
                 lastPopupSignature = signature
                 lastPopupTime = nowT
                 performClick(result, pkg)
+            }
+        }
+    }
+
+    /**
+     * 延时检测：等 delaySec 秒后重新检查条件是否仍存在，仍存在才执行动作。
+     */
+    private fun scheduleCondCheck(cond: CondMatchResult, pkg: String, delaySec: Int) {
+        val rule = cond.rule
+        val key = rule.id.toString()
+        scope.launch {
+            delay(delaySec * 1000L)
+            try {
+                val startTime = pendingCondRules[key] ?: return@launch
+                // 若等待期间条件已消失（被清理），放弃
+                if (!pendingCondRules.containsKey(key)) return@launch
+                val root = rootInActiveWindow
+                if (root == null) {
+                    pendingCondRules.remove(key)
+                    return@launch
+                }
+                // 重新匹配该规则
+                val again = Matcher.matchCondRule(root, listOf(rule), pkg)
+                pendingCondRules.remove(key)
+                if (again != null) {
+                    DramaDebug.add("条件规则延时 ${delaySec} 秒后仍存在，执行动作")
+                    mainHandler.post { performCondAction(again, pkg) }
+                } else {
+                    DramaDebug.add("条件规则延时 ${delaySec} 秒后已消失，放弃")
+                }
+            } catch (e: Exception) {
+                pendingCondRules.remove(key)
+                Log.e(TAG, "scheduleCondCheck error", e)
             }
         }
     }
