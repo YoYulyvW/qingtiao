@@ -77,6 +77,7 @@ class AutoClickAccessibilityService : AccessibilityService() {
     @Volatile private var pushName = ""
     @Volatile private var pushUser = ""
     @Volatile private var pushMsg = "出现了广告窗口，请注意查看"
+    @Volatile private var pushToken = ""
     /** 本次广告推送是否已发送（避免重复推送） */
     @Volatile private var adPushSent = false
 
@@ -177,6 +178,7 @@ class AutoClickAccessibilityService : AccessibilityService() {
         scope.launch { repo.pushName.collect { pushName = it } }
         scope.launch { repo.pushUser.collect { pushUser = it } }
         scope.launch { repo.pushMsg.collect { pushMsg = it } }
+        scope.launch { repo.pushToken.collect { pushToken = it } }
         scope.launch { repo.dramaBaseW.collect { dramaBaseW = it } }
         scope.launch { repo.dramaBaseH.collect { dramaBaseH = it } }
         scope.launch { repo.dramaTapX.collect { dramaTapX = it } }
@@ -961,7 +963,8 @@ class AutoClickAccessibilityService : AccessibilityService() {
                 val n = pushName
                 val usr = pushUser
                 val m = pushMsg
-                scope.launch { PushNotifier.send(u, n, usr, m) }
+                val tk = pushToken
+                scope.launch { PushNotifier.send(u, n, usr, m, tk) }
             }
             return
         }

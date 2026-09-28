@@ -44,6 +44,7 @@ class Repository(
     val pushName: Flow<String> = prefs.pushName
     val pushUser: Flow<String> = prefs.pushUser
     val pushMsg: Flow<String> = prefs.pushMsg
+    val pushToken: Flow<String> = prefs.pushToken
     val dramaLongPress: Flow<Boolean> = prefs.dramaLongPress
     val dramaClickSpeed: Flow<Boolean> = prefs.dramaClickSpeed
 
@@ -173,6 +174,7 @@ class Repository(
     suspend fun setPushName(v: String) = prefs.setPushName(v)
     suspend fun setPushUser(v: String) = prefs.setPushUser(v)
     suspend fun setPushMsg(v: String) = prefs.setPushMsg(v)
+    suspend fun setPushToken(v: String) = prefs.setPushToken(v)
     suspend fun setCondDramaOnly(v: Boolean) = prefs.setCondDramaOnly(v)
 
     /**

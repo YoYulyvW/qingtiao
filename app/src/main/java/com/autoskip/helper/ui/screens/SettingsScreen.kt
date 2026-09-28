@@ -59,24 +59,27 @@ fun SettingsScreen(
     val pushName by vm.pushName.collectAsState()
     val pushUser by vm.pushUser.collectAsState()
     val pushMsg by vm.pushMsg.collectAsState()
+    val pushToken by vm.pushToken.collectAsState()
 
     // 本地编辑态：避免每敲一个字符都写 DataStore（导致卡顿）
     var urlText by remember { mutableStateOf("") }
     var nameText by remember { mutableStateOf("") }
     var userText by remember { mutableStateOf("") }
     var msgText by remember { mutableStateOf("") }
+    var tokenText by remember { mutableStateOf("") }
     var loaded by remember { mutableStateOf(false) }
     var testResult by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
     // 仅在首次加载时把持久化值填入本地输入框
-    LaunchedEffect(pushUrl, pushName, pushUser, pushMsg) {
+    LaunchedEffect(pushUrl, pushName, pushUser, pushMsg, pushToken) {
         if (!loaded) {
             urlText = pushUrl
             nameText = pushName
             userText = pushUser
             msgText = pushMsg
+            tokenText = pushToken
             loaded = true
         }
     }
@@ -86,6 +89,7 @@ fun SettingsScreen(
         vm.setPushName(nameText.trim())
         vm.setPushUser(userText.trim())
         vm.setPushMsg(msgText.trim().ifBlank { "出现了广告窗口，请注意查看" })
+        vm.setPushToken(tokenText.trim())
         android.widget.Toast.makeText(context, "已保存", android.widget.Toast.LENGTH_SHORT).show()
     }
 
@@ -169,6 +173,16 @@ fun SettingsScreen(
                         modifier = Modifier.fillMaxWidth().height(52.dp),
                         shape = RoundedCornerShape(8.dp)
                     )
+                    Spacer(Modifier.height(6.dp))
+                    OutlinedTextField(
+                        value = tokenText,
+                        onValueChange = { tokenText = it },
+                        label = { Text("Token（可选，请求头 Authorization: Bearer）", fontSize = 12.sp) },
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.fillMaxWidth().height(52.dp),
+                        shape = RoundedCornerShape(8.dp)
+                    )
                     Spacer(Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(
@@ -184,7 +198,8 @@ fun SettingsScreen(
                                 scope.launch {
                                     testResult = PushNotifier.testSend(
                                         urlText.trim(), nameText.trim(), userText.trim(),
-                                        msgText.trim().ifBlank { "出现了广告窗口，请注意查看" }
+                                        msgText.trim().ifBlank { "出现了广告窗口，请注意查看" },
+                                        tokenText.trim()
                                     )
                                 }
                             },
