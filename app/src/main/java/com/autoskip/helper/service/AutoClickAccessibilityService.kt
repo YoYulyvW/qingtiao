@@ -44,6 +44,9 @@ class AutoClickAccessibilityService : AccessibilityService() {
     private var lastClickTime = 0L
     private val CLICK_COOLDOWN = 800L
 
+    /** 事件标记：onAccessibilityEvent 只置位，由 processEventLoop 在 IO 上处理（防主线程阻塞） */
+    @Volatile private var pendingEvent = false
+
     // 重复弹窗检测：若同一弹窗点击后很快再次出现，说明点击无效，改用返回键
     private var lastPopupSignature: String? = null
     private var lastPopupTime = 0L
@@ -148,6 +151,8 @@ class AutoClickAccessibilityService : AccessibilityService() {
 
         // 启动短剧加速轮询
         scope.launch { dramaLoop() }
+        // 启动事件处理循环（IO 线程，防主线程被节点遍历阻塞导致"卡住"）
+        scope.launch { processEventLoop() }
 
         Log.i(TAG, "无障碍服务已连接")
     }
@@ -727,12 +732,40 @@ class AutoClickAccessibilityService : AccessibilityService() {
         // 白名单模式：非白名单应用直接忽略（支持通配符）
         if (whitelistEnabled && !Matcher.matchesWhitelist(pkg, whitelistPkgs)) return
 
+        // ★ 关键：不在主线程做节点遍历（会阻塞无障碍框架，表现为"卡住"），
+        //   只置标记，由 processEventLoop 在 IO 线程处理。
+        pendingEvent = true
+    }
+
+    /**
+     * 事件处理循环（IO 线程）：onAccessibilityEvent 只置 pendingEvent，
+     * 这里做实际的节点遍历/匹配/点击，避免阻塞主线程导致无障碍事件停摆。
+     */
+    private suspend fun processEventLoop() {
+        while (true) {
+            try {
+                delay(120)
+                if (!pendingEvent) continue
+                pendingEvent = false
+                doProcessEvent()
+            } catch (e: Exception) {
+                Log.e(TAG, "processEventLoop error", e)
+            }
+        }
+    }
+
+    /** 实际事件处理（在 IO 线程执行） */
+    private fun doProcessEvent() {
+        val pkg = currentRootPackage() ?: return
+        if (pkg == packageName) return
+        if (Matcher.isSystemUi(pkg)) return
+        if (whitelistEnabled && !Matcher.matchesWhitelist(pkg, whitelistPkgs)) return
+
         val root = rootInActiveWindow ?: return
         val now = System.currentTimeMillis()
         if (now - lastClickTime < CLICK_COOLDOWN) return
 
         // 0) 条件规则优先（更具体："有X且Y→动作"）
-        //   ★ 可配置限制：开启时仅抖音/白名单内生效，避免在其它界面误触发返回
         val condAllowed = !condDramaOnlyOn ||
             isDouyin(pkg) || Matcher.matchesWhitelist(pkg, whitelistPkgs)
         if (cachedCondRules.isNotEmpty() && condAllowed) {
@@ -742,19 +775,16 @@ class AutoClickAccessibilityService : AccessibilityService() {
                 val key = rule.id.toString()
                 val nowC = System.currentTimeMillis()
                 if (rule.delaySec <= 0) {
-                    // 无延时，立即执行
                     pendingCondRules.remove(key)
                     performCondAction(cond, pkg)
                     return
                 }
-                // 有延时：第一次检测到 → 记录时间，启动延时任务
                 if (!pendingCondRules.containsKey(key)) {
                     pendingCondRules[key] = nowC
                     scheduleCondCheck(cond, pkg, rule.delaySec)
                 }
                 return
             } else {
-                // 条件不满足 → 清理所有待确认（含已消失的）
                 pendingCondRules.clear()
             }
         } else {
@@ -763,15 +793,10 @@ class AutoClickAccessibilityService : AccessibilityService() {
 
         val result = Matcher.match(root, cachedRules, pkg)
         if (result != null) {
-            // 弹窗签名：包名 + 文字 + 节点位置
             val posRect = android.graphics.Rect()
             try { result.node.getBoundsInScreen(posRect) } catch (_: Exception) {}
             val signature = pkg + "|" + result.matchedText + "|" + posRect.centerX() + "," + posRect.centerY()
             val nowT = System.currentTimeMillis()
-            // ★ 严格管控：满足全部条件才做"重复→返回键"兜底
-            //   1. 匹配到的文字属于"关闭/拒绝/跳过"类（精确匹配）
-            //   2. 节点本身真的可点击（排除页面上的普通文字节点）
-            //   3. 同一签名 3 秒内重复出现
             val dismissLike = Matcher.isDismissLike(result.matchedText) ||
                 Matcher.isDismissLike(result.rule.text)
             val reallyClickable = try { result.node.isClickable } catch (_: Exception) { false }
@@ -779,7 +804,6 @@ class AutoClickAccessibilityService : AccessibilityService() {
                 signature == lastPopupSignature && (nowT - lastPopupTime) < REPEAT_WINDOW
 
             if (isRepeat) {
-                // 同一弹窗又出现了 → 上次点击无效，改用返回键
                 Log.i(TAG, "重复弹窗，改用返回键: " + signature)
                 mainHandler.postDelayed({
                     performGlobalAction(GLOBAL_ACTION_BACK)
@@ -799,7 +823,7 @@ class AutoClickAccessibilityService : AccessibilityService() {
                         )
                     }
                 }, clickDelay)
-                lastPopupSignature = null   // 避免连续触发
+                lastPopupSignature = null
                 lastClickTime = nowT
             } else {
                 lastPopupSignature = signature
