@@ -42,6 +42,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val pushUser = repo.pushUser.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
     val pushMsg = repo.pushMsg.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "出现了广告窗口，请注意查看")
     val pushToken = repo.pushToken.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
+    val pushIncludeClone = repo.pushIncludeClone.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
     val condDramaOnly = repo.condDramaOnly.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
     val dramaClickSpeed = repo.dramaClickSpeed.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
@@ -86,6 +87,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun setPushUser(v: String) = viewModelScope.launch { repo.setPushUser(v) }
     fun setPushMsg(v: String) = viewModelScope.launch { repo.setPushMsg(v) }
     fun setPushToken(v: String) = viewModelScope.launch { repo.setPushToken(v) }
+    fun setPushIncludeClone(v: Boolean) = viewModelScope.launch { repo.setPushIncludeClone(v) }
     fun setCondDramaOnly(v: Boolean) = viewModelScope.launch { repo.setCondDramaOnly(v) }
 
     fun exportCondRules(onResult: (String) -> Unit) = viewModelScope.launch {

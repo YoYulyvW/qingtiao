@@ -78,6 +78,7 @@ class AutoClickAccessibilityService : AccessibilityService() {
     @Volatile private var pushUser = ""
     @Volatile private var pushMsg = "出现了广告窗口，请注意查看"
     @Volatile private var pushToken = ""
+    @Volatile private var pushIncludeCloneOn = true
     /** 本次广告推送是否已发送（避免重复推送） */
     @Volatile private var adPushSent = false
 
@@ -179,6 +180,7 @@ class AutoClickAccessibilityService : AccessibilityService() {
         scope.launch { repo.pushUser.collect { pushUser = it } }
         scope.launch { repo.pushMsg.collect { pushMsg = it } }
         scope.launch { repo.pushToken.collect { pushToken = it } }
+        scope.launch { repo.pushIncludeClone.collect { pushIncludeCloneOn = it } }
         scope.launch { repo.dramaBaseW.collect { dramaBaseW = it } }
         scope.launch { repo.dramaBaseH.collect { dramaBaseH = it } }
         scope.launch { repo.dramaTapX.collect { dramaTapX = it } }
@@ -251,6 +253,16 @@ class AutoClickAccessibilityService : AccessibilityService() {
         pkg == "com.ss.android.ugc.aweme.lite" ||
         pkg.startsWith("com.qihoo.magic.") ||
         pkg.startsWith("com.douyin.")
+
+    /**
+     * 从包名提取分身名。
+     * 例：com.qihoo.magic.dl1WZ3FmLjdWduQWavJHZuFmLzNnLt92Yk_134 → "分身34"
+     * 无分身后缀则返回 null。
+     */
+    private fun extractCloneName(pkg: String): String? {
+        val m = Regex("_(\\d+)$").find(pkg) ?: return null
+        return "分身" + m.groupValues[1]
+    }
 
     /** 短剧页面核心处理 */
     private suspend fun handleDrama(pkg: String, diag: Boolean) {
@@ -960,7 +972,11 @@ class AutoClickAccessibilityService : AccessibilityService() {
             if (!adPushSent && pushUrl.isNotBlank()) {
                 adPushSent = true
                 val u = pushUrl
-                val n = pushName
+                // 勾选"附带分身名"时，把当前分身名拼进识别字符
+                val cloneName = if (pushIncludeCloneOn) extractCloneName(pkg) else null
+                val n = if (cloneName != null) {
+                    if (pushName.isBlank()) cloneName else pushName + " " + cloneName
+                } else pushName
                 val usr = pushUser
                 val m = pushMsg
                 val tk = pushToken

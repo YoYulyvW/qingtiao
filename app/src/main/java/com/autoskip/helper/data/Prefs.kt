@@ -47,6 +47,7 @@ class Prefs(private val context: Context) {
     private val KEY_PUSH_USER = stringPreferencesKey("push_user")
     private val KEY_PUSH_MSG = stringPreferencesKey("push_msg")
     private val KEY_PUSH_TOKEN = stringPreferencesKey("push_token")
+    private val KEY_PUSH_INCLUDE_CLONE = booleanPreferencesKey("push_include_clone")
 
     val enabled: Flow<Boolean> = context.dataStore.data.map { it[KEY_ENABLED] ?: true }
     val clickDelayMs: Flow<Long> = context.dataStore.data.map { (it[KEY_DELAY] ?: "600").toLongOrNull() ?: 600L }
@@ -158,6 +159,9 @@ class Prefs(private val context: Context) {
     /** 推送 token（可选，携带在请求头 Authorization） */
     val pushToken: Flow<String> = context.dataStore.data.map { it[KEY_PUSH_TOKEN] ?: "" }
     suspend fun setPushToken(v: String) { context.dataStore.edit { it[KEY_PUSH_TOKEN] = v } }
+    /** 推送是否附带当前分身名（默认开） */
+    val pushIncludeClone: Flow<Boolean> = context.dataStore.data.map { it[KEY_PUSH_INCLUDE_CLONE] ?: true }
+    suspend fun setPushIncludeClone(v: Boolean) { context.dataStore.edit { it[KEY_PUSH_INCLUDE_CLONE] = v } }
 
     suspend fun setDramaEnabled(v: Boolean) { context.dataStore.edit { it[KEY_DRAMA_ENABLED] = v } }
     suspend fun setDramaAutoMount(v: Boolean) { context.dataStore.edit { it[KEY_DRAMA_AUTO_MOUNT] = v } }

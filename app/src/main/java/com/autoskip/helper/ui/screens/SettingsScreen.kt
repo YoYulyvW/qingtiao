@@ -60,6 +60,7 @@ fun SettingsScreen(
     val pushUser by vm.pushUser.collectAsState()
     val pushMsg by vm.pushMsg.collectAsState()
     val pushToken by vm.pushToken.collectAsState()
+    val pushIncludeClone by vm.pushIncludeClone.collectAsState()
 
     // 本地编辑态：避免每敲一个字符都写 DataStore（导致卡顿）
     var urlText by remember { mutableStateOf("") }
@@ -67,19 +68,21 @@ fun SettingsScreen(
     var userText by remember { mutableStateOf("") }
     var msgText by remember { mutableStateOf("") }
     var tokenText by remember { mutableStateOf("") }
+    var includeClone by remember { mutableStateOf(true) }
     var loaded by remember { mutableStateOf(false) }
     var testResult by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
     // 仅在首次加载时把持久化值填入本地输入框
-    LaunchedEffect(pushUrl, pushName, pushUser, pushMsg, pushToken) {
+    LaunchedEffect(pushUrl, pushName, pushUser, pushMsg, pushToken, pushIncludeClone) {
         if (!loaded) {
             urlText = pushUrl
             nameText = pushName
             userText = pushUser
             msgText = pushMsg
             tokenText = pushToken
+            includeClone = pushIncludeClone
             loaded = true
         }
     }
@@ -90,6 +93,7 @@ fun SettingsScreen(
         vm.setPushUser(userText.trim())
         vm.setPushMsg(msgText.trim().ifBlank { "出现了广告窗口，请注意查看" })
         vm.setPushToken(tokenText.trim())
+        vm.setPushIncludeClone(includeClone)
         android.widget.Toast.makeText(context, "已保存", android.widget.Toast.LENGTH_SHORT).show()
     }
 
@@ -136,7 +140,7 @@ fun SettingsScreen(
                         placeholder = { Text("http://192.168.1.100:8080/notify", fontSize = 12.sp) },
                         singleLine = true,
                         textStyle = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.fillMaxWidth().height(52.dp),
+                        modifier = Modifier.fillMaxWidth().height(58.dp),
                         shape = RoundedCornerShape(8.dp)
                     )
                     Spacer(Modifier.height(6.dp))
@@ -148,7 +152,7 @@ fun SettingsScreen(
                             placeholder = { Text("1号板", fontSize = 12.sp) },
                             singleLine = true,
                             textStyle = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.weight(1f).height(52.dp),
+                            modifier = Modifier.weight(1f).height(58.dp),
                             shape = RoundedCornerShape(8.dp)
                         )
                         OutlinedTextField(
@@ -158,7 +162,7 @@ fun SettingsScreen(
                             placeholder = { Text("可选", fontSize = 12.sp) },
                             singleLine = true,
                             textStyle = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.weight(1f).height(52.dp),
+                            modifier = Modifier.weight(1f).height(58.dp),
                             shape = RoundedCornerShape(8.dp)
                         )
                     }
@@ -170,19 +174,36 @@ fun SettingsScreen(
                         placeholder = { Text("出现了广告窗口，请注意查看", fontSize = 12.sp) },
                         singleLine = true,
                         textStyle = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.fillMaxWidth().height(52.dp),
+                        modifier = Modifier.fillMaxWidth().height(58.dp),
                         shape = RoundedCornerShape(8.dp)
                     )
                     Spacer(Modifier.height(6.dp))
                     OutlinedTextField(
                         value = tokenText,
                         onValueChange = { tokenText = it },
-                        label = { Text("Token（可选，请求头 Authorization: Bearer）", fontSize = 12.sp) },
+                        label = { Text("Token（可选）", fontSize = 12.sp) },
+                        placeholder = { Text("填入后请求头带 Authorization: Bearer", fontSize = 11.sp) },
                         singleLine = true,
                         textStyle = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.fillMaxWidth().height(52.dp),
+                        modifier = Modifier.fillMaxWidth().height(58.dp),
                         shape = RoundedCornerShape(8.dp)
                     )
+                    Spacer(Modifier.height(6.dp))
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text("附带当前分身名", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            Text("如「分身34」，拼在识别字符后", style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.outline)
+                        }
+                        androidx.compose.material3.Switch(
+                            checked = includeClone,
+                            onCheckedChange = { includeClone = it }
+                        )
+                    }
                     Spacer(Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(
@@ -214,7 +235,7 @@ fun SettingsScreen(
                     }
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        "格式：{\"text\":\"<识别字符>，<推送内容>\",\"user\":\"<user>\"}",
+                        "格式：{\"text\":\"<识别字符> <分身>，<推送内容>\",\"user\":\"<user>\"}；token 在请求头",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.outline
                     )
