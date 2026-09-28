@@ -68,6 +68,32 @@ class Repository(
     suspend fun bumpHit(id: Long) = ruleDao.bumpHit(id)
     suspend fun enabledRules(): List<RuleEntity> = ruleDao.enabledRules()
 
+    /**
+     * 首次启动预置内置条件规则（逐条判重，避免重复）。
+     */
+    suspend fun seedCondRulesIfNeeded() {
+        val existing = condRuleDao.all().map { it.name }.toSet()
+        val defaults = listOf(
+            CondRuleEntity(
+                name = "发私信关注→返回",
+                hasText = "发私信",
+                andText = "关注",
+                actionType = CondAction.BACK,
+                delaySec = 3
+            ),
+            CondRuleEntity(
+                name = "推荐转发到日常→返回",
+                hasText = "推荐",
+                andText = "转发到日常",
+                actionType = CondAction.BACK,
+                delaySec = 3
+            )
+        )
+        defaults.forEach { r ->
+            if (r.name !in existing) condRuleDao.insert(r)
+        }
+    }
+
     suspend fun addLog(log: LogEntity) = logDao.insert(log)
     suspend fun clearLogs() = logDao.clearAll()
     suspend fun setEnabled(v: Boolean) = prefs.setEnabled(v)

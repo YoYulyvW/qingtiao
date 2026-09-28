@@ -26,6 +26,7 @@ class App : Application() {
         appScope.launch { runCatching { repo.migrateV4IfNeeded() } }
         appScope.launch { runCatching { repo.seedWhitelistIfNeeded() } }
         seedDefaultRulesIfEmpty()
+        appScope.launch { runCatching { repo.seedCondRulesIfNeeded() } }
     }
 
     /**

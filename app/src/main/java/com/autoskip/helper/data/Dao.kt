@@ -43,6 +43,9 @@ interface CondRuleDao {
     @Query("SELECT * FROM cond_rules WHERE enabled = 1")
     suspend fun enabledRules(): List<CondRuleEntity>
 
+    @Query("SELECT * FROM cond_rules")
+    suspend fun all(): List<CondRuleEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(rule: CondRuleEntity): Long
 
