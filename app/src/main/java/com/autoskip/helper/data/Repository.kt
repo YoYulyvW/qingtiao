@@ -73,59 +73,60 @@ class Repository(
         val existing = condRuleDao.all().map { it.name }.toSet()
         val defaults = listOf(
             CondRuleEntity(
-                name = "登录框→返回",
+                name = "登录+自动注册/+86→返回",
+                hasText = "登录",
+                andText = "自动注册|+86",
+                actionType = CondAction.BACK,
+                delaySec = 0
+            ),
+            CondRuleEntity(
+                name = "登录+自动注册/帮助→返回",
                 hasText = "登录",
                 andText = "自动注册|帮助",
                 actionType = CondAction.BACK,
                 delaySec = 3
             ),
             CondRuleEntity(
-                name = "关注页→返回",
-                hasText = "关注",
-                andText = "作品|粉丝",
+                name = "推荐+分享到日常/举报→返回",
+                hasText = "推荐",
+                andText = "分享到日常|转发到日常|举报",
                 actionType = CondAction.BACK,
                 delaySec = 3
             ),
-            // 以下为原 Matcher 硬编码的"登录上下文→点图标X"，改为可见条件规则
             CondRuleEntity(
-                name = "登录→点X",
-                hasText = "登录",
-                actionType = CondAction.CLICK_ICON,
+                name = "关注+作品/粉丝→返回",
+                hasText = "关注",
+                andText = "作品|粉丝",
+                actionType = CondAction.BACK,
                 delaySec = 0
             ),
             CondRuleEntity(
-                name = "验证码→点X",
-                hasText = "验证码",
-                actionType = CondAction.CLICK_ICON,
-                delaySec = 0
-            ),
-            CondRuleEntity(
-                name = "注册→点X",
-                hasText = "注册",
-                actionType = CondAction.CLICK_ICON,
-                delaySec = 0
-            ),
-            // 原「严格模式」硬编码：登录上下文才点"关闭/close"文字按钮，改为可见规则
-            CondRuleEntity(
-                name = "登录上下文→点关闭",
-                hasText = "登录|验证码|注册|手机号|一键登录",
-                andText = "关闭",
-                actionType = CondAction.CLICK_TEXT,
-                actionText = "关闭",
-                delaySec = 0
-            ),
-            CondRuleEntity(
-                name = "登录上下文→点close",
-                hasText = "登录|验证码|注册|手机号|一键登录",
-                andText = "close",
-                actionType = CondAction.CLICK_TEXT,
-                actionText = "close",
+                name = "关注+刚刚看过→返回",
+                hasText = "关注",
+                andText = "刚刚看过",
+                actionType = CondAction.BACK,
                 delaySec = 0
             )
         )
         defaults.forEach { r ->
             if (r.name !in existing) condRuleDao.insert(r)
         }
+    }
+
+    /**
+     * 条件规则 v1 迁移：删除旧版内置条件规则（7 条），保留用户自建。
+     */
+    suspend fun migrateCondRulesV1() {
+        if (prefs.migratedCondV1.first()) return
+        val oldNames = setOf(
+            "登录框→返回", "关注页→返回",
+            "登录→点X", "验证码→点X", "注册→点X",
+            "登录上下文→点关闭", "登录上下文→点close"
+        )
+        condRuleDao.all().forEach { r ->
+            if (r.name in oldNames) condRuleDao.delete(r)
+        }
+        prefs.markMigratedCondV1()
     }
 
     suspend fun addLog(log: LogEntity) = logDao.insert(log)
