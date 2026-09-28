@@ -37,7 +37,6 @@ class AutoClickAccessibilityService : AccessibilityService() {
     @Volatile private var whitelistPkgs: Set<String> = emptySet()
 
     /** 严格模式：关闭/X 类按钮仅在登录/广告上下文出现时才点击 */
-    @Volatile private var strictClose = true
 
     /** 学习模式回调：抓到用户点击的节点时触发 */
     @Volatile var learnCallback: ((MatchedNode) -> Unit)? = null
@@ -128,7 +127,6 @@ class AutoClickAccessibilityService : AccessibilityService() {
         scope.launch { repo.condRules.collect { cachedCondRules = it } }
         scope.launch { repo.whitelistEnabled.collect { whitelistEnabled = it } }
         scope.launch { repo.whitelistPkgs.collect { whitelistPkgs = it } }
-        scope.launch { repo.strictClose.collect { strictClose = it } }
 
         // 短剧自动倍速配置
         scope.launch { repo.dramaEnabled.collect { dramaEnabled = it } }
@@ -758,7 +756,7 @@ class AutoClickAccessibilityService : AccessibilityService() {
             pendingCondRules.clear()
         }
 
-        val result = Matcher.match(root, cachedRules, pkg, strictClose)
+        val result = Matcher.match(root, cachedRules, pkg)
         if (result != null) {
             // 弹窗签名：包名 + 文字 + 节点位置
             val posRect = android.graphics.Rect()

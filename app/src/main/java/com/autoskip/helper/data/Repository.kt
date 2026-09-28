@@ -22,7 +22,6 @@ class Repository(
     val clickDelayMs: Flow<Long> = prefs.clickDelayMs
     val whitelistEnabled: Flow<Boolean> = prefs.whitelistEnabled
     val whitelistPkgs: Flow<Set<String>> = prefs.whitelistPkgs
-    val strictClose: Flow<Boolean> = prefs.strictClose
     // 短剧自动3倍速
     val dramaEnabled: Flow<Boolean> = prefs.dramaEnabled
     val dramaAutoMount: Flow<Boolean> = prefs.dramaAutoMount
@@ -105,6 +104,23 @@ class Repository(
                 hasText = "注册",
                 actionType = CondAction.CLICK_ICON,
                 delaySec = 0
+            ),
+            // 原「严格模式」硬编码：登录上下文才点"关闭/close"文字按钮，改为可见规则
+            CondRuleEntity(
+                name = "登录上下文→点关闭",
+                hasText = "登录|验证码|注册|手机号|一键登录",
+                andText = "关闭",
+                actionType = CondAction.CLICK_TEXT,
+                actionText = "关闭",
+                delaySec = 0
+            ),
+            CondRuleEntity(
+                name = "登录上下文→点close",
+                hasText = "登录|验证码|注册|手机号|一键登录",
+                andText = "close",
+                actionType = CondAction.CLICK_TEXT,
+                actionText = "close",
+                delaySec = 0
             )
         )
         defaults.forEach { r ->
@@ -118,7 +134,6 @@ class Repository(
     suspend fun setClickDelay(ms: Long) = prefs.setClickDelay(ms)
     suspend fun setWhitelistEnabled(v: Boolean) = prefs.setWhitelistEnabled(v)
     suspend fun setWhitelist(pkgs: Set<String>) = prefs.setWhitelist(pkgs)
-    suspend fun setStrictClose(v: Boolean) = prefs.setStrictClose(v)
     suspend fun setDramaEnabled(v: Boolean) = prefs.setDramaEnabled(v)
     suspend fun setDramaAutoMount(v: Boolean) = prefs.setDramaAutoMount(v)
     suspend fun setDramaInterval(ms: Long) = prefs.setDramaInterval(ms)

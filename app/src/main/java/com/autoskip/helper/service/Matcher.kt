@@ -33,18 +33,6 @@ object Matcher {
         "同意", "以后再说", "下次再说"
     )
 
-    /** 关闭 / X 类按钮文案（严格模式下需要登录上下文才点） */
-    val CLOSE_LIKE_TEXTS = listOf(
-        "关闭", "close", "×", "✕", "✖", "x"
-    )
-
-    /** 登录类关键词 —— 只在这些文字出现时，才允许点纯图标 X。
-     *  注意：不含广告类关键词，广告弹窗的 X 不点。 */
-    val LOGIN_KEYWORDS = listOf(
-        "登录", "一键登录", "本机号码", "获取验证码", "验证码",
-        "手机号", "注册", "用户协议", "隐私政策", "同意并"
-    )
-
     /**
      * 关闭 / 拒绝 / 跳过 类按钮文案。
      * 特点：点完后弹窗**本应消失**。只有这类按钮才做"重复弹窗→返回键"兜底。
@@ -126,32 +114,14 @@ object Matcher {
         }
     }
 
-    /** 判断某文本是否属于"关闭/X"类 */
-    fun isCloseLike(text: String?): Boolean {
-        if (text.isNullOrBlank()) return false
-        val t = text.trim()
-        return CLOSE_LIKE_TEXTS.any { it.equals(t, ignoreCase = true) }
-    }
-
-    /** 判断整棵节点树中是否存在登录/广告类关键词 */
-    fun hasLoginContext(candidates: List<AccessibilityNodeInfo>): Boolean {
-        for (node in candidates) {
-            val text = node.text?.toString() ?: node.contentDescription?.toString()
-            if (text.isNullOrBlank()) continue
-            if (LOGIN_KEYWORDS.any { text.contains(it, ignoreCase = true) }) return true
-        }
-        return false
-    }
-
     /**
-     * 匹配。
-     * @param strictClose 严格模式：关闭/X 类按钮仅在登录/广告上下文出现时才点击
+     * 匹配普通规则（按文本/描述匹配）。
+     * 注：「关闭/X 类按钮需登录上下文」的严格逻辑已改为「条件规则」，不再硬编码。
      */
     fun match(
         root: AccessibilityNodeInfo?,
         rules: List<RuleEntity>,
-        packageName: String?,
-        strictClose: Boolean = true
+        packageName: String?
     ): MatchResult? {
         if (root == null) return null
         // 系统 UI 直接跳过（多任务中心、桌面、设置等）
@@ -164,10 +134,7 @@ object Matcher {
         // 检测到验证码/滑块弹窗 → 整个弹窗不点任何东西
         if (hasCaptcha(candidates)) return null
 
-        // 严格模式下预先计算一次"是否存在登录上下文"
-        val loginCtx = if (strictClose) hasLoginContext(candidates) else true
-
-        // 第一轮：按用户/内置规则做文本匹配
+        // 按用户/内置规则做文本匹配
         for (rule in rules) {
             if (!rule.enabled) continue
             if (!rule.packageName.isNullOrBlank() && packageName != null &&
@@ -179,9 +146,6 @@ object Matcher {
                 val hit = if (rule.exact) text.equals(rule.text, ignoreCase = true)
                           else text.contains(rule.text, ignoreCase = true)
                 if (!hit) continue
-
-                // 严格模式：关闭/X 类按钮必须要有登录/广告上下文才点
-                if (strictClose && isCloseLike(text) && !loginCtx) continue
 
                 val clickable = findClickable(node)
                 if (clickable != null) {
@@ -222,9 +186,13 @@ object Matcher {
             if (!rule.packageName.isNullOrBlank() && packageName != null &&
                 rule.packageName != packageName) continue
 
-            // 【有】hasText 必须出现
+            // 【有】hasText：支持多个关键词（用 | 分隔），任一命中即可
             if (rule.hasText.isBlank()) continue
-            if (allTexts.none { it.contains(rule.hasText, ignoreCase = true) }) continue
+            val hasKeys = rule.hasText.split("|", "｜")
+                .map { it.trim() }.filter { it.isNotBlank() }
+            val anyHasHit = hasKeys.isEmpty() ||
+                hasKeys.any { key -> allTexts.any { it.contains(key, ignoreCase = true) } }
+            if (!anyHasHit) continue
 
             // 【且】andText（可选）：支持多个关键词，用 | 分隔，全部命中才算
             if (!rule.andText.isNullOrBlank()) {
