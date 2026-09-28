@@ -288,6 +288,11 @@ object Matcher {
             (n.text?.toString() ?: n.contentDescription?.toString())?.trim()?.takeIf { it.isNotBlank() }
         }
 
+        // ★ 若当前是"播放菜单"（同时含"倍速"+"清屏播放"），跳过所有条件规则。
+        //   该菜单由短剧自动倍速流程使用（需点击倍速），不能让条件规则（如"推荐+转发到日常→返回"）抢先把菜单关掉。
+        val isPlayMenu = allTexts.any { it == "倍速" } && allTexts.any { it == "清屏播放" }
+        if (isPlayMenu) return null
+
         for (rule in condRules) {
             if (!rule.enabled) continue
             if (!rule.packageName.isNullOrBlank() && packageName != null &&
