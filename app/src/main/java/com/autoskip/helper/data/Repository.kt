@@ -35,6 +35,7 @@ class Repository(
     val dramaDebug: Flow<Boolean> = prefs.dramaDebug
     val dramaImgInterval: Flow<Int> = prefs.dramaImgInterval
     val dramaNormalInterval: Flow<Int> = prefs.dramaNormalInterval
+    val condDramaOnly: Flow<Boolean> = prefs.condDramaOnly
     val dramaLongPress: Flow<Boolean> = prefs.dramaLongPress
     val dramaClickSpeed: Flow<Boolean> = prefs.dramaClickSpeed
 
@@ -148,6 +149,7 @@ class Repository(
     suspend fun setDramaImgInterval(v: Int) = prefs.setDramaImgInterval(v)
     suspend fun setDramaNormalInterval(v: Int) = prefs.setDramaNormalInterval(v)
     suspend fun setDramaLongPress(v: Boolean) = prefs.setDramaLongPress(v)
+    suspend fun setCondDramaOnly(v: Boolean) = prefs.setCondDramaOnly(v)
     suspend fun setDramaClickSpeed(v: Boolean) = prefs.setDramaClickSpeed(v)
 
     /**

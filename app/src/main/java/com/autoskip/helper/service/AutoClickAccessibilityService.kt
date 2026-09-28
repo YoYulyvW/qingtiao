@@ -52,6 +52,7 @@ class AutoClickAccessibilityService : AccessibilityService() {
     // ===== 短剧自动倍速 =====
     @Volatile private var dramaEnabled = false
     @Volatile private var dramaLongPressOn = true
+    @Volatile private var condDramaOnlyOn = true
     @Volatile private var dramaClickSpeedOn = true
     @Volatile private var dramaAutoMount = true
     @Volatile private var dramaIntervalMs = 1000L
@@ -131,6 +132,7 @@ class AutoClickAccessibilityService : AccessibilityService() {
         // 短剧自动倍速配置
         scope.launch { repo.dramaEnabled.collect { dramaEnabled = it } }
         scope.launch { repo.dramaLongPress.collect { dramaLongPressOn = it } }
+        scope.launch { repo.condDramaOnly.collect { condDramaOnlyOn = it } }
         scope.launch { repo.dramaClickSpeed.collect { dramaClickSpeedOn = it } }
         scope.launch { repo.dramaAutoMount.collect { dramaAutoMount = it } }
         scope.launch { repo.dramaIntervalMs.collect { dramaIntervalMs = it } }
@@ -730,8 +732,9 @@ class AutoClickAccessibilityService : AccessibilityService() {
         if (now - lastClickTime < CLICK_COOLDOWN) return
 
         // 0) 条件规则优先（更具体："有X且Y→动作"）
-        //   ★ 严格限制：仅抖音系 或 白名单内应用才执行，避免在其它界面误触发返回
-        val condAllowed = isDouyin(pkg) || Matcher.matchesWhitelist(pkg, whitelistPkgs)
+        //   ★ 可配置限制：开启时仅抖音/白名单内生效，避免在其它界面误触发返回
+        val condAllowed = !condDramaOnlyOn ||
+            isDouyin(pkg) || Matcher.matchesWhitelist(pkg, whitelistPkgs)
         if (cachedCondRules.isNotEmpty() && condAllowed) {
             val cond = Matcher.matchCondRule(root, cachedCondRules, pkg)
             if (cond != null) {
@@ -819,8 +822,8 @@ class AutoClickAccessibilityService : AccessibilityService() {
                 if (!pendingCondRules.containsKey(key)) return@launch
                 // ★ 延时结束时前台必须仍是抖音系/白名单，否则放弃
                 val curPkg = currentRootPackage()
-                val stillAllowed = curPkg != null &&
-                    (isDouyin(curPkg) || Matcher.matchesWhitelist(curPkg, whitelistPkgs))
+                val stillAllowed = !condDramaOnlyOn || (curPkg != null &&
+                    (isDouyin(curPkg) || Matcher.matchesWhitelist(curPkg, whitelistPkgs)))
                 if (!stillAllowed) {
                     pendingCondRules.remove(key)
                     DramaDebug.add("条件规则延时结束但已切出抖音，放弃")

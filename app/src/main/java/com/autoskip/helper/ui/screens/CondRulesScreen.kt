@@ -53,6 +53,7 @@ import com.autoskip.helper.ui.MainViewModel
 @Composable
 fun CondRulesScreen(onBack: () -> Unit, vm: MainViewModel) {
     val condRules by vm.condRules.collectAsState()
+    val condDramaOnly by vm.condDramaOnly.collectAsState()
     var editing by remember { mutableStateOf<CondRuleEntity?>(null) }
     var showAdd by remember { mutableStateOf(false) }
 
@@ -85,6 +86,26 @@ fun CondRulesScreen(onBack: () -> Unit, vm: MainViewModel) {
                         color = MaterialTheme.colorScheme.outline
                     )
                     Spacer(Modifier.height(8.dp))
+                }
+                item {
+                    Card(Modifier.fillMaxWidth()) {
+                        Row(
+                            Modifier.fillMaxWidth().padding(14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text("仅在抖音/白名单内生效", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                Text(
+                                    "开启后避免在其它界面误触发返回，推荐开启。",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.outline
+                                )
+                            }
+                            Switch(checked = condDramaOnly, onCheckedChange = { vm.setCondDramaOnly(it) })
+                        }
+                    }
+                    Spacer(Modifier.height(4.dp))
                 }
                 if (condRules.isEmpty()) {
                     item {

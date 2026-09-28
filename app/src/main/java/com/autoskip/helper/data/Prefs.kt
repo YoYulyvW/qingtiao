@@ -23,6 +23,7 @@ class Prefs(private val context: Context) {
     private val KEY_MIGRATED_V3 = booleanPreferencesKey("migrated_v3")
     private val KEY_MIGRATED_V4 = booleanPreferencesKey("migrated_v4")
     private val KEY_MIGRATED_COND_V1 = booleanPreferencesKey("migrated_cond_v1")
+    private val KEY_COND_DRAMA_ONLY = booleanPreferencesKey("cond_drama_only")
     // 短剧自动3倍速
     private val KEY_DRAMA_ENABLED = booleanPreferencesKey("drama_enabled")
     private val KEY_DRAMA_AUTO_MOUNT = booleanPreferencesKey("drama_auto_mount")
@@ -78,6 +79,10 @@ class Prefs(private val context: Context) {
     val migratedV4: Flow<Boolean> = context.dataStore.data.map { it[KEY_MIGRATED_V4] ?: false }
     val migratedCondV1: Flow<Boolean> = context.dataStore.data.map { it[KEY_MIGRATED_COND_V1] ?: false }
     suspend fun markMigratedCondV1() { context.dataStore.edit { it[KEY_MIGRATED_COND_V1] = true } }
+
+    /** 条件规则仅在抖音/白名单内生效（默认开，避免其他界面误触） */
+    val condDramaOnly: Flow<Boolean> = context.dataStore.data.map { it[KEY_COND_DRAMA_ONLY] ?: true }
+    suspend fun setCondDramaOnly(v: Boolean) { context.dataStore.edit { it[KEY_COND_DRAMA_ONLY] = v } }
     suspend fun markMigratedV4() {
         context.dataStore.edit { it[KEY_MIGRATED_V4] = true }
     }

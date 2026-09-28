@@ -35,6 +35,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val dramaImgInterval = repo.dramaImgInterval.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 1)
     val dramaNormalInterval = repo.dramaNormalInterval.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 5)
     val dramaLongPress = repo.dramaLongPress.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+    val condDramaOnly = repo.condDramaOnly.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
     val dramaClickSpeed = repo.dramaClickSpeed.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
     private val _learnMode = MutableStateFlow(false)
@@ -65,6 +66,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun setDramaTargetSpeed(s: String) = viewModelScope.launch { repo.setDramaTargetSpeed(s) }
     fun setDramaDebug(v: Boolean) = viewModelScope.launch { repo.setDramaDebug(v) }
     fun setDramaLongPress(v: Boolean) = viewModelScope.launch { repo.setDramaLongPress(v) }
+    fun setCondDramaOnly(v: Boolean) = viewModelScope.launch { repo.setCondDramaOnly(v) }
     fun setDramaClickSpeed(v: Boolean) = viewModelScope.launch { repo.setDramaClickSpeed(v) }
     fun setDramaImgInterval(v: Int) = viewModelScope.launch { repo.setDramaImgInterval(v) }
     fun setDramaNormalInterval(v: Int) = viewModelScope.launch { repo.setDramaNormalInterval(v) }
