@@ -63,7 +63,6 @@ fun DramaScreen(onBack: () -> Unit, vm: MainViewModel) {
     val debugEnabled by vm.dramaDebug.collectAsState()
     val imgInterval by vm.dramaImgInterval.collectAsState()
     val normalInterval by vm.dramaNormalInterval.collectAsState()
-    val watchdogOn by vm.dramaWatchdog.collectAsState()
     val longPressOn by vm.dramaLongPress.collectAsState()
     val clickSpeedOn by vm.dramaClickSpeed.collectAsState()
     val debugLogs by com.autoskip.helper.service.DramaDebug.logs.collectAsState()
@@ -147,10 +146,6 @@ fun DramaScreen(onBack: () -> Unit, vm: MainViewModel) {
                     Divider(Modifier.padding(horizontal = 14.dp))
                     SwitchRow("自动点击倍数", "菜单里自动点目标倍速", clickSpeedOn, 14.dp) {
                         vm.setDramaClickSpeed(it)
-                    }
-                    Divider(Modifier.padding(horizontal = 14.dp))
-                    SwitchRow("看门狗", "菜单超时未关时自动返回键", watchdogOn, 14.dp) {
-                        vm.setDramaWatchdog(it)
                     }
                 }
             }

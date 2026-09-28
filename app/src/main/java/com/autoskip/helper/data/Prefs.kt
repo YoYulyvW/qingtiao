@@ -36,7 +36,7 @@ class Prefs(private val context: Context) {
     private val KEY_DRAMA_DEBUG = booleanPreferencesKey("drama_debug")
     private val KEY_DRAMA_IMG_INT = stringPreferencesKey("drama_img_int")
     private val KEY_DRAMA_NORMAL_INT = stringPreferencesKey("drama_normal_int")
-    private val KEY_DRAMA_WATCHDOG = booleanPreferencesKey("drama_watchdog")
+
     private val KEY_DRAMA_LONGPRESS = booleanPreferencesKey("drama_longpress")
     private val KEY_DRAMA_CLICKSPEED = booleanPreferencesKey("drama_clickspeed")
 
@@ -122,9 +122,6 @@ class Prefs(private val context: Context) {
     val dramaNormalInterval: Flow<Int> = context.dataStore.data.map { it[KEY_DRAMA_NORMAL_INT]?.toIntOrNull() ?: 5 }
     suspend fun setDramaNormalInterval(v: Int) { context.dataStore.edit { it[KEY_DRAMA_NORMAL_INT] = v.toString() } }
 
-    /** 看门狗开关（菜单超时自动关闭），默认开 */
-    val dramaWatchdog: Flow<Boolean> = context.dataStore.data.map { it[KEY_DRAMA_WATCHDOG] ?: false }
-    suspend fun setDramaWatchdog(v: Boolean) { context.dataStore.edit { it[KEY_DRAMA_WATCHDOG] = v } }
     /** 自动长按开关，默认开 */
     val dramaLongPress: Flow<Boolean> = context.dataStore.data.map { it[KEY_DRAMA_LONGPRESS] ?: true }
     suspend fun setDramaLongPress(v: Boolean) { context.dataStore.edit { it[KEY_DRAMA_LONGPRESS] = v } }

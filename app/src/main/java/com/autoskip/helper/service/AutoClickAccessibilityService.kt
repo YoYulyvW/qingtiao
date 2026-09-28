@@ -52,7 +52,6 @@ class AutoClickAccessibilityService : AccessibilityService() {
 
     // ===== 短剧自动倍速 =====
     @Volatile private var dramaEnabled = false
-    @Volatile private var dramaWatchdogOn = true
     @Volatile private var dramaLongPressOn = true
     @Volatile private var dramaClickSpeedOn = true
     @Volatile private var dramaAutoMount = true
@@ -94,9 +93,6 @@ class AutoClickAccessibilityService : AccessibilityService() {
         "倍速", "识别图片"
     )
 
-    /** 卡死看门狗：最近一次"有进展"的时间戳 */
-    @Volatile private var lastProgressTime = 0L
-
     /** 系统UI（多任务中心/桌面）是否在前台。为 true 时暂停所有节点遍历，避免卡顿 */
     @Volatile private var systemUiForeground = false
 
@@ -104,7 +100,7 @@ class AutoClickAccessibilityService : AccessibilityService() {
     @Volatile private var systemUiForegroundTime = 0L
     private val SYSTEM_UI_PAUSE_WINDOW = 5000L
 
-    /** 是否处于"退出短剧"页面：为 true 时暂停所有动作（含看门狗） */
+    /** 是否处于"退出短剧"页面：为 true 时暂停所有动作 */
     @Volatile private var exitDramaPaused = false
 
     /** 条件规则延时检测：记录已触发待确认的规则（签名 -> 触发时间） */
@@ -121,8 +117,6 @@ class AutoClickAccessibilityService : AccessibilityService() {
     private var lastAuthor: String? = null
     /** 上次菜单是否是「识别图片」版（决定用哪个间隔） */
     @Volatile private var menuHasImg = false
-    /** 菜单关闭看门狗：最近一次检测到菜单存在的时间 */
-    @Volatile private var menuVisibleSince = 0L
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -138,7 +132,6 @@ class AutoClickAccessibilityService : AccessibilityService() {
 
         // 短剧自动倍速配置
         scope.launch { repo.dramaEnabled.collect { dramaEnabled = it } }
-        scope.launch { repo.dramaWatchdog.collect { dramaWatchdogOn = it } }
         scope.launch { repo.dramaLongPress.collect { dramaLongPressOn = it } }
         scope.launch { repo.dramaClickSpeed.collect { dramaClickSpeedOn = it } }
         scope.launch { repo.dramaAutoMount.collect { dramaAutoMount = it } }
@@ -155,8 +148,6 @@ class AutoClickAccessibilityService : AccessibilityService() {
 
         // 启动短剧加速轮询
         scope.launch { dramaLoop() }
-        // 启动看门狗（独立协程，主循环卡住时也能兜底）
-        scope.launch { menuWatchdog() }
 
         Log.i(TAG, "无障碍服务已连接")
     }
@@ -184,7 +175,6 @@ class AutoClickAccessibilityService : AccessibilityService() {
                 // 白名单模式：非白名单应用忽略（与规则一致，支持通配符）
                 if (whitelistEnabled && !Matcher.matchesWhitelist(pkg, whitelistPkgs)) continue
                 val now = System.currentTimeMillis()
-                lastProgressTime = now   // 看门狗用：标记循环有进展
                 // 心跳：每 5 秒输出一次，证明循环没卡住
                 if (now - lastHeartbeat > 5000) {
                     lastHeartbeat = now
@@ -197,66 +187,6 @@ class AutoClickAccessibilityService : AccessibilityService() {
             } catch (e: Exception) {
                 Log.e(TAG, "dramaLoop error", e)
                 DramaDebug.add("异常: ${e.message}")
-            }
-        }
-    }
-
-    /**
-     * 看门狗：独立协程，每 2 秒检查一次。
-     * 若菜单出现后超过 6 秒仍未消失 → 强制按返回键关闭，并复位状态。
-     * 即使主循环(dramaLoop)卡住，这个协程也能兜底恢复。
-     */
-    private suspend fun menuWatchdog() {
-        while (true) {
-            try {
-                delay(2000)
-                if (!dramaEnabled) continue
-                // 看门狗开关关闭 → 不动作
-                if (!dramaWatchdogOn) continue
-                // 退出短剧页面 → 暂停看门狗
-                if (exitDramaPaused) continue
-
-                // ★ 关键：只在前台是抖音系应用里才动作（无状态判断，避免卡住）
-                val pkg = currentRootPackage()
-                if (pkg == null || !isDouyin(pkg) || Matcher.isSystemUi(pkg)) {
-                    // 不在抖音 → 复位所有状态，绝不按返回键
-                    lastProgressTime = 0
-                    menuVisibleSince = 0
-                    menuClickedTime = 0
-                    expectingMenuTime = 0
-                    continue
-                }
-
-                val now = System.currentTimeMillis()
-
-                // ★ 严格判定：只有真菜单（含"推荐/转发到日常/倍速"之一）才算
-                val root = rootInActiveWindow
-                val hasRealMenu = root != null && collectAllNodes(root).any {
-                    val t = it.text?.toString()?.trim() ?: ""
-                    t == "推荐" || t == "转发到日常" || t == "倍速"
-                }
-                if (!hasRealMenu) {
-                    // 不是菜单 → 复位计时，不动作
-                    menuVisibleSince = 0
-                    continue
-                }
-
-                val menuTooLong = menuVisibleSince > 0 && now - menuVisibleSince > 6000
-
-                if (menuTooLong) {
-                    DramaDebug.add("看门狗: 菜单超过6秒未关，强制返回键")
-                    kotlinx.coroutines.withContext(Dispatchers.Main) {
-                        performGlobalAction(GLOBAL_ACTION_BACK)
-                    }
-                    // 复位状态
-                    menuVisibleSince = 0
-                    menuClickedTime = 0
-                    expectingMenuTime = 0
-                    lastDramaClickTime = 0
-                    lastProgressTime = System.currentTimeMillis()
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "watchdog error", e)
             }
         }
     }
@@ -336,8 +266,6 @@ class AutoClickAccessibilityService : AccessibilityService() {
             expectingMenuTime = 0L   // 菜单已确认出现，清除等待标记
             // 记录菜单类型（是否含"识别图片"），决定下次间隔
             menuHasImg = nodes.any { it.text?.toString()?.trim() == "识别图片" }
-            // 看门狗：记录菜单出现时间
-            if (menuVisibleSince == 0L) menuVisibleSince = System.currentTimeMillis()
 
             // 只在首次看到菜单时处理（menuClickedTime 非 0 表示本次已处理）
             if (menuClickedTime == 0L) {
@@ -364,13 +292,11 @@ class AutoClickAccessibilityService : AccessibilityService() {
                 menuClickedTime = System.currentTimeMillis()
                 // 记录本次呼出的集数数字（无论是否点到 3.0，都算呼出过）
                 if (pendingEpisodeNum != null) lastLongPressEpNum = pendingEpisodeNum!!
-                startMenuCloseCheck()
             }
             return
         } else {
             // 菜单已消失
             menuClickedTime = 0L
-            menuVisibleSince = 0L
         }
 
         // 1) 找底部倍速按钮（若某版本能读到文字）
@@ -497,47 +423,6 @@ class AutoClickAccessibilityService : AccessibilityService() {
                 if (info.size >= 40) break
             }
             DramaDebug.add("可见节点(text@Y%): " + info.joinToString(" "))
-        }
-    }
-
-    /**
-     * 菜单点击后检查是否缩回，未缩回则按返回键。
-     * 循环重试：按返回 → 等 1 秒 → 再检查，最多 3 次，直到菜单消失。
-     * 判断依据：菜单里有"倍速"标题；短剧页面有集数/发布者。
-     */
-    private fun startMenuCloseCheck() {
-        scope.launch {
-            for (attempt in 1..3) {
-                delay(1000)
-                try {
-                    val root = rootInActiveWindow ?: continue
-                    val nodes = collectAllNodes(root)
-                    val stillHasMenu = nodes.any { it.text?.toString()?.trim() == "倍速" }
-                    if (!stillHasMenu) {
-                        DramaDebug.add("菜单已缩回（第 ${attempt} 次检查）")
-                        menuClickedTime = 0L
-                        return@launch
-                    }
-                    // 菜单还在 → 按返回键
-                    DramaDebug.add("菜单未缩回，按返回键（第 $attempt 次）")
-                    kotlinx.coroutines.withContext(Dispatchers.Main) {
-                        performGlobalAction(GLOBAL_ACTION_BACK)
-                    }
-                } catch (e: Exception) {
-                    DramaDebug.add("关闭菜单异常: ${e.message}")
-                }
-            }
-            // 3 次后仍可能没关掉，最后再检查一次
-            delay(1000)
-            val root = rootInActiveWindow
-            val stillHasMenu = root != null &&
-                collectAllNodes(root).any { it.text?.toString()?.trim() == "倍速" }
-            if (stillHasMenu) {
-                DramaDebug.add("重试 3 次菜单仍未缩回")
-            } else {
-                DramaDebug.add("菜单已缩回")
-            }
-            menuClickedTime = 0L
         }
     }
 
