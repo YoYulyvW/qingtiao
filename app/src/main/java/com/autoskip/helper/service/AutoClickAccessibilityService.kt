@@ -82,8 +82,7 @@ class AutoClickAccessibilityService : AccessibilityService() {
     /** 本次广告推送是否已发送（避免重复推送） */
     @Volatile private var adPushSent = false
 
-    /** 短剧挂载控件 ID（fullId 后缀） */
-    private val MOUNT_ICON_ID = "n3i"        // 挂载图标
+    /** 短剧挂载控件 ID（fullId 后缀）。注：n3i(图标)已在首页误触，不再使用。 */
     private val MOUNT_TEXT_ID = "2go"        // "短剧"文字控件
     private val MOUNT_NAME_ID = "4ef"        // 剧名控件
     /** 暂停控件 ID（点击可恢复播放） */
@@ -473,6 +472,28 @@ class AutoClickAccessibilityService : AccessibilityService() {
             if (diag) DramaDebug.add("无倍速按钮，且已关自动挂载（节点数 ${nodes.size}）")
             return
         }
+
+        // ★ 约束1：如果是抖音首页（有 首页/消息/商城 等底部导航），绝不检测挂载，
+        //   避免误点首页无关控件（历史 bug：n3i 在首页误触弹登录框）。
+        val isHomePage = nodes.any {
+            val t = it.text?.toString()?.trim() ?: ""
+            t == "首页" || t == "消息" || t == "商城" || t == "朋友" || t == "我"
+        }
+        if (isHomePage) {
+            if (diag) DramaDebug.add("疑似抖音首页（有底部导航），跳过挂载检测")
+            return
+        }
+
+        // ★ 约束2：只有屏幕出现"短剧"文字时，才尝试挂载检测（挂载按钮必然带"短剧"）。
+        val hasDramaMountText = nodes.any {
+            val t = it.text?.toString()?.trim() ?: ""
+            t == "短剧" || t.startsWith("短剧")
+        }
+        if (!hasDramaMountText) {
+            if (diag) DramaDebug.add("屏幕无「短剧」文字，跳过挂载检测")
+            return
+        }
+
         val mountNode = if (dramaMountByIdOn) findDramaMountById(nodes) else findDramaMount(nodes)
         if (mountNode != null) {
             DramaDebug.add("短剧挂载(${if (dramaMountByIdOn) "控件ID" else "文字"}): 点击进入 -> ${mountNode.text}")
@@ -612,12 +633,18 @@ class AutoClickAccessibilityService : AccessibilityService() {
     }
 
     /**
-     * 按控件 ID 找短剧挂载按钮（比文字识别更稳）。
-     * 优先：图标 ID(n3i) → 短剧文字ID(2go) → 剧名ID(4ef)；
-     * 找到后点击其可点击祖先，整个挂载行可点。
+     * 按控件 ID 找短剧挂载按钮。
+     * ★ 约束：屏幕必须出现"短剧"文字（挂载按钮必然带此字样），否则不检测，
+     *   防止首页其它控件被误点（历史 bug：n3i 图标 ID 在首页误触导致弹登录框）。
+     * 只在 2go(短剧文字) / 4ef(剧名) 中找（已移除 n3i 图标）。
      */
     private fun findDramaMountById(nodes: List<android.view.accessibility.AccessibilityNodeInfo>): android.view.accessibility.AccessibilityNodeInfo? {
-        for (targetId in listOf(MOUNT_ICON_ID, MOUNT_TEXT_ID, MOUNT_NAME_ID)) {
+        val hasDramaText = nodes.any {
+            val t = it.text?.toString()?.trim() ?: ""
+            t == "短剧" || t.startsWith("短剧")
+        }
+        if (!hasDramaText) return null
+        for (targetId in listOf(MOUNT_TEXT_ID, MOUNT_NAME_ID)) {
             val node = nodes.firstOrNull {
                 val id = it.viewIdResourceName ?: return@firstOrNull false
                 id.endsWith("/$targetId") || id.endsWith(":$targetId")
