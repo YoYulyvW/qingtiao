@@ -297,9 +297,15 @@ object Matcher {
             if (rule.hasText.isBlank()) continue
             if (allTexts.none { it.contains(rule.hasText, ignoreCase = true) }) continue
 
-            // 【且】andText（可选）也必须出现
-            if (!rule.andText.isNullOrBlank() &&
-                allTexts.none { it.contains(rule.andText, ignoreCase = true) }) continue
+            // 【且】andText（可选）：支持多个关键词，用 | 分隔，全部命中才算
+            if (!rule.andText.isNullOrBlank()) {
+                val andKeys = rule.andText.split("|", "｜")
+                    .map { it.trim() }.filter { it.isNotBlank() }
+                val allAndHit = andKeys.all { key ->
+                    allTexts.any { it.contains(key, ignoreCase = true) }
+                }
+                if (!allAndHit) continue
+            }
 
             // 条件满足 → 执行动作
             when (rule.actionType) {

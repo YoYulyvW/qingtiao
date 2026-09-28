@@ -196,7 +196,7 @@ private fun CondRuleDialog(
                 )
                 OutlinedTextField(
                     value = andText, onValueChange = { andText = it },
-                    label = { Text("【且】还须包含（可空）") },
+                    label = { Text("【且】还须包含（多个用 | 分隔）") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
