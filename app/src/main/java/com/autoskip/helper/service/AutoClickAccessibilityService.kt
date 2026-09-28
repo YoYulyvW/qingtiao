@@ -101,6 +101,9 @@ class AutoClickAccessibilityService : AccessibilityService() {
     @Volatile private var systemUiForegroundTime = 0L
     private val SYSTEM_UI_PAUSE_WINDOW = 5000L
 
+    /** 是否处于"退出短剧"页面：为 true 时暂停所有动作（含看门狗） */
+    @Volatile private var exitDramaPaused = false
+
     // ===== 呼出间隔配置 =====
     @Volatile private var dramaImgInterval = 1     // 「识别图片」版：每N集呼出
     @Volatile private var dramaNormalInterval = 5  // 其他版：每N集呼出
@@ -199,6 +202,8 @@ class AutoClickAccessibilityService : AccessibilityService() {
             try {
                 delay(2000)
                 if (!dramaEnabled) continue
+                // 退出短剧页面 → 暂停看门狗
+                if (exitDramaPaused) continue
 
                 // ★ 关键：只在前台是抖音系应用里才动作（无状态判断，避免卡住）
                 val pkg = currentRootPackage()
@@ -277,6 +282,27 @@ class AutoClickAccessibilityService : AccessibilityService() {
             return
         }
         val nodes = collectAllNodes(root)
+
+        // ★ "退出短剧"页面：暂停所有动作，直到恢复正常短剧页
+        val hasExitDrama = nodes.any { it.text?.toString()?.trim() == "退出短剧" }
+        if (hasExitDrama) {
+            if (!exitDramaPaused) {
+                exitDramaPaused = true
+                DramaDebug.add("检测到「退出短剧」页面，暂停所有动作")
+            }
+            return
+        }
+        // 恢复正常短剧页（有"第X集"且底部有"全"）→ 解除暂停
+        val hasEpisode = nodes.any { Regex("第\\s*\\d+\\s*集").containsMatchIn(it.text?.toString() ?: "") }
+        val hasQuan = nodes.any { it.text?.toString()?.trim() == "全" }
+        if (exitDramaPaused) {
+            if (hasEpisode && hasQuan) {
+                exitDramaPaused = false
+                DramaDebug.add("短剧页面已恢复，继续工作")
+            } else {
+                return   // 仍在退出页/过渡页，继续暂停
+            }
+        }
 
         // 提取当前集数（发布者下方，形如"第1集"）
         currentEpisode = extractEpisode(nodes)
