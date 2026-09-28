@@ -82,9 +82,10 @@ class AutoClickAccessibilityService : AccessibilityService() {
     /** 本次广告推送是否已发送（避免重复推送） */
     @Volatile private var adPushSent = false
 
-    /** 短剧挂载控件 ID（fullId 后缀）。注：n3i(图标)已在首页误触，不再使用。 */
-    private val MOUNT_TEXT_ID = "2go"        // "短剧"文字控件
-    private val MOUNT_NAME_ID = "4ef"        // 剧名控件
+    /** 短剧挂载控件 ID（fullId 后缀）。
+     *  只保留 2go（"短剧"文字控件，text 必为"短剧"，最可靠）。
+     *  n3i(图标) 和 4ef(剧名，text 常为 null) 都会误匹配，已移除。 */
+    private val MOUNT_TEXT_ID = "2go"
     /** 暂停控件 ID（点击可恢复播放） */
     private val PAUSE_ID = "fb_"
 
@@ -645,26 +646,18 @@ class AutoClickAccessibilityService : AccessibilityService() {
 
     /**
      * 按控件 ID 找短剧挂载按钮。
-     * ★ 约束：屏幕必须出现"短剧"文字（挂载按钮必然带此字样），否则不检测，
-     *   防止首页其它控件被误点（历史 bug：n3i 图标 ID 在首页误触导致弹登录框）。
-     * 只在 2go(短剧文字) / 4ef(剧名) 中找（已移除 n3i 图标）。
+     * ★ 只用 2go（"短剧"文字控件），并要求节点 text 含"短剧"，双重校验。
+     *   已移除 n3i（图标，首页误触）和 4ef（剧名，text 常为 null，误匹配）。
      */
     private fun findDramaMountById(nodes: List<android.view.accessibility.AccessibilityNodeInfo>): android.view.accessibility.AccessibilityNodeInfo? {
-        val hasDramaText = nodes.any {
-            val t = it.text?.toString()?.trim() ?: ""
-            t == "短剧" || t.startsWith("短剧")
-        }
-        if (!hasDramaText) return null
-        for (targetId in listOf(MOUNT_TEXT_ID, MOUNT_NAME_ID)) {
-            val node = nodes.firstOrNull {
-                val id = it.viewIdResourceName ?: return@firstOrNull false
-                id.endsWith("/$targetId") || id.endsWith(":$targetId")
-            }
-            if (node != null) {
-                return findClickableAncestor(node) ?: node
-            }
-        }
-        return null
+        val node = nodes.firstOrNull {
+            val id = it.viewIdResourceName ?: return@firstOrNull false
+            id.endsWith("/$MOUNT_TEXT_ID") || id.endsWith(":$MOUNT_TEXT_ID")
+        } ?: return null
+        // 二次校验：该节点的 text 必须含"短剧"，否则不是真挂载
+        val t = node.text?.toString()?.trim() ?: ""
+        if (!t.contains("短剧")) return null
+        return findClickableAncestor(node) ?: node
     }
 
     /**
