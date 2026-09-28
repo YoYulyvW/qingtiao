@@ -81,6 +81,8 @@ class AutoClickAccessibilityService : AccessibilityService() {
     @Volatile private var pushIncludeCloneOn = true
     /** 本次广告推送是否已发送（避免重复推送） */
     @Volatile private var adPushSent = false
+    /** 控件规则调试日志限频时间戳 */
+    private var lastWidgetRuleLogTime = 0L
 
     /** 短剧挂载控件 ID（fullId 后缀）。
      *  只保留 2go（"短剧"文字控件，text 必为"短剧"，最可靠）。
@@ -390,15 +392,7 @@ class AutoClickAccessibilityService : AccessibilityService() {
         }
 
         // 2) 是短剧页面 → 长按视频中心唤出菜单
-
-        // ★ 先排除首页/普通视频流：有底部导航（首页/朋友/消息/我）或顶部导航（推荐/关注/商城）即视为普通视频流
-        val isNormalFeed = nodes.any {
-            val t = it.text?.toString()?.trim() ?: ""
-            t == "首页" || t == "朋友" || t == "消息" || t == "我" ||
-                t == "推荐" || t == "关注" || t == "商城" || t == "直播" ||
-                t == "同城" || t == "团购"
-        }
-        // 短剧页特征：明确的"集全"或"第N集"或"免费看全集"（收紧，不再用宽泛的"免费"）
+        //   短剧页特征：明确的"集全" / "第N集" / "免费看全集"（已收紧，首页不会误判）
         val isDramaPage = nodes.any {
             val t = it.text?.toString() ?: ""
             t.contains("集全") || Regex("第\\s*\\d+\\s*集").containsMatchIn(t) ||
@@ -409,8 +403,7 @@ class AutoClickAccessibilityService : AccessibilityService() {
             val t = it.text?.toString()?.trim() ?: ""
             t == "搜索" || t == "搜你想看的"
         }
-        // ★ 必须：是短剧页 且 不是普通视频流 且 无搜索栏
-        if (isDramaPage && !isNormalFeed && !hasSearch) {
+        if (isDramaPage && !hasSearch) {
             // 已发起长按、正等菜单出现 → 绝不重复长按（避免点到菜单项）
             val now0 = System.currentTimeMillis()
             if (expectingMenuTime != 0L && now0 - expectingMenuTime < EXPECT_MENU_WINDOW) {
@@ -672,10 +665,13 @@ class AutoClickAccessibilityService : AccessibilityService() {
         for (rule in cachedWidgetRules) {
             if (!rule.enabled) continue
             if (!rule.packageName.isNullOrBlank() && rule.packageName != pkg) continue
-            // 匹配控件 ID（完整或后缀）
+            // 匹配控件 ID：只比较「资源名」（冒号后最后一段），兼容官方/分身不同包名
+            // 例：com.ss.android.ugc.aweme:id/vfd 与 com.qihoo.magic.xxx_134:id/vfd 都能匹配到 vfd
+            val ruleRes = rule.widgetId.substringAfterLast(":").substringAfterLast("/")
             val node = nodes.firstOrNull {
                 val id = it.viewIdResourceName ?: return@firstOrNull false
-                id == rule.widgetId || id.endsWith("/" + rule.widgetId) || id.endsWith(":" + rule.widgetId)
+                val nodeRes = id.substringAfterLast(":").substringAfterLast("/")
+                nodeRes == ruleRes
             } ?: continue
             // 可选：文本匹配
             if (!rule.matchText.isNullOrBlank()) {
@@ -1038,6 +1034,18 @@ class AutoClickAccessibilityService : AccessibilityService() {
             if (matchAndRunWidgetRules(exitNodes, pkg)) {
                 lastClickTime = System.currentTimeMillis()
                 return
+            }
+            // 未命中：限频打印当前屏幕控件 ID，便于排查（3秒一次）
+            val tNow = System.currentTimeMillis()
+            if (tNow - lastWidgetRuleLogTime > 3000) {
+                lastWidgetRuleLogTime = tNow
+                val ids = exitNodes.mapNotNull { it.viewIdResourceName }
+                    .map { it.substringAfterLast(":").substringAfterLast("/") }
+                    .distinct().take(30)
+                val wanted = cachedWidgetRules.filter { it.enabled }.joinToString(",") {
+                    it.widgetId.substringAfterLast(":").substringAfterLast("/")
+                }
+                DramaDebug.add("控件规则未命中(想要: $wanted) 当前ID: " + ids.joinToString(","))
             }
         }
 
