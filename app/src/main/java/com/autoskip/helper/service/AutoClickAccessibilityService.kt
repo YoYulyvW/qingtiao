@@ -834,8 +834,12 @@ class AutoClickAccessibilityService : AccessibilityService() {
 
         val result = Matcher.match(root, cachedRules, pkg, strictClose)
         if (result != null) {
-            // 弹窗签名：包名 + 匹配到的文字
-            val signature = pkg + "|" + result.matchedText
+            // 弹窗签名：包名 + 文字 + 节点位置
+            // 加位置：避免"进入类"按钮（如点击免费看全集）跳转后，
+            //         短剧页里不同位置的相同文字被误判为"重复弹窗"而按返回键
+            val posRect = android.graphics.Rect()
+            try { result.node.getBoundsInScreen(posRect) } catch (_: Exception) {}
+            val signature = pkg + "|" + result.matchedText + "|" + posRect.centerX() + "," + posRect.centerY()
             val nowT = System.currentTimeMillis()
             val isRepeat = signature == lastPopupSignature && (nowT - lastPopupTime) < REPEAT_WINDOW
 
