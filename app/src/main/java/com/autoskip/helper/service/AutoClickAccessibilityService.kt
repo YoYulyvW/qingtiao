@@ -283,30 +283,26 @@ class AutoClickAccessibilityService : AccessibilityService() {
         }
         val nodes = collectAllNodes(root)
 
-        // ★ "退出短剧"弹窗：自动点「返回并退出」，然后暂停所有动作
-        val hasExitDrama = nodes.any { it.text?.toString()?.trim() == "退出短剧" }
+        // ★ "退出短剧"弹窗（含「退出短剧」「返回并退出」）→ 暂停所有动作，不做任何点击
+        val hasExitDrama = nodes.any {
+            val t = it.text?.toString()?.trim() ?: ""
+            t == "退出短剧" || t == "返回并退出"
+        }
         if (hasExitDrama) {
             if (!exitDramaPaused) {
                 exitDramaPaused = true
-                // 找「返回并退出」按钮并点击
-                val exitBtn = nodes.firstOrNull {
-                    val t = it.text?.toString()?.trim() ?: ""
-                    t == "返回并退出" || t == "退出并返回" || t == "确认退出"
-                }
-                if (exitBtn != null) {
-                    DramaDebug.add("检测到「退出短剧」，点击「${exitBtn.text}」")
-                    clickNode(findClickableAncestor(exitBtn) ?: exitBtn)
-                } else {
-                    DramaDebug.add("检测到「退出短剧」弹窗，但未找到「返回并退出」按钮")
-                }
+                DramaDebug.add("检测到「退出短剧」弹窗，暂停所有动作")
             }
             return
         }
-        // 恢复正常短剧页（有"第X集"且底部有"全"）→ 解除暂停
-        val hasEpisode = nodes.any { Regex("第\\s*\\d+\\s*集").containsMatchIn(it.text?.toString() ?: "") }
-        val hasQuan = nodes.any { it.text?.toString()?.trim() == "全" }
+        // 恢复条件：出现 集 / 全 / 免费（正常短剧页特征）→ 解除暂停
+        val hasEpisode = nodes.any {
+            val t = it.text?.toString() ?: ""
+            Regex("第\\s*\\d+\\s*集").containsMatchIn(t) ||
+                t.contains("集全") || t.contains("免费")
+        }
         if (exitDramaPaused) {
-            if (hasEpisode && hasQuan) {
+            if (hasEpisode) {
                 exitDramaPaused = false
                 DramaDebug.add("短剧页面已恢复，继续工作")
             } else {
