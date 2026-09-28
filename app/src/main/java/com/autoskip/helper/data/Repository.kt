@@ -8,10 +8,12 @@ class Repository(
     private val ruleDao: RuleDao,
     private val logDao: LogDao,
     private val condRuleDao: CondRuleDao,
+    private val widgetRuleDao: WidgetRuleDao,
     val prefs: Prefs
 ) {
     val rules: Flow<List<RuleEntity>> = ruleDao.observeAll()
     val condRules: Flow<List<CondRuleEntity>> = condRuleDao.observeAll()
+    val widgetRules: Flow<List<WidgetRuleEntity>> = widgetRuleDao.observeAll()
     val recentLogs: Flow<List<LogEntity>> = logDao.observeRecent()
     val totalCount: Flow<Int> = logDao.observeTotal()
 
@@ -40,12 +42,20 @@ class Repository(
     val dramaResumePause: Flow<Boolean> = prefs.dramaResumePause
     val pushUrl: Flow<String> = prefs.pushUrl
     val pushName: Flow<String> = prefs.pushName
+    val pushUser: Flow<String> = prefs.pushUser
+    val pushMsg: Flow<String> = prefs.pushMsg
     val dramaLongPress: Flow<Boolean> = prefs.dramaLongPress
     val dramaClickSpeed: Flow<Boolean> = prefs.dramaClickSpeed
 
     suspend fun addRule(rule: RuleEntity): Long = ruleDao.insert(rule)
 
     // 条件规则
+    suspend fun addWidgetRule(rule: WidgetRuleEntity): Long = widgetRuleDao.insert(rule)
+    suspend fun updateWidgetRule(rule: WidgetRuleEntity) = widgetRuleDao.update(rule)
+    suspend fun deleteWidgetRule(rule: WidgetRuleEntity) = widgetRuleDao.delete(rule)
+    suspend fun enabledWidgetRules(): List<WidgetRuleEntity> = widgetRuleDao.enabledRules()
+    suspend fun bumpWidgetHit(id: Long) = widgetRuleDao.bumpHit(id)
+
     suspend fun addCondRule(rule: CondRuleEntity): Long = condRuleDao.insert(rule)
     suspend fun updateCondRule(rule: CondRuleEntity) = condRuleDao.update(rule)
     suspend fun deleteCondRule(rule: CondRuleEntity) = condRuleDao.delete(rule)
@@ -161,6 +171,8 @@ class Repository(
     suspend fun setDramaResumePause(v: Boolean) = prefs.setDramaResumePause(v)
     suspend fun setPushUrl(v: String) = prefs.setPushUrl(v)
     suspend fun setPushName(v: String) = prefs.setPushName(v)
+    suspend fun setPushUser(v: String) = prefs.setPushUser(v)
+    suspend fun setPushMsg(v: String) = prefs.setPushMsg(v)
     suspend fun setCondDramaOnly(v: Boolean) = prefs.setCondDramaOnly(v)
 
     /**

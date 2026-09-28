@@ -60,6 +60,30 @@ interface CondRuleDao {
 }
 
 @Dao
+interface WidgetRuleDao {
+    @Query("SELECT * FROM widget_rules ORDER BY enabled DESC, createdAt DESC")
+    fun observeAll(): Flow<List<WidgetRuleEntity>>
+
+    @Query("SELECT * FROM widget_rules WHERE enabled = 1")
+    suspend fun enabledRules(): List<WidgetRuleEntity>
+
+    @Query("SELECT * FROM widget_rules")
+    suspend fun all(): List<WidgetRuleEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(rule: WidgetRuleEntity): Long
+
+    @Update
+    suspend fun update(rule: WidgetRuleEntity)
+
+    @Delete
+    suspend fun delete(rule: WidgetRuleEntity)
+
+    @Query("UPDATE widget_rules SET hitCount = hitCount + 1 WHERE id = :id")
+    suspend fun bumpHit(id: Long)
+}
+
+@Dao
 interface LogDao {
     @Query("SELECT * FROM logs ORDER BY timestamp DESC LIMIT 500")
     fun observeRecent(): Flow<List<LogEntity>>

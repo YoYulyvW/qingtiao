@@ -39,7 +39,7 @@ import com.autoskip.helper.data.RuleEntity
 import com.autoskip.helper.ui.MainViewModel
 
 @Composable
-fun RulesScreen(vm: MainViewModel, onOpenCondRules: () -> Unit = {}) {
+fun RulesScreen(vm: MainViewModel, onOpenCondRules: () -> Unit = {}, onOpenWidgetRules: () -> Unit = {}) {
     val rules by vm.rules.collectAsState()
     var editing by remember { mutableStateOf<RuleEntity?>(null) }
     var showAdd by remember { mutableStateOf(false) }
@@ -75,6 +75,32 @@ fun RulesScreen(vm: MainViewModel, onOpenCondRules: () -> Unit = {}) {
                             Text("条件规则", fontWeight = FontWeight.Bold)
                             Text(
                                 "有 X 且 Y → 执行动作（点文字/点图标X/返回键）",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                        Text("›", style = MaterialTheme.typography.headlineSmall)
+                    }
+                }
+                Spacer(Modifier.height(4.dp))
+            }
+            item {
+                Card(
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable { onOpenWidgetRules() },
+                    colors = androidx.compose.material3.CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    )
+                ) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text("控件规则", fontWeight = FontWeight.Bold)
+                            Text(
+                                "按控件 ID 定位 → 点击/长按/返回/坐标（最精准）",
                                 style = MaterialTheme.typography.bodySmall
                             )
                         }

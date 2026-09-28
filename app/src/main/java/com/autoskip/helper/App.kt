@@ -16,7 +16,7 @@ class App : Application() {
 
     val database by lazy { AppDatabase.get(this) }
     val prefs by lazy { Prefs(this) }
-    val repo by lazy { Repository(database.ruleDao(), database.logDao(), database.condRuleDao(), prefs) }
+    val repo by lazy { Repository(database.ruleDao(), database.logDao(), database.condRuleDao(), database.widgetRuleDao(), prefs) }
 
     override fun onCreate() {
         super.onCreate()

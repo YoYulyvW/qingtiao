@@ -44,6 +44,8 @@ class Prefs(private val context: Context) {
     private val KEY_DRAMA_RESUME_PAUSE = booleanPreferencesKey("drama_resume_pause")
     private val KEY_PUSH_URL = stringPreferencesKey("push_url")
     private val KEY_PUSH_NAME = stringPreferencesKey("push_name")
+    private val KEY_PUSH_USER = stringPreferencesKey("push_user")
+    private val KEY_PUSH_MSG = stringPreferencesKey("push_msg")
 
     val enabled: Flow<Boolean> = context.dataStore.data.map { it[KEY_ENABLED] ?: true }
     val clickDelayMs: Flow<Long> = context.dataStore.data.map { (it[KEY_DELAY] ?: "600").toLongOrNull() ?: 600L }
@@ -146,6 +148,12 @@ class Prefs(private val context: Context) {
     /** 推送识别字符（设备名，如"1号板XX号机"） */
     val pushName: Flow<String> = context.dataStore.data.map { it[KEY_PUSH_NAME] ?: "" }
     suspend fun setPushName(v: String) { context.dataStore.edit { it[KEY_PUSH_NAME] = v } }
+    /** 推送 user 字段（可选） */
+    val pushUser: Flow<String> = context.dataStore.data.map { it[KEY_PUSH_USER] ?: "" }
+    suspend fun setPushUser(v: String) { context.dataStore.edit { it[KEY_PUSH_USER] = v } }
+    /** 推送消息内容（可自定义，默认"出现了广告窗口，请注意查看"） */
+    val pushMsg: Flow<String> = context.dataStore.data.map { it[KEY_PUSH_MSG] ?: "出现了广告窗口，请注意查看" }
+    suspend fun setPushMsg(v: String) { context.dataStore.edit { it[KEY_PUSH_MSG] = v } }
 
     suspend fun setDramaEnabled(v: Boolean) { context.dataStore.edit { it[KEY_DRAMA_ENABLED] = v } }
     suspend fun setDramaAutoMount(v: Boolean) { context.dataStore.edit { it[KEY_DRAMA_AUTO_MOUNT] = v } }

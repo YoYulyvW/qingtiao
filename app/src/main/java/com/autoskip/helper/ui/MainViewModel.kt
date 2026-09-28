@@ -39,6 +39,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val dramaResumePause = repo.dramaResumePause.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
     val pushUrl = repo.pushUrl.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
     val pushName = repo.pushName.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
+    val pushUser = repo.pushUser.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
+    val pushMsg = repo.pushMsg.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "出现了广告窗口，请注意查看")
     val condDramaOnly = repo.condDramaOnly.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
     val dramaClickSpeed = repo.dramaClickSpeed.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
@@ -59,6 +61,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun updateCondRule(rule: com.autoskip.helper.data.CondRuleEntity) = viewModelScope.launch { repo.updateCondRule(rule) }
     fun deleteCondRule(rule: com.autoskip.helper.data.CondRuleEntity) = viewModelScope.launch { repo.deleteCondRule(rule) }
 
+    // ===== 控件规则 =====
+    val widgetRules = repo.widgetRules.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    fun addWidgetRule(rule: com.autoskip.helper.data.WidgetRuleEntity) = viewModelScope.launch { repo.addWidgetRule(rule) }
+    fun updateWidgetRule(rule: com.autoskip.helper.data.WidgetRuleEntity) = viewModelScope.launch { repo.updateWidgetRule(rule) }
+    fun deleteWidgetRule(rule: com.autoskip.helper.data.WidgetRuleEntity) = viewModelScope.launch { repo.deleteWidgetRule(rule) }
+
     fun clearLogs() = viewModelScope.launch { repo.clearLogs() }
 
     fun setWhitelistEnabled(v: Boolean) = viewModelScope.launch { repo.setWhitelistEnabled(v) }
@@ -74,6 +82,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun setDramaResumePause(v: Boolean) = viewModelScope.launch { repo.setDramaResumePause(v) }
     fun setPushUrl(v: String) = viewModelScope.launch { repo.setPushUrl(v) }
     fun setPushName(v: String) = viewModelScope.launch { repo.setPushName(v) }
+    fun setPushUser(v: String) = viewModelScope.launch { repo.setPushUser(v) }
+    fun setPushMsg(v: String) = viewModelScope.launch { repo.setPushMsg(v) }
     fun setCondDramaOnly(v: Boolean) = viewModelScope.launch { repo.setCondDramaOnly(v) }
 
     fun exportCondRules(onResult: (String) -> Unit) = viewModelScope.launch {

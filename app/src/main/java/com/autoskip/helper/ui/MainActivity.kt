@@ -31,6 +31,7 @@ import com.autoskip.helper.ui.screens.LogsScreen
 import com.autoskip.helper.ui.screens.RulesScreen
 import com.autoskip.helper.ui.screens.SettingsScreen
 import com.autoskip.helper.ui.screens.WhitelistScreen
+import com.autoskip.helper.ui.screens.WidgetRulesScreen
 import com.autoskip.helper.ui.theme.AutoSkipTheme
 
 class MainActivity : ComponentActivity() {
@@ -53,6 +54,7 @@ private fun AppRoot(vm: MainViewModel) {
     var showFenShen by remember { mutableStateOf(false) }
     var showDrama by remember { mutableStateOf(false) }
     var showCondRules by remember { mutableStateOf(false) }
+    var showWidgetRules by remember { mutableStateOf(false) }
 
     if (showFenShen) {
         FenShenScreen(onBack = { showFenShen = false })
@@ -64,6 +66,10 @@ private fun AppRoot(vm: MainViewModel) {
     }
     if (showCondRules) {
         CondRulesScreen(onBack = { showCondRules = false }, vm = vm)
+        return
+    }
+    if (showWidgetRules) {
+        WidgetRulesScreen(onBack = { showWidgetRules = false }, vm = vm)
         return
     }
 
@@ -106,7 +112,7 @@ private fun AppRoot(vm: MainViewModel) {
         Box(Modifier.padding(padding)) {
             when (tab) {
                 0 -> HomeScreen(vm)
-                1 -> RulesScreen(vm, onOpenCondRules = { showCondRules = true })
+                1 -> RulesScreen(vm, onOpenCondRules = { showCondRules = true }, onOpenWidgetRules = { showWidgetRules = true })
                 2 -> WhitelistScreen(vm)
                 3 -> LogsScreen(vm)
                 else -> SettingsScreen(

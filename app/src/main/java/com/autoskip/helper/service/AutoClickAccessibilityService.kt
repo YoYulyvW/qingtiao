@@ -32,6 +32,7 @@ class AutoClickAccessibilityService : AccessibilityService() {
     @Volatile private var clickDelay = 600L
     @Volatile private var cachedRules: List<RuleEntity> = emptyList()
     @Volatile private var cachedCondRules: List<com.autoskip.helper.data.CondRuleEntity> = emptyList()
+    @Volatile private var cachedWidgetRules: List<com.autoskip.helper.data.WidgetRuleEntity> = emptyList()
 
     /** 白名单模式：仅对白名单内的包名生效 */
     @Volatile private var whitelistEnabled = false
@@ -74,6 +75,8 @@ class AutoClickAccessibilityService : AccessibilityService() {
     @Volatile private var dramaTargetSpeed = "3x"
     @Volatile private var pushUrl = ""
     @Volatile private var pushName = ""
+    @Volatile private var pushUser = ""
+    @Volatile private var pushMsg = "出现了广告窗口，请注意查看"
     /** 本次广告推送是否已发送（避免重复推送） */
     @Volatile private var adPushSent = false
 
@@ -156,6 +159,7 @@ class AutoClickAccessibilityService : AccessibilityService() {
         scope.launch { repo.clickDelayMs.collect { clickDelay = it } }
         scope.launch { repo.rules.collect { cachedRules = it } }
         scope.launch { repo.condRules.collect { cachedCondRules = it } }
+        scope.launch { repo.widgetRules.collect { cachedWidgetRules = it } }
         scope.launch { repo.whitelistEnabled.collect { whitelistEnabled = it } }
         scope.launch { repo.whitelistPkgs.collect { whitelistPkgs = it } }
 
@@ -171,6 +175,8 @@ class AutoClickAccessibilityService : AccessibilityService() {
         scope.launch { repo.dramaTargetSpeed.collect { dramaTargetSpeed = it } }
         scope.launch { repo.pushUrl.collect { pushUrl = it } }
         scope.launch { repo.pushName.collect { pushName = it } }
+        scope.launch { repo.pushUser.collect { pushUser = it } }
+        scope.launch { repo.pushMsg.collect { pushMsg = it } }
         scope.launch { repo.dramaBaseW.collect { dramaBaseW = it } }
         scope.launch { repo.dramaBaseH.collect { dramaBaseH = it } }
         scope.launch { repo.dramaTapX.collect { dramaTapX = it } }
@@ -610,6 +616,56 @@ class AutoClickAccessibilityService : AccessibilityService() {
     }
 
     /**
+     * 匹配控件规则：按控件 ID（支持后缀匹配）+ 可选文本匹配，执行动作。
+     * @return true 表示已匹配并执行（调用方应 return）
+     */
+    private fun matchAndRunWidgetRules(
+        nodes: List<android.view.accessibility.AccessibilityNodeInfo>,
+        pkg: String
+    ): Boolean {
+        if (cachedWidgetRules.isEmpty()) return false
+        for (rule in cachedWidgetRules) {
+            if (!rule.enabled) continue
+            if (!rule.packageName.isNullOrBlank() && rule.packageName != pkg) continue
+            // 匹配控件 ID（完整或后缀）
+            val node = nodes.firstOrNull {
+                val id = it.viewIdResourceName ?: return@firstOrNull false
+                id == rule.widgetId || id.endsWith("/" + rule.widgetId) || id.endsWith(":" + rule.widgetId)
+            } ?: continue
+            // 可选：文本匹配
+            if (!rule.matchText.isNullOrBlank()) {
+                val t = node.text?.toString() ?: node.contentDescription?.toString() ?: ""
+                if (!t.contains(rule.matchText, ignoreCase = true)) continue
+            }
+            // 命中：执行动作
+            when (rule.actionType) {
+                com.autoskip.helper.data.WidgetAction.CLICK -> {
+                    DramaDebug.add("控件规则[点击]: " + rule.remark)
+                    clickNode(findClickableAncestor(node) ?: node)
+                }
+                com.autoskip.helper.data.WidgetAction.LONG_PRESS -> {
+                    DramaDebug.add("控件规则[长按]: " + rule.remark)
+                    val r = android.graphics.Rect()
+                    node.getBoundsInScreen(r)
+                    longPressAt(r.centerX().toFloat(), r.centerY().toFloat())
+                }
+                com.autoskip.helper.data.WidgetAction.BACK -> {
+                    DramaDebug.add("控件规则[返回]: " + rule.remark)
+                    mainHandler.post { performGlobalAction(GLOBAL_ACTION_BACK) }
+                }
+                com.autoskip.helper.data.WidgetAction.COORD -> {
+                    DramaDebug.add("控件规则[坐标点击]: " + rule.remark + " (" + rule.coordX + "," + rule.coordY + ")")
+                    tapAt(rule.coordX.toFloat(), rule.coordY.toFloat())
+                }
+            }
+            val repo = App.instance.repo
+            scope.launch { runCatching { repo.bumpWidgetHit(rule.id) } }
+            return true
+        }
+        return false
+    }
+
+    /**
      * 找"暂停"控件（点击恢复播放）。
      * ★ 只用控件 ID（fb_）识别：正常播放时没有该控件，避免误判导致暂停。
      */
@@ -790,6 +846,20 @@ class AutoClickAccessibilityService : AccessibilityService() {
         }
     }
 
+    /** 坐标长按（默认 800ms） */
+    private fun longPressAt(x: Float, y: Float, durationMs: Long = 800L) {
+        try {
+            val path = Path().apply { moveTo(x, y) }
+            val stroke = GestureDescription.StrokeDescription(path, 0, durationMs)
+            val gesture = GestureDescription.Builder().addStroke(stroke).build()
+            mainHandler.post {
+                try { dispatchGesture(gesture, null, null) } catch (_: Exception) {}
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "longPressAt failed", e)
+        }
+    }
+
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null || !enabled) return
         val type = event.eventType
@@ -889,7 +959,9 @@ class AutoClickAccessibilityService : AccessibilityService() {
                 adPushSent = true
                 val u = pushUrl
                 val n = pushName
-                scope.launch { PushNotifier.send(u, n) }
+                val usr = pushUser
+                val m = pushMsg
+                scope.launch { PushNotifier.send(u, n, usr, m) }
             }
             return
         }
@@ -910,6 +982,14 @@ class AutoClickAccessibilityService : AccessibilityService() {
 
         val now = System.currentTimeMillis()
         if (now - lastClickTime < CLICK_COOLDOWN) return
+
+        // 0) 控件规则优先（按控件 ID 精确匹配，最可靠）
+        if (cachedWidgetRules.isNotEmpty()) {
+            if (matchAndRunWidgetRules(exitNodes, pkg)) {
+                lastClickTime = System.currentTimeMillis()
+                return
+            }
+        }
 
         // 0) 条件规则优先（更具体："有X且Y→动作"）
         val condAllowed = !condDramaOnlyOn ||
