@@ -14,6 +14,7 @@ import com.autoskip.helper.data.LogEntity
 import com.autoskip.helper.data.RuleEntity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
@@ -46,6 +47,15 @@ class AutoClickAccessibilityService : AccessibilityService() {
 
     /** 事件标记：onAccessibilityEvent 只置位，由 processEventLoop 在 IO 上处理（防主线程阻塞） */
     @Volatile private var pendingEvent = false
+
+    /**
+     * 单线程调度器：所有无障碍节点树访问都串行化到这里。
+     * 多协程（dramaLoop / processEventLoop / 延时检测）并发遍历节点树会与
+     * 无障碍框架死锁，表现为"卡住、切后台才恢复"。串行后彻底避免。
+     */
+    private val nodeDispatcher = java.util.concurrent.Executors
+        .newSingleThreadExecutor { r -> Thread(r, "autoskip-node") }
+        .asCoroutineDispatcher()
 
     // 重复弹窗检测：若同一弹窗点击后很快再次出现，说明点击无效，改用返回键
     private var lastPopupSignature: String? = null
@@ -149,10 +159,10 @@ class AutoClickAccessibilityService : AccessibilityService() {
         scope.launch { repo.dramaImgInterval.collect { dramaImgInterval = it } }
         scope.launch { repo.dramaNormalInterval.collect { dramaNormalInterval = it } }
 
-        // 启动短剧加速轮询
-        scope.launch { dramaLoop() }
-        // 启动事件处理循环（IO 线程，防主线程被节点遍历阻塞导致"卡住"）
-        scope.launch { processEventLoop() }
+        // 启动短剧加速轮询（单线程节点调度器：与事件处理串行，避免并发遍历死锁）
+        scope.launch(nodeDispatcher) { dramaLoop() }
+        // 启动事件处理循环（同上，串行化节点访问）
+        scope.launch(nodeDispatcher) { processEventLoop() }
 
         Log.i(TAG, "无障碍服务已连接")
     }
@@ -839,7 +849,7 @@ class AutoClickAccessibilityService : AccessibilityService() {
     private fun scheduleCondCheck(cond: CondMatchResult, pkg: String, delaySec: Int) {
         val rule = cond.rule
         val key = rule.id.toString()
-        scope.launch {
+        scope.launch(nodeDispatcher) {
             delay(delaySec * 1000L)
             try {
                 // 若等待期间条件已消失（被清理），放弃
@@ -971,6 +981,7 @@ class AutoClickAccessibilityService : AccessibilityService() {
         super.onDestroy()
         instance = null
         scope.cancel()
+        runCatching { nodeDispatcher.close() }
     }
 
     companion object {
