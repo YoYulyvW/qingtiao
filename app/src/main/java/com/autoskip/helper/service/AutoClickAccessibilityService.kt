@@ -65,11 +65,20 @@ class AutoClickAccessibilityService : AccessibilityService() {
     // ===== 短剧自动倍速 =====
     @Volatile private var dramaEnabled = false
     @Volatile private var dramaLongPressOn = true
+    @Volatile private var dramaMountByIdOn = false
+    @Volatile private var dramaResumePauseOn = true
     @Volatile private var condDramaOnlyOn = true
     @Volatile private var dramaClickSpeedOn = true
     @Volatile private var dramaAutoMount = true
     @Volatile private var dramaIntervalMs = 1000L
     @Volatile private var dramaTargetSpeed = "3x"
+
+    /** 短剧挂载控件 ID（fullId 后缀） */
+    private val MOUNT_ICON_ID = "n3i"        // 挂载图标
+    private val MOUNT_TEXT_ID = "2go"        // "短剧"文字控件
+    private val MOUNT_NAME_ID = "4ef"        // 剧名控件
+    /** 暂停控件 ID（点击可恢复播放） */
+    private val PAUSE_ID = "fb_"
 
     /** 上次长按时间（冷却，避免重复长按） */
     private var lastLongPressTime = 0L
@@ -149,6 +158,8 @@ class AutoClickAccessibilityService : AccessibilityService() {
         // 短剧自动倍速配置
         scope.launch { repo.dramaEnabled.collect { dramaEnabled = it } }
         scope.launch { repo.dramaLongPress.collect { dramaLongPressOn = it } }
+        scope.launch { repo.dramaMountById.collect { dramaMountByIdOn = it } }
+        scope.launch { repo.dramaResumePause.collect { dramaResumePauseOn = it } }
         scope.launch { repo.condDramaOnly.collect { condDramaOnlyOn = it } }
         scope.launch { repo.dramaClickSpeed.collect { dramaClickSpeedOn = it } }
         scope.launch { repo.dramaAutoMount.collect { dramaAutoMount = it } }
@@ -323,6 +334,16 @@ class AutoClickAccessibilityService : AccessibilityService() {
             menuClickedTime = 0L
         }
 
+        // 0.5) 暂停恢复：检测到"暂停"控件 → 点击恢复播放
+        if (dramaResumePauseOn) {
+            val pauseNode = findPauseControl(nodes)
+            if (pauseNode != null) {
+                DramaDebug.add("检测到暂停控件，点击恢复播放")
+                clickNode(pauseNode)
+                return
+            }
+        }
+
         // 1) 找底部倍速按钮（若某版本能读到文字）
         val speedNode = findSpeedButton(nodes)
         if (speedNode != null) {
@@ -424,9 +445,9 @@ class AutoClickAccessibilityService : AccessibilityService() {
             if (diag) DramaDebug.add("无倍速按钮，且已关自动挂载（节点数 ${nodes.size}）")
             return
         }
-        val mountNode = findDramaMount(nodes)
+        val mountNode = if (dramaMountByIdOn) findDramaMountById(nodes) else findDramaMount(nodes)
         if (mountNode != null) {
-            DramaDebug.add("短剧挂载: 点击进入 -> ${mountNode.text}")
+            DramaDebug.add("短剧挂载(${if (dramaMountByIdOn) "控件ID" else "文字"}): 点击进入 -> ${mountNode.text}")
             // 进入新剧：重置呼出计数与菜单类型
             lastLongPressEpNum = -1
             menuHasImg = false
@@ -559,6 +580,43 @@ class AutoClickAccessibilityService : AccessibilityService() {
                 return findClickableAncestor(n) ?: n
             }
         }
+        return null
+    }
+
+    /**
+     * 按控件 ID 找短剧挂载按钮（比文字识别更稳）。
+     * 优先：图标 ID(n3i) → 短剧文字ID(2go) → 剧名ID(4ef)；
+     * 找到后点击其可点击祖先，整个挂载行可点。
+     */
+    private fun findDramaMountById(nodes: List<android.view.accessibility.AccessibilityNodeInfo>): android.view.accessibility.AccessibilityNodeInfo? {
+        for (targetId in listOf(MOUNT_ICON_ID, MOUNT_TEXT_ID, MOUNT_NAME_ID)) {
+            val node = nodes.firstOrNull {
+                val id = it.viewIdResourceName ?: return@firstOrNull false
+                id.endsWith("/$targetId") || id.endsWith(":$targetId")
+            }
+            if (node != null) {
+                return findClickableAncestor(node) ?: node
+            }
+        }
+        return null
+    }
+
+    /**
+     * 找"暂停"控件（点击恢复播放）。
+     * 控件 ID fb_，或多处 contentDescription 含"暂停"。
+     */
+    private fun findPauseControl(nodes: List<android.view.accessibility.AccessibilityNodeInfo>): android.view.accessibility.AccessibilityNodeInfo? {
+        // 优先按 ID
+        nodes.firstOrNull {
+            val id = it.viewIdResourceName ?: return@firstOrNull false
+            id.endsWith("/$PAUSE_ID") || id.endsWith(":$PAUSE_ID")
+        }?.let { return findClickableAncestor(it) ?: it }
+        // 备用：描述/文字含"暂停"
+        nodes.firstOrNull {
+            val d = it.contentDescription?.toString() ?: ""
+            val t = it.text?.toString() ?: ""
+            d.contains("暂停") || t == "暂停"
+        }?.let { return findClickableAncestor(it) ?: it }
         return null
     }
 

@@ -40,6 +40,8 @@ class Prefs(private val context: Context) {
 
     private val KEY_DRAMA_LONGPRESS = booleanPreferencesKey("drama_longpress")
     private val KEY_DRAMA_CLICKSPEED = booleanPreferencesKey("drama_clickspeed")
+    private val KEY_DRAMA_MOUNT_BY_ID = booleanPreferencesKey("drama_mount_by_id")
+    private val KEY_DRAMA_RESUME_PAUSE = booleanPreferencesKey("drama_resume_pause")
 
     val enabled: Flow<Boolean> = context.dataStore.data.map { it[KEY_ENABLED] ?: true }
     val clickDelayMs: Flow<Long> = context.dataStore.data.map { (it[KEY_DELAY] ?: "600").toLongOrNull() ?: 600L }
@@ -129,6 +131,12 @@ class Prefs(private val context: Context) {
     /** 自动点击倍数开关，默认开 */
     val dramaClickSpeed: Flow<Boolean> = context.dataStore.data.map { it[KEY_DRAMA_CLICKSPEED] ?: true }
     suspend fun setDramaClickSpeed(v: Boolean) { context.dataStore.edit { it[KEY_DRAMA_CLICKSPEED] = v } }
+    /** 挂载识别方式：true=控件ID识别，false=文字识别（默认 false） */
+    val dramaMountById: Flow<Boolean> = context.dataStore.data.map { it[KEY_DRAMA_MOUNT_BY_ID] ?: false }
+    suspend fun setDramaMountById(v: Boolean) { context.dataStore.edit { it[KEY_DRAMA_MOUNT_BY_ID] = v } }
+    /** 识别到"暂停"控件时点击恢复播放，默认开 */
+    val dramaResumePause: Flow<Boolean> = context.dataStore.data.map { it[KEY_DRAMA_RESUME_PAUSE] ?: true }
+    suspend fun setDramaResumePause(v: Boolean) { context.dataStore.edit { it[KEY_DRAMA_RESUME_PAUSE] = v } }
 
     suspend fun setDramaEnabled(v: Boolean) { context.dataStore.edit { it[KEY_DRAMA_ENABLED] = v } }
     suspend fun setDramaAutoMount(v: Boolean) { context.dataStore.edit { it[KEY_DRAMA_AUTO_MOUNT] = v } }

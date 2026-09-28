@@ -64,6 +64,8 @@ fun DramaScreen(onBack: () -> Unit, vm: MainViewModel) {
     val imgInterval by vm.dramaImgInterval.collectAsState()
     val normalInterval by vm.dramaNormalInterval.collectAsState()
     val longPressOn by vm.dramaLongPress.collectAsState()
+    val mountByIdOn by vm.dramaMountById.collectAsState()
+    val resumePauseOn by vm.dramaResumePause.collectAsState()
     val clickSpeedOn by vm.dramaClickSpeed.collectAsState()
     val debugLogs by com.autoskip.helper.service.DramaDebug.logs.collectAsState()
 
@@ -146,6 +148,14 @@ fun DramaScreen(onBack: () -> Unit, vm: MainViewModel) {
                     Divider(Modifier.padding(horizontal = 14.dp))
                     SwitchRow("自动点击倍数", "菜单里自动点目标倍速", clickSpeedOn, 14.dp) {
                         vm.setDramaClickSpeed(it)
+                    }
+                    Divider(Modifier.padding(horizontal = 14.dp))
+                    SwitchRow("挂载用控件ID识别", "用控件ID识别挂载(更稳)；关闭则用文字识别", mountByIdOn, 14.dp) {
+                        vm.setDramaMountById(it)
+                    }
+                    Divider(Modifier.padding(horizontal = 14.dp))
+                    SwitchRow("识别暂停并恢复", "检测到暂停控件时点击恢复播放", resumePauseOn, 14.dp) {
+                        vm.setDramaResumePause(it)
                     }
                 }
             }
