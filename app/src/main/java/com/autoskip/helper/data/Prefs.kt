@@ -42,6 +42,8 @@ class Prefs(private val context: Context) {
     private val KEY_DRAMA_CLICKSPEED = booleanPreferencesKey("drama_clickspeed")
     private val KEY_DRAMA_MOUNT_BY_ID = booleanPreferencesKey("drama_mount_by_id")
     private val KEY_DRAMA_RESUME_PAUSE = booleanPreferencesKey("drama_resume_pause")
+    private val KEY_PUSH_URL = stringPreferencesKey("push_url")
+    private val KEY_PUSH_NAME = stringPreferencesKey("push_name")
 
     val enabled: Flow<Boolean> = context.dataStore.data.map { it[KEY_ENABLED] ?: true }
     val clickDelayMs: Flow<Long> = context.dataStore.data.map { (it[KEY_DELAY] ?: "600").toLongOrNull() ?: 600L }
@@ -137,6 +139,13 @@ class Prefs(private val context: Context) {
     /** 识别到"暂停"控件时点击恢复播放，默认开 */
     val dramaResumePause: Flow<Boolean> = context.dataStore.data.map { it[KEY_DRAMA_RESUME_PAUSE] ?: true }
     suspend fun setDramaResumePause(v: Boolean) { context.dataStore.edit { it[KEY_DRAMA_RESUME_PAUSE] = v } }
+
+    /** 广告推送地址（空则不推送） */
+    val pushUrl: Flow<String> = context.dataStore.data.map { it[KEY_PUSH_URL] ?: "" }
+    suspend fun setPushUrl(v: String) { context.dataStore.edit { it[KEY_PUSH_URL] = v } }
+    /** 推送识别字符（设备名，如"1号板XX号机"） */
+    val pushName: Flow<String> = context.dataStore.data.map { it[KEY_PUSH_NAME] ?: "" }
+    suspend fun setPushName(v: String) { context.dataStore.edit { it[KEY_PUSH_NAME] = v } }
 
     suspend fun setDramaEnabled(v: Boolean) { context.dataStore.edit { it[KEY_DRAMA_ENABLED] = v } }
     suspend fun setDramaAutoMount(v: Boolean) { context.dataStore.edit { it[KEY_DRAMA_AUTO_MOUNT] = v } }

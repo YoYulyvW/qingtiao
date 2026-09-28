@@ -38,6 +38,8 @@ class Repository(
     val condDramaOnly: Flow<Boolean> = prefs.condDramaOnly
     val dramaMountById: Flow<Boolean> = prefs.dramaMountById
     val dramaResumePause: Flow<Boolean> = prefs.dramaResumePause
+    val pushUrl: Flow<String> = prefs.pushUrl
+    val pushName: Flow<String> = prefs.pushName
     val dramaLongPress: Flow<Boolean> = prefs.dramaLongPress
     val dramaClickSpeed: Flow<Boolean> = prefs.dramaClickSpeed
 
@@ -157,6 +159,8 @@ class Repository(
     suspend fun setDramaLongPress(v: Boolean) = prefs.setDramaLongPress(v)
     suspend fun setDramaMountById(v: Boolean) = prefs.setDramaMountById(v)
     suspend fun setDramaResumePause(v: Boolean) = prefs.setDramaResumePause(v)
+    suspend fun setPushUrl(v: String) = prefs.setPushUrl(v)
+    suspend fun setPushName(v: String) = prefs.setPushName(v)
     suspend fun setCondDramaOnly(v: Boolean) = prefs.setCondDramaOnly(v)
 
     /**

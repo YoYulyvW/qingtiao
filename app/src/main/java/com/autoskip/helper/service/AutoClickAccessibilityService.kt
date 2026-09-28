@@ -72,6 +72,10 @@ class AutoClickAccessibilityService : AccessibilityService() {
     @Volatile private var dramaAutoMount = true
     @Volatile private var dramaIntervalMs = 1000L
     @Volatile private var dramaTargetSpeed = "3x"
+    @Volatile private var pushUrl = ""
+    @Volatile private var pushName = ""
+    /** 本次广告推送是否已发送（避免重复推送） */
+    @Volatile private var adPushSent = false
 
     /** 短剧挂载控件 ID（fullId 后缀） */
     private val MOUNT_ICON_ID = "n3i"        // 挂载图标
@@ -165,6 +169,8 @@ class AutoClickAccessibilityService : AccessibilityService() {
         scope.launch { repo.dramaAutoMount.collect { dramaAutoMount = it } }
         scope.launch { repo.dramaIntervalMs.collect { dramaIntervalMs = it } }
         scope.launch { repo.dramaTargetSpeed.collect { dramaTargetSpeed = it } }
+        scope.launch { repo.pushUrl.collect { pushUrl = it } }
+        scope.launch { repo.pushName.collect { pushName = it } }
         scope.launch { repo.dramaBaseW.collect { dramaBaseW = it } }
         scope.launch { repo.dramaBaseH.collect { dramaBaseH = it } }
         scope.launch { repo.dramaTapX.collect { dramaTapX = it } }
@@ -862,6 +868,13 @@ class AutoClickAccessibilityService : AccessibilityService() {
                 exitDramaPaused = true
                 DramaDebug.add("检测到「退出短剧」弹窗，暂停所有操作")
             }
+            // ★ 广告推送：首次检测到退出短剧时推送一次（URL 为空则不推）
+            if (!adPushSent && pushUrl.isNotBlank()) {
+                adPushSent = true
+                val u = pushUrl
+                val n = pushName
+                scope.launch { PushNotifier.send(u, n) }
+            }
             return
         }
         if (exitDramaPaused) {
@@ -872,6 +885,7 @@ class AutoClickAccessibilityService : AccessibilityService() {
             }
             if (resumed) {
                 exitDramaPaused = false
+                adPushSent = false   // 复位，下次广告可再推送
                 DramaDebug.add("短剧页面已恢复，继续工作")
             } else {
                 return   // 仍在退出页/过渡页，继续暂停一切

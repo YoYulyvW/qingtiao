@@ -37,6 +37,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val dramaLongPress = repo.dramaLongPress.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
     val dramaMountById = repo.dramaMountById.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
     val dramaResumePause = repo.dramaResumePause.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+    val pushUrl = repo.pushUrl.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
+    val pushName = repo.pushName.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
     val condDramaOnly = repo.condDramaOnly.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
     val dramaClickSpeed = repo.dramaClickSpeed.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
@@ -70,6 +72,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun setDramaLongPress(v: Boolean) = viewModelScope.launch { repo.setDramaLongPress(v) }
     fun setDramaMountById(v: Boolean) = viewModelScope.launch { repo.setDramaMountById(v) }
     fun setDramaResumePause(v: Boolean) = viewModelScope.launch { repo.setDramaResumePause(v) }
+    fun setPushUrl(v: String) = viewModelScope.launch { repo.setPushUrl(v) }
+    fun setPushName(v: String) = viewModelScope.launch { repo.setPushName(v) }
     fun setCondDramaOnly(v: Boolean) = viewModelScope.launch { repo.setCondDramaOnly(v) }
 
     fun exportCondRules(onResult: (String) -> Unit) = viewModelScope.launch {

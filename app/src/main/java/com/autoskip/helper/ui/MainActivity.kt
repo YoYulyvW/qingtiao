@@ -10,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -28,6 +29,7 @@ import com.autoskip.helper.ui.screens.DramaScreen
 import com.autoskip.helper.ui.screens.HomeScreen
 import com.autoskip.helper.ui.screens.LogsScreen
 import com.autoskip.helper.ui.screens.RulesScreen
+import com.autoskip.helper.ui.screens.SettingsScreen
 import com.autoskip.helper.ui.screens.WhitelistScreen
 import com.autoskip.helper.ui.theme.AutoSkipTheme
 
@@ -92,15 +94,27 @@ private fun AppRoot(vm: MainViewModel) {
                     icon = { Icon(Icons.Filled.List, contentDescription = null) },
                     label = { Text("记录") }
                 )
+                NavigationBarItem(
+                    selected = tab == 4,
+                    onClick = { tab = 4 },
+                    icon = { Icon(Icons.Filled.Settings, contentDescription = null) },
+                    label = { Text("设置") }
+                )
             }
         }
     ) { padding ->
         Box(Modifier.padding(padding)) {
             when (tab) {
-                0 -> HomeScreen(vm, onOpenFenShen = { showFenShen = true }, onOpenDrama = { showDrama = true })
+                0 -> HomeScreen(vm)
                 1 -> RulesScreen(vm, onOpenCondRules = { showCondRules = true })
                 2 -> WhitelistScreen(vm)
-                else -> LogsScreen(vm)
+                3 -> LogsScreen(vm)
+                else -> SettingsScreen(
+                    onBack = { tab = 0 },
+                    vm = vm,
+                    onOpenDrama = { showDrama = true },
+                    onOpenFenShen = { showFenShen = true }
+                )
             }
         }
     }
