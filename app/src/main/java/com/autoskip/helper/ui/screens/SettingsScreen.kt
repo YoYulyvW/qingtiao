@@ -69,23 +69,18 @@ fun SettingsScreen(
     var msgText by remember { mutableStateOf("") }
     var tokenText by remember { mutableStateOf("") }
     var includeClone by remember { mutableStateOf(true) }
-    var loaded by remember { mutableStateOf(false) }
     var testResult by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
     // 仅在首次加载时把持久化值填入本地输入框
-    LaunchedEffect(pushUrl, pushName, pushUser, pushMsg, pushToken, pushIncludeClone) {
-        if (!loaded) {
-            urlText = pushUrl
-            nameText = pushName
-            userText = pushUser
-            msgText = pushMsg
-            tokenText = pushToken
-            includeClone = pushIncludeClone
-            loaded = true
-        }
-    }
+    // 数据流真实值到达后同步到本地输入框（DataStore 异步读取，首次为默认值）
+    LaunchedEffect(pushUrl) { urlText = pushUrl }
+    LaunchedEffect(pushName) { nameText = pushName }
+    LaunchedEffect(pushUser) { userText = pushUser }
+    LaunchedEffect(pushMsg) { msgText = pushMsg }
+    LaunchedEffect(pushToken) { tokenText = pushToken }
+    LaunchedEffect(pushIncludeClone) { includeClone = pushIncludeClone }
 
     fun saveAll() {
         vm.setPushUrl(urlText.trim())
