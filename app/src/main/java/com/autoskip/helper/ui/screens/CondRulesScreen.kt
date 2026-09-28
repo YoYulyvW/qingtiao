@@ -177,6 +177,7 @@ private fun CondRuleDialog(
     var andText by remember { mutableStateOf(initial?.andText ?: "") }
     var actionType by remember { mutableStateOf(initial?.actionType ?: CondAction.CLICK_ICON) }
     var actionText by remember { mutableStateOf(initial?.actionText ?: "") }
+    var delaySec by remember { mutableStateOf((initial?.delaySec ?: 3).toString()) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -198,6 +199,23 @@ private fun CondRuleDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                // 延时检测
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("延时检测(秒)", Modifier.width(100.dp), fontSize = 13.sp)
+                    OutlinedTextField(
+                        value = delaySec,
+                        onValueChange = { delaySec = it.filter { c -> c.isDigit() } },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(8.dp),
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                            keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
+                        )
+                    )
+                }
+                Text("检测到条件后等 N 秒，仍存在才执行；0=立即", fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.outline)
 
                 Text("【则】执行动作", fontWeight = FontWeight.Bold, fontSize = 13.sp)
                 val actions = listOf(
@@ -244,7 +262,8 @@ private fun CondRuleDialog(
                     hasText = hasText.trim(),
                     andText = andText.trim().ifBlank { null },
                     actionType = actionType,
-                    actionText = if (actionType == CondAction.CLICK_TEXT) actionText.trim() else null
+                    actionText = if (actionType == CondAction.CLICK_TEXT) actionText.trim() else null,
+                    delaySec = delaySec.toIntOrNull()?.coerceIn(0, 60) ?: 3
                 )
                 onConfirm(rule)
             }) { Text("保存") }
