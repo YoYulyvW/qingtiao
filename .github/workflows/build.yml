@@ -47,16 +47,6 @@ jobs:
           echo "name=$NAME" >> $GITHUB_OUTPUT
           echo "Building version $NAME ($CODE)"
 
-      - name: Build Debug APK
-        run: gradle assembleDebug --no-daemon --stacktrace
-
-      - name: Upload Debug APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: AutoSkip-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
-          if-no-files-found: error
-
       - name: Build signed Release APK
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
