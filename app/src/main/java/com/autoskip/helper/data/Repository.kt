@@ -71,6 +71,10 @@ class Repository(
      * 首次启动预置内置条件规则（逐条判重，避免重复）。
      */
     suspend fun seedCondRulesIfNeeded() {
+        // 清理历史错误命名的内置规则（"分享到日常" → "转发到日常"）
+        condRuleDao.all().forEach { r ->
+            if (r.name == "推荐+分享到日常/举报→返回") condRuleDao.delete(r)
+        }
         val existing = condRuleDao.all().map { it.name }.toSet()
         val defaults = listOf(
             CondRuleEntity(
@@ -88,7 +92,7 @@ class Repository(
                 delaySec = 3
             ),
             CondRuleEntity(
-                name = "推荐+分享到日常/举报→返回",
+                name = "推荐+转发到日常/举报→返回",
                 hasText = "推荐",
                 andText = "转发到日常|举报",
                 actionType = CondAction.BACK,
