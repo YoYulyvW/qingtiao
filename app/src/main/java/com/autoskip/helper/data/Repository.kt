@@ -75,16 +75,16 @@ class Repository(
         val existing = condRuleDao.all().map { it.name }.toSet()
         val defaults = listOf(
             CondRuleEntity(
-                name = "发私信关注→返回",
-                hasText = "发私信",
-                andText = "关注",
+                name = "登录框→返回",
+                hasText = "登录",
+                andText = "自动注册|帮助",
                 actionType = CondAction.BACK,
                 delaySec = 3
             ),
             CondRuleEntity(
-                name = "推荐转发到日常→返回",
-                hasText = "推荐",
-                andText = "转发到日常",
+                name = "关注页→返回",
+                hasText = "关注",
+                andText = "作品|粉丝",
                 actionType = CondAction.BACK,
                 delaySec = 3
             )
