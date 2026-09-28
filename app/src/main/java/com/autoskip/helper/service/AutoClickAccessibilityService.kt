@@ -165,9 +165,7 @@ class AutoClickAccessibilityService : AccessibilityService() {
                 if (!dramaEnabled) continue
                 // 系统UI（多任务中心/桌面）前台 → 暂停，避免遍历大节点树卡顿
                 if (systemUiForeground) continue
-                // 多窗口检测：若任一窗口是系统UI（多任务/桌面），也暂停
-                if (hasSystemUiWindow()) continue
-                // 只在抖音系应用生效
+                // 只在抖音系应用生效（用前台窗口包名判断，可靠）
                 val pkg = currentRootPackage() ?: continue
                 if (!isDouyin(pkg)) continue
                 // 系统 UI 一律忽略（与规则一致）
@@ -254,18 +252,6 @@ class AutoClickAccessibilityService : AccessibilityService() {
         }
     }
 
-    /** 是否有多窗口属于系统UI（多任务中心/桌面）—— 某些 ROM 多任务不产生 systemui 包事件 */
-    private fun hasSystemUiWindow(): Boolean {
-        return try {
-            windows?.any { w ->
-                val p = w.root?.packageName?.toString() ?: return@any false
-                Matcher.isSystemUi(p)
-            } ?: false
-        } catch (e: Exception) {
-            false
-        }
-    }
-
     /** 当前窗口根节点所在包名 */
     private fun currentRootPackage(): String? {
         return try { rootInActiveWindow?.packageName?.toString() } catch (e: Exception) { null }
@@ -295,11 +281,6 @@ class AutoClickAccessibilityService : AccessibilityService() {
         val activePkg = try { root.packageName?.toString() } catch (e: Exception) { null }
         if (activePkg == null || !isDouyin(activePkg) || Matcher.isSystemUi(activePkg)) {
             if (diag) DramaDebug.add("当前活动窗口非抖音（$activePkg），跳过")
-            return
-        }
-        // ★ 多窗口含系统UI（多任务/桌面）→ 也跳过
-        if (hasSystemUiWindow()) {
-            if (diag) DramaDebug.add("检测到系统UI窗口（多任务/桌面），跳过")
             return
         }
         val nodes = collectAllNodes(root)
