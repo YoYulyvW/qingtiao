@@ -835,13 +835,15 @@ class AutoClickAccessibilityService : AccessibilityService() {
         val result = Matcher.match(root, cachedRules, pkg, strictClose)
         if (result != null) {
             // 弹窗签名：包名 + 文字 + 节点位置
-            // 加位置：避免"进入类"按钮（如点击免费看全集）跳转后，
-            //         短剧页里不同位置的相同文字被误判为"重复弹窗"而按返回键
             val posRect = android.graphics.Rect()
             try { result.node.getBoundsInScreen(posRect) } catch (_: Exception) {}
             val signature = pkg + "|" + result.matchedText + "|" + posRect.centerX() + "," + posRect.centerY()
             val nowT = System.currentTimeMillis()
-            val isRepeat = signature == lastPopupSignature && (nowT - lastPopupTime) < REPEAT_WINDOW
+            // ★ 只有"关闭/拒绝/跳过"类按钮才做重复检测（点完弹窗应消失，重复出现=点击无效）
+            //   "进入类"按钮（如 点击免费看全集）点完页面正常切换，不做重复检测，避免误按返回键
+            val dismissLike = Matcher.isDismissLike(result.matchedText) || Matcher.isDismissLike(result.rule.text)
+            val isRepeat = dismissLike &&
+                signature == lastPopupSignature && (nowT - lastPopupTime) < REPEAT_WINDOW
 
             if (isRepeat) {
                 // 同一弹窗又出现了 → 上次点击无效，改用返回键

@@ -45,6 +45,24 @@ object Matcher {
         "手机号", "注册", "用户协议", "隐私政策", "同意并"
     )
 
+    /**
+     * 关闭 / 拒绝 / 跳过 类按钮文案。
+     * 特点：点完后弹窗**本应消失**。只有这类按钮才做"重复弹窗→返回键"兜底。
+     * "进入类"按钮（如 点击免费看全集）点完页面会正常切换，不做重复检测。
+     */
+    val DISMISS_LIKE_TEXTS = listOf(
+        "跳过", "关闭", "取消", "下次再说", "不再提醒", "以后再说",
+        "稍后再说", "残忍拒绝", "暂不", "我知道了", "知道了",
+        "close", "skip", "×", "✕", "✖"
+    )
+
+    /** 判断文本是否属于"关闭/拒绝/跳过"类（点完弹窗应消失） */
+    fun isDismissLike(text: String?): Boolean {
+        if (text.isNullOrBlank()) return false
+        val t = text.trim()
+        return DISMISS_LIKE_TEXTS.any { t.equals(it, ignoreCase = true) || t.contains(it, ignoreCase = true) }
+    }
+
     /** contentDescription 中含这些词，视为"关闭图标"（兜底） */
     val CLOSE_DESCRIPTIONS = listOf(
         "关闭", "close", "取消", "返回", "dismiss", "back", "cancel"
