@@ -150,6 +150,81 @@ class Repository(
     suspend fun setDramaNormalInterval(v: Int) = prefs.setDramaNormalInterval(v)
     suspend fun setDramaLongPress(v: Boolean) = prefs.setDramaLongPress(v)
     suspend fun setCondDramaOnly(v: Boolean) = prefs.setCondDramaOnly(v)
+
+    /**
+     * 导出条件规则为文本，每行一条：
+     * 规则名|有|且|动作|动作文字|延时
+     * 动作：返回 / 点图标X / 点文字
+     */
+    suspend fun exportCondRules(): String {
+        val actLabel: (String) -> String = {
+            when (it) {
+                CondAction.BACK -> "返回"
+                CondAction.CLICK_ICON -> "点图标X"
+                CondAction.CLICK_TEXT -> "点文字"
+                else -> it
+            }
+        }
+        return condRuleDao.all().joinToString("
+") { r ->
+            listOf(
+                r.name,
+                r.hasText,
+                r.andText ?: "",
+                actLabel(r.actionType),
+                r.actionText ?: "",
+                r.delaySec.toString()
+            ).joinToString("|")
+        }
+    }
+
+    /**
+     * 导入条件规则。
+     * @param text 每行一条：规则名|有|且|动作|动作文字|延时
+     * @param clearFirst 是否先清空原有规则
+     * @return 结果描述
+     */
+    suspend fun importCondRules(text: String, clearFirst: Boolean): String {
+        if (clearFirst) {
+            condRuleDao.all().forEach { condRuleDao.delete(it) }
+        }
+        val existing = condRuleDao.all().map { it.name }.toHashSet()
+        var added = 0
+        var skipped = 0
+        var failed = 0
+        text.split("
+").forEach { raw ->
+            val line = raw.trim()
+            if (line.isBlank() || line.startsWith("#")) return@forEach
+            val parts = line.split("|")
+            if (parts.size < 2) { failed++; return@forEach }
+            val name = parts.getOrNull(0)?.trim().orEmpty()
+            val hasText = parts.getOrNull(1)?.trim().orEmpty()
+            if (name.isBlank() || hasText.isBlank()) { failed++; return@forEach }
+            if (!clearFirst && name in existing) { skipped++; return@forEach }
+            val andText = parts.getOrNull(2)?.trim().orEmpty().ifBlank { null }
+            val actionLabel = parts.getOrNull(3)?.trim().orEmpty()
+            val actionType = when {
+                actionLabel.contains("图标") -> CondAction.CLICK_ICON
+                actionLabel.contains("文字") -> CondAction.CLICK_TEXT
+                actionLabel.contains("返回") -> CondAction.BACK
+                actionLabel.isBlank() -> CondAction.CLICK_ICON
+                else -> actionLabel
+            }
+            val actionText = parts.getOrNull(4)?.trim().orEmpty().ifBlank { null }
+            val delay = parts.getOrNull(5)?.trim()?.toIntOrNull()?.coerceIn(0, 60) ?: 0
+            runCatching {
+                condRuleDao.insert(
+                    CondRuleEntity(
+                        name = name, hasText = hasText, andText = andText,
+                        actionType = actionType, actionText = actionText, delaySec = delay
+                    )
+                )
+            }.onSuccess { added++ }.onFailure { failed++ }
+            existing.add(name)
+        }
+        return "导入完成：新增 $added，跳过 $skipped，失败 $failed"
+    }
     suspend fun setDramaClickSpeed(v: Boolean) = prefs.setDramaClickSpeed(v)
 
     /**

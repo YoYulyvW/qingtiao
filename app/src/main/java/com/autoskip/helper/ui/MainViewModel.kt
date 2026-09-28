@@ -67,6 +67,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun setDramaDebug(v: Boolean) = viewModelScope.launch { repo.setDramaDebug(v) }
     fun setDramaLongPress(v: Boolean) = viewModelScope.launch { repo.setDramaLongPress(v) }
     fun setCondDramaOnly(v: Boolean) = viewModelScope.launch { repo.setCondDramaOnly(v) }
+
+    fun exportCondRules(onResult: (String) -> Unit) = viewModelScope.launch {
+        onResult(repo.exportCondRules())
+    }
+
+    fun importCondRules(text: String, clearFirst: Boolean, onResult: (String) -> Unit) = viewModelScope.launch {
+        onResult(repo.importCondRules(text, clearFirst))
+    }
     fun setDramaClickSpeed(v: Boolean) = viewModelScope.launch { repo.setDramaClickSpeed(v) }
     fun setDramaImgInterval(v: Int) = viewModelScope.launch { repo.setDramaImgInterval(v) }
     fun setDramaNormalInterval(v: Int) = viewModelScope.launch { repo.setDramaNormalInterval(v) }

@@ -1,5 +1,9 @@
 package com.autoskip.helper.ui.screens
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,6 +25,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -42,6 +47,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -52,10 +58,18 @@ import com.autoskip.helper.ui.MainViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CondRulesScreen(onBack: () -> Unit, vm: MainViewModel) {
+    val context = LocalContext.current
     val condRules by vm.condRules.collectAsState()
     val condDramaOnly by vm.condDramaOnly.collectAsState()
     var editing by remember { mutableStateOf<CondRuleEntity?>(null) }
     var showAdd by remember { mutableStateOf(false) }
+    var showImport by remember { mutableStateOf(false) }
+
+    fun copyToClipboard(text: String) {
+        val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        cm.setPrimaryClip(ClipData.newPlainText("cond_rules", text))
+        Toast.makeText(context, "已复制到剪贴板", Toast.LENGTH_SHORT).show()
+    }
 
     Scaffold(
         topBar = {
@@ -85,6 +99,19 @@ fun CondRulesScreen(onBack: () -> Unit, vm: MainViewModel) {
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.outline
                     )
+                    Spacer(Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(
+                            onClick = { vm.exportCondRules { copyToClipboard(it) } },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(10.dp)
+                        ) { Text("导出", fontSize = 14.sp) }
+                        Button(
+                            onClick = { showImport = true },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(10.dp)
+                        ) { Text("导入", fontSize = 14.sp) }
+                    }
                     Spacer(Modifier.height(8.dp))
                 }
                 item {
@@ -153,6 +180,58 @@ fun CondRulesScreen(onBack: () -> Unit, vm: MainViewModel) {
             }
         )
     }
+
+    if (showImport) {
+        ImportDialog(
+            onDismiss = { showImport = false },
+            onConfirm = { text, clearFirst ->
+                vm.importCondRules(text, clearFirst) { msg ->
+                    Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                }
+                showImport = false
+            }
+        )
+    }
+}
+
+@Composable
+private fun ImportDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (String, Boolean) -> Unit
+) {
+    var text by remember { mutableStateOf("") }
+    var clearFirst by remember { mutableStateOf(false) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("导入条件规则") },
+        text = {
+            Column {
+                Text(
+                    "每行一条：\n规则名|有|且|动作|动作文字|延时\n动作用：返回 / 点图标X / 点文字\n「且」可空，多个用 | 分隔",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.outline
+                )
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    modifier = Modifier.fillMaxWidth().height(160.dp),
+                    shape = RoundedCornerShape(8.dp)
+                )
+                Spacer(Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = clearFirst, onCheckedChange = { clearFirst = it })
+                    Text("先清空原有规则（不清空则同名跳过）", fontSize = 13.sp)
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { if (text.isNotBlank()) onConfirm(text, clearFirst) }
+            ) { Text("导入") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } }
+    )
 }
 
 @Composable
