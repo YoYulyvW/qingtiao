@@ -82,6 +82,16 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun setDramaLongPress(v: Boolean) = viewModelScope.launch { repo.setDramaLongPress(v) }
     fun setDramaMountById(v: Boolean) = viewModelScope.launch { repo.setDramaMountById(v) }
     fun setDramaResumePause(v: Boolean) = viewModelScope.launch { repo.setDramaResumePause(v) }
+    /** 一次性读取推送配置（用 first() 拿 DataStore 真实值，避开 stateIn 初始空值） */
+    suspend fun loadPushConfig(): List<String> = listOf(
+        repo.pushUrl.first(),
+        repo.pushName.first(),
+        repo.pushUser.first(),
+        repo.pushMsg.first(),
+        repo.pushToken.first()
+    )
+    suspend fun loadPushIncludeClone(): Boolean = repo.pushIncludeClone.first()
+
     fun setPushUrl(v: String) = viewModelScope.launch { repo.setPushUrl(v) }
     fun setPushName(v: String) = viewModelScope.launch { repo.setPushName(v) }
     fun setPushUser(v: String) = viewModelScope.launch { repo.setPushUser(v) }

@@ -30,7 +30,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -55,14 +54,8 @@ fun SettingsScreen(
     onOpenDrama: () -> Unit = {},
     onOpenFenShen: () -> Unit = {}
 ) {
-    val pushUrl by vm.pushUrl.collectAsState()
-    val pushName by vm.pushName.collectAsState()
-    val pushUser by vm.pushUser.collectAsState()
-    val pushMsg by vm.pushMsg.collectAsState()
-    val pushToken by vm.pushToken.collectAsState()
-    val pushIncludeClone by vm.pushIncludeClone.collectAsState()
-
     // 本地编辑态：避免每敲一个字符都写 DataStore（导致卡顿）
+    // 初始值由 LaunchedEffect(Unit) 一次性从 DataStore 读取
     var urlText by remember { mutableStateOf("") }
     var nameText by remember { mutableStateOf("") }
     var userText by remember { mutableStateOf("") }
@@ -73,14 +66,16 @@ fun SettingsScreen(
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
-    // 仅在首次加载时把持久化值填入本地输入框
-    // 数据流真实值到达后同步到本地输入框（DataStore 异步读取，首次为默认值）
-    LaunchedEffect(pushUrl) { urlText = pushUrl }
-    LaunchedEffect(pushName) { nameText = pushName }
-    LaunchedEffect(pushUser) { userText = pushUser }
-    LaunchedEffect(pushMsg) { msgText = pushMsg }
-    LaunchedEffect(pushToken) { tokenText = pushToken }
-    LaunchedEffect(pushIncludeClone) { includeClone = pushIncludeClone }
+    // ★ 一次性初始化：用 first() 读取 DataStore 真实值，避免 stateIn 初始空值导致的字段错乱
+    LaunchedEffect(Unit) {
+        val cfg = vm.loadPushConfig()
+        urlText = cfg[0]
+        nameText = cfg[1]
+        userText = cfg[2]
+        msgText = cfg[3]
+        tokenText = cfg[4]
+        includeClone = vm.loadPushIncludeClone()
+    }
 
     fun saveAll() {
         vm.setPushUrl(urlText.trim())
