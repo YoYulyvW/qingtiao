@@ -81,6 +81,14 @@ class AutoClickAccessibilityService : AccessibilityService() {
     @Volatile private var pushIncludeCloneOn = true
     /** 本次广告推送是否已发送（避免重复推送） */
     @Volatile private var adPushSent = false
+    /** 已推送次数（首次+重推，至多 3 次） */
+    @Volatile private var adPushCount = 0
+    /** 上次推送时间戳（用于周期重推） */
+    @Volatile private var adPushLastTime = 0L
+    /** 周期重推间隔：90 秒（1~3分钟范围内） */
+    private val AD_REPUSH_INTERVAL = 90_000L
+    /** 最大推送次数 */
+    private val AD_PUSH_MAX = 3
     /** 控件规则调试日志限频时间戳 */
     private var lastWidgetRuleLogTime = 0L
 
@@ -303,7 +311,7 @@ class AutoClickAccessibilityService : AccessibilityService() {
         val hasEpisode = nodes.any {
             val t = it.text?.toString() ?: ""
             Regex("第\\s*\\d+\\s*集").containsMatchIn(t) ||
-                t.contains("集全") || t.contains("免费")
+                t.contains("集全")
         }
         if (exitDramaPaused) {
             if (hasEpisode) {
@@ -995,31 +1003,42 @@ class AutoClickAccessibilityService : AccessibilityService() {
                 exitDramaPaused = true
                 DramaDebug.add("检测到「退出短剧」弹窗，暂停所有操作")
             }
-            // ★ 广告推送：首次检测到退出短剧时推送一次（URL 为空则不推）
-            if (!adPushSent && pushUrl.isNotBlank()) {
-                adPushSent = true
-                val u = pushUrl
-                // 勾选"附带分身名"时，把当前分身名拼进识别字符
-                val cloneName = if (pushIncludeCloneOn) extractCloneName(pkg) else null
-                val n = if (cloneName != null) {
-                    if (pushName.isBlank()) cloneName else pushName + " " + cloneName
-                } else pushName
-                val usr = pushUser
-                val m = pushMsg
-                val tk = pushToken
-                scope.launch { PushNotifier.send(u, n, usr, m, tk) }
+            // ★ 广告推送：首次 + 周期重推（URL 为空则不推）
+            //   首次检测到退出短剧 → 推一次；之后停留在该页每 90 秒重推，至多 3 次
+            if (pushUrl.isNotBlank()) {
+                val nowP = System.currentTimeMillis()
+                val needFirst = !adPushSent
+                val needRepeat = adPushSent && adPushCount < AD_PUSH_MAX &&
+                    (nowP - adPushLastTime >= AD_REPUSH_INTERVAL)
+                if (needFirst || needRepeat) {
+                    adPushSent = true
+                    adPushCount++
+                    adPushLastTime = nowP
+                    val u = pushUrl
+                    val cloneName = if (pushIncludeCloneOn) extractCloneName(pkg) else null
+                    val n = if (cloneName != null) {
+                        if (pushName.isBlank()) cloneName else pushName + " " + cloneName
+                    } else pushName
+                    val usr = pushUser
+                    val m = pushMsg
+                    val tk = pushToken
+                    DramaDebug.add("广告推送（第 " + adPushCount + " 次）")
+                    scope.launch { PushNotifier.send(u, n, usr, m, tk) }
+                }
             }
             return
         }
         if (exitDramaPaused) {
-            // 恢复正常短剧页（出现 集 / 全 / 免费）→ 解除暂停
+            // 恢复正常短剧页：★ 收紧，只用"第N集"或"集全"（裸"免费"在退出页也出现，会误复位）
             val resumed = exitNodes.any {
                 val t = it.text?.toString() ?: ""
-                Regex("第\\s*\\d+\\s*集").containsMatchIn(t) || t.contains("集全") || t.contains("免费")
+                Regex("第\\s*\\d+\\s*集").containsMatchIn(t) || t.contains("集全")
             }
             if (resumed) {
                 exitDramaPaused = false
-                adPushSent = false   // 复位，下次广告可再推送
+                adPushSent = false       // 复位，下次广告可再推送
+                adPushCount = 0
+                adPushLastTime = 0L
                 DramaDebug.add("短剧页面已恢复，继续工作")
             } else {
                 return   // 仍在退出页/过渡页，继续暂停一切
