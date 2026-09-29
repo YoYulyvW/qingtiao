@@ -22,6 +22,8 @@ object LicenseManager {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var started = false
     private var prefs: LicensePrefs? = null
+    /** 心跳互斥：避免多个心跳并发导致状态抖动 */
+    private val heartBeatLock = java.util.concurrent.atomic.AtomicBoolean(false)
 
     /** 设备唯一标识 */
     fun deviceId(ctx: Context): String =
@@ -60,10 +62,12 @@ object LicenseManager {
     }
 
     private suspend fun heartBeat(ctx: Context, p: LicensePrefs) {
-        val base = p.baseUrl.first()
-        val deviceId = deviceId(ctx)
-        if (deviceId.isBlank()) return
+        // 互斥：上一次心跳没跑完就跳过本次
+        if (!heartBeatLock.compareAndSet(false, true)) return
         try {
+            val base = p.baseUrl.first()
+            val deviceId = deviceId(ctx)
+            if (deviceId.isBlank()) return
             val resp = LicenseClient.check(base, deviceId)
             if (resp.ok) {
                 FeatureGate.updateFeatures(resp.features, resp.expireAt, resp.serverNow)
@@ -72,19 +76,27 @@ object LicenseManager {
                 p.setOffset(resp.serverNow - System.currentTimeMillis())
                 p.setLastHeartbeat(System.currentTimeMillis())
                 Log.i(TAG, "心跳成功")
-            } else if (resp.reason == "network") {
-                // ★ 网络错误/服务端离线 → 不锁，沿用缓存
-                FeatureGate.onNetworkError()
-                Log.w(TAG, "心跳网络错误，沿用缓存")
             } else {
-                // ★ 服务端明确拒绝（封禁/过期/未激活/码禁用）→ 立即锁
-                FeatureGate.lockImmediately()
-                p.clearCache()
-                Log.w(TAG, "服务端拒绝：" + resp.reason)
+                // ★ 只有【明确拒绝】才锁；其余（server_error/空/未知/网络）一律不锁，避免抖动误锁
+                val definitiveReject = resp.reason == "blocked" ||
+                    resp.reason == "expired" ||
+                    resp.reason == "not_activated" ||
+                    resp.reason == "code_disabled"
+                if (definitiveReject) {
+                    FeatureGate.lockImmediately()
+                    p.clearCache()
+                    Log.w(TAG, "服务端拒绝：" + resp.reason)
+                } else {
+                    // server_error / 空 / 未知 reason / 网络 → 视为异常，沿用缓存
+                    FeatureGate.onNetworkError()
+                    Log.w(TAG, "心跳异常(不锁)：" + resp.reason)
+                }
             }
         } catch (e: Exception) {
             FeatureGate.onNetworkError()
             Log.e(TAG, "心跳异常", e)
+        } finally {
+            heartBeatLock.set(false)
         }
     }
 
