@@ -24,9 +24,9 @@ class LicensePrefs(private val context: Context) {
     private val KEY_BASE = stringPreferencesKey("lic_base")           // 服务端地址
     private val KEY_DEVICE_NAME = stringPreferencesKey("lic_device_name")
 
-    /** 服务端地址（可配置，默认内网） */
-    val baseUrl = context.licenseStore.data.map { it[KEY_BASE] ?: DEFAULT_BASE }
-    suspend fun setBaseUrl(v: String) { context.licenseStore.edit { it[KEY_BASE] = v } }
+    /** 服务端地址（固定内置，忽略历史残留，防止旧地址导致心跳失败） */
+    val baseUrl = context.licenseStore.data.map { DEFAULT_BASE }
+    suspend fun setBaseUrl(v: String) { context.licenseStore.edit { it[KEY_BASE] = DEFAULT_BASE } }
 
     /** 激活码 */
     suspend fun getCode(): String = context.licenseStore.data.map { it[KEY_CODE] ?: "" }.first()

@@ -51,6 +51,12 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    override fun onResume() {
+        super.onResume()
+        // ★ 回前台立即心跳：后台封禁后，一进前台即生效（无需等 1 分钟）
+        try { com.autoskip.helper.license.LicenseManager.checkNow(this) } catch (_: Exception) {}
+    }
 }
 
 @Composable
