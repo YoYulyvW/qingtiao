@@ -1,5 +1,7 @@
 package com.autoskip.helper.ui.screens
 
+import android.content.ClipboardManager
+import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,6 +21,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -82,13 +85,34 @@ fun ActivateScreen() {
 
                 OutlinedTextField(
                     value = code,
-                    onValueChange = { code = it },
+                    onValueChange = { code = it.replace(Regex("\\s+"), "") },
                     label = { Text("激活码") },
-                    placeholder = { Text("如 VIP-0601-A1B2C3D4") },
+                    placeholder = { Text("如 VIP-2609-1F0EF8C0") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(8.dp)
                 )
+
+                // ★ 粘贴按钮：直接读剪贴板整段赋值，绕过输入法分词
+                TextButton(
+                    onClick = {
+                        try {
+                            val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            val clip = cm.primaryClip
+                            if (clip != null && clip.itemCount > 0) {
+                                val raw = clip.getItemAt(0).coerceToText(context).toString()
+                                // 去掉所有空白（含换行/空格），避免激活码被拆
+                                code = raw.replace(Regex("\\s+"), "")
+                                message = ""
+                            } else {
+                                message = "剪贴板为空"
+                            }
+                        } catch (e: Exception) {
+                            message = "粘贴失败：" + (e.message ?: "")
+                        }
+                    },
+                    modifier = Modifier.align(Alignment.End)
+                ) { Text("从剪贴板粘贴", fontSize = 12.sp) }
 
                 OutlinedTextField(
                     value = deviceName,

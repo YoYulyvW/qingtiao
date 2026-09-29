@@ -282,8 +282,9 @@ class AutoClickAccessibilityService : AccessibilityService() {
     private fun extractCloneName(pkg: String): String? {
         val m = Regex("_(\\d+)$").find(pkg) ?: return null
         val digits = m.groupValues[1]
-        // 去掉首位（固定为多出的"1"），toInt 去前导零
-        val num = digits.drop(1).toIntOrNull() ?: return null
+        // 首位为 "1" 时去掉（多出的前缀）：_134→34、_108→8；否则保留：_208→208
+        val stripped = if (digits.length > 1 && digits[0] == '1') digits.drop(1) else digits
+        val num = stripped.toIntOrNull() ?: return null
         return "分身" + num
     }
 
