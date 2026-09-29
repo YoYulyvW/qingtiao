@@ -163,13 +163,11 @@ class AutoClickAccessibilityService : AccessibilityService() {
     /** 上次菜单是否是「识别图片」版（决定用哪个间隔） */
     @Volatile private var menuHasImg = false
 
-    // ===== 稳定倍速识别（同剧连续确认已选中目标倍速后，不再长按）=====
-    /** 已确认稳定目标倍速的剧标识（发布者），非空且匹配时跳过长按 */
-    private var stableSpeedAuthor: String? = null
-    /** 连续确认"目标倍速已选中"的次数（同一部剧内累计） */
+    // ===== 稳定倍速识别（连续确认已选中目标倍速后，不再长按）=====
+    /** 是否已确认倍速稳定（true 时跳过长按，直至换剧复位） */
+    @Volatile private var stableSpeed = false
+    /** 连续确认"目标倍速已选中"的次数（不限剧，换剧时复位） */
     private var selectedConfirmCount = 0
-    /** 上次确认选中时的剧标识（换剧则重置计数） */
-    private var selectedConfirmAuthor: String? = null
     /** 连续确认几次后判定稳定（跳过长按） */
     private val STABLE_CONFIRM_NEEDED = 2
 
@@ -350,22 +348,21 @@ class AutoClickAccessibilityService : AccessibilityService() {
             // 记录菜单类型（是否含"识别图片"），决定下次间隔
             menuHasImg = nodes.any { it.text?.toString()?.trim() == "识别图片" }
 
-            // ★ 稳定倍速识别：目标倍速已"已选定"则累计确认，达到阈值标记本剧稳定
+            // ★ 稳定倍速识别：目标倍速已"已选定"则累计确认，达到阈值判定稳定（不依赖发布者）
             val menuTargetVal = speedToMenuText(dramaTargetSpeed)
             val targetNode = nodes.firstOrNull { nodeSpeedValue(it) == menuTargetVal }
             val isTargetSelected = targetNode != null && nodeIsSelected(targetNode)
-            val curAuthorNow = extractAuthor(nodes)
             if (isTargetSelected) {
-                if (curAuthorNow != null && curAuthorNow == selectedConfirmAuthor) {
-                    selectedConfirmCount++
-                } else {
-                    selectedConfirmAuthor = curAuthorNow
-                    selectedConfirmCount = 1
+                selectedConfirmCount++
+                if (selectedConfirmCount >= STABLE_CONFIRM_NEEDED && !stableSpeed) {
+                    stableSpeed = true
+                    DramaDebug.add("倍速已连续确认稳定（第 " + selectedConfirmCount + " 次），后续不再长按")
                 }
-                if (selectedConfirmCount >= STABLE_CONFIRM_NEEDED && curAuthorNow != null) {
-                    stableSpeedAuthor = curAuthorNow
-                    DramaDebug.add("倍速已连续确认稳定，本剧后续不再长按")
-                }
+            } else {
+                // 目标倍速未选中（被手动改回/切剧）→ 重置稳定标记，让程序继续纠正
+                if (stableSpeed) DramaDebug.add("倍速非目标值，重置稳定标记")
+                stableSpeed = false
+                selectedConfirmCount = 0
             }
 
             // 只在首次看到菜单时处理（menuClickedTime 非 0 表示本次已处理）
@@ -449,9 +446,9 @@ class AutoClickAccessibilityService : AccessibilityService() {
             val curNum = extractEpisodeNumber(nodes)
             val curAuthor = extractAuthor(nodes)
 
-            // ★ 稳定剧跳过长按：本剧已确认倍速稳定 → 不再长按呼出菜单
-            if (stableSpeedAuthor != null && curAuthor != null && curAuthor == stableSpeedAuthor) {
-                if (diag) DramaDebug.add("本剧倍速已稳定，跳过长按")
+            // ★ 倍速已稳定 → 不再长按呼出菜单
+            if (stableSpeed) {
+                if (diag) DramaDebug.add("倍速已稳定，跳过长按")
                 return
             }
 
@@ -470,8 +467,7 @@ class AutoClickAccessibilityService : AccessibilityService() {
                 lastLongPressEpNum = -1
                 menuHasImg = false
                 // 换剧 → 清空稳定标记与确认计数
-                stableSpeedAuthor = null
-                selectedConfirmAuthor = null
+                stableSpeed = false
                 selectedConfirmCount = 0
             }
             if (curAuthor != null) lastAuthor = curAuthor
