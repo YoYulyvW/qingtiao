@@ -62,7 +62,7 @@ class LicensePrefs(private val context: Context) {
     }
 
     companion object {
-        /** ★ 默认服务端地址（可改） */
-        const val DEFAULT_BASE = "http://192.168.1.2:8080"
+        /** ★ 默认服务端地址（内置，UI 不展示） */
+        const val DEFAULT_BASE = "https://pybot.eu.org"
     }
 }

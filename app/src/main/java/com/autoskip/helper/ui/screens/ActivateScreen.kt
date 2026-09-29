@@ -34,7 +34,6 @@ import androidx.compose.ui.unit.sp
 import com.autoskip.helper.license.FeatureGate
 import com.autoskip.helper.license.LicenseManager
 import com.autoskip.helper.license.LicensePrefs
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
@@ -45,7 +44,6 @@ fun ActivateScreen() {
     val context = androidx.compose.ui.platform.LocalContext.current
     var code by remember { mutableStateOf("") }
     var deviceName by remember { mutableStateOf("") }
-    var baseUrl by remember { mutableStateOf("") }
     var message by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -55,7 +53,6 @@ fun ActivateScreen() {
         val p = LicensePrefs(context)
         code = p.getCode()
         deviceName = p.getDeviceName()
-        baseUrl = p.baseUrl.first()
     }
 
     val locked = FeatureGate.state.value == FeatureGate.State.LOCKED
@@ -103,15 +100,6 @@ fun ActivateScreen() {
                     shape = RoundedCornerShape(8.dp)
                 )
 
-                OutlinedTextField(
-                    value = baseUrl,
-                    onValueChange = { baseUrl = it },
-                    label = { Text("服务器地址") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp)
-                )
-
                 Button(
                     onClick = {
                         if (code.isBlank()) { message = "请输入激活码"; return@Button }
@@ -121,7 +109,6 @@ fun ActivateScreen() {
                             try {
                                 val p = LicensePrefs(context)
                                 p.setDeviceName(deviceName.trim())
-                                p.setBaseUrl(baseUrl.trim())
                                 val msg = LicenseManager.activate(context, code.trim())
                                 message = msg
                             } catch (e: Exception) {
