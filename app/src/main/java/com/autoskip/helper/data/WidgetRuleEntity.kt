@@ -27,5 +27,9 @@ data class WidgetRuleEntity(
     val packageName: String? = null,    // 限定包名（可选）
     val enabled: Boolean = true,
     val hitCount: Int = 0,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    /** 服务端分配 ID（null=用户自建） */
+    val serverId: Long? = null,
+    /** 来源：user / server */
+    val source: String = "user"
 )

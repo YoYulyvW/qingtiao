@@ -1,16 +1,53 @@
 package com.autoskip.helper.data
 
+import androidx.room.withTransaction
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 class Repository(
+    private val db: AppDatabase,
     private val ruleDao: RuleDao,
     private val logDao: LogDao,
     private val condRuleDao: CondRuleDao,
     private val widgetRuleDao: WidgetRuleDao,
+    private val deletedServerRuleDao: DeletedServerRuleDao,
     val prefs: Prefs
 ) {
+    /** 供 RuleSync 做事务 */
+    fun database(): AppDatabase = db
+
+    /**
+     * 规则同步（事务）：全量替换服务端规则。
+     * 由 RuleSync 计算好"要保留的 serverId 集合 + 要插入/更新的规则"后调用。
+     * 事务内：删旧 server 规则 + 写新规则 + 写墓碑（若有）一起提交，保证原子性。
+     */
+    suspend fun syncServerRules(
+        newServerIds: Set<Long>,
+        insertRules: List<RuleEntity>,
+        insertConds: List<CondRuleEntity>,
+        insertWidgets: List<WidgetRuleEntity>,
+        newTombstones: List<Long>
+    ) {
+        db.withTransaction {
+            // 1) 删除本地已有、但服务端已移除的 server 规则
+            ruleDao.allServerRules().forEach {
+                if (it.serverId != null && it.serverId !in newServerIds) ruleDao.deleteByServerId(it.serverId)
+            }
+            condRuleDao.allServerRules().forEach {
+                if (it.serverId != null && it.serverId !in newServerIds) condRuleDao.deleteByServerId(it.serverId)
+            }
+            widgetRuleDao.allServerRules().forEach {
+                if (it.serverId != null && it.serverId !in newServerIds) widgetRuleDao.deleteByServerId(it.serverId)
+            }
+            // 2) 写入/更新规则
+            insertRules.forEach { ruleDao.insert(it) }
+            insertConds.forEach { condRuleDao.insert(it) }
+            insertWidgets.forEach { widgetRuleDao.insert(it) }
+            // 3) 写墓碑
+            newTombstones.forEach { deletedServerRuleDao.insert(DeletedServerRule(it)) }
+        }
+    }
     val rules: Flow<List<RuleEntity>> = ruleDao.observeAll()
     val condRules: Flow<List<CondRuleEntity>> = condRuleDao.observeAll()
     val widgetRules: Flow<List<WidgetRuleEntity>> = widgetRuleDao.observeAll()
@@ -62,6 +99,29 @@ class Repository(
     suspend fun updateCondRule(rule: CondRuleEntity) = condRuleDao.update(rule)
     suspend fun deleteCondRule(rule: CondRuleEntity) = condRuleDao.delete(rule)
     suspend fun bumpCondHit(id: Long) = condRuleDao.bumpHit(id)
+
+    // ===== 服务端规则同步（墓碑 + 查询）=====
+    suspend fun allDeletedServerIds(): Set<Long> = deletedServerRuleDao.allServerIds().toSet()
+    suspend fun addDeletedServerId(serverId: Long) = deletedServerRuleDao.insert(DeletedServerRule(serverId))
+    suspend fun allServerRuleIds(): Set<Long> {
+        val a = ruleDao.allServerRules().mapNotNull { it.serverId }
+        val b = condRuleDao.allServerRules().mapNotNull { it.serverId }
+        val c = widgetRuleDao.allServerRules().mapNotNull { it.serverId }
+        return (a + b + c).toSet()
+    }
+    suspend fun deleteServerRuleByServerId(type: String, serverId: Long) {
+        when (type) {
+            "rule" -> ruleDao.deleteByServerId(serverId)
+            "cond" -> condRuleDao.deleteByServerId(serverId)
+            "widget" -> widgetRuleDao.deleteByServerId(serverId)
+        }
+    }
+    suspend fun getServerRuleByServerId(type: String, serverId: Long): Any? = when (type) {
+        "rule" -> ruleDao.getByServerId(serverId)
+        "cond" -> condRuleDao.getByServerId(serverId)
+        "widget" -> widgetRuleDao.getByServerId(serverId)
+        else -> null
+    }
 
     /** 学习模式：若同文本+同包名的规则不存在，则新增一条学习规则 */
     suspend fun addLearnedRuleIfAbsent(text: String, viewId: String?, pkg: String) {

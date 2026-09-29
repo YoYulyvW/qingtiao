@@ -23,6 +23,7 @@ class LicensePrefs(private val context: Context) {
     private val KEY_LAST_HB = stringPreferencesKey("lic_last_hb")
     private val KEY_BASE = stringPreferencesKey("lic_base")           // 服务端地址
     private val KEY_DEVICE_NAME = stringPreferencesKey("lic_device_name")
+    private val KEY_RULES_VERSION = stringPreferencesKey("lic_rules_version")
 
     /** 服务端地址（固定内置，忽略历史残留，防止旧地址导致心跳失败） */
     val baseUrl = context.licenseStore.data.map { DEFAULT_BASE }
@@ -51,6 +52,10 @@ class LicensePrefs(private val context: Context) {
     /** 最后心跳成功时间 */
     suspend fun getLastHeartbeat(): Long = context.licenseStore.data.map { (it[KEY_LAST_HB] ?: "0").toLongOrNull() ?: 0L }.first()
     suspend fun setLastHeartbeat(v: Long) { context.licenseStore.edit { it[KEY_LAST_HB] = v.toString() } }
+
+    /** 规则版本号（本地已同步到的服务端版本） */
+    suspend fun getRulesVersion(): Long = context.licenseStore.data.map { (it[KEY_RULES_VERSION] ?: "0").toLongOrNull() ?: 0L }.first()
+    suspend fun setRulesVersion(v: Long) { context.licenseStore.edit { it[KEY_RULES_VERSION] = v.toString() } }
 
     /** 清空授权缓存（被服务端封禁时调用） */
     suspend fun clearCache() {

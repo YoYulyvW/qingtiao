@@ -27,5 +27,9 @@ data class RuleEntity(
     /** 创建时间 */
     val createdAt: Long = System.currentTimeMillis(),
     /** 命中次数 */
-    val hitCount: Int = 0
+    val hitCount: Int = 0,
+    /** 服务端分配 ID（null=用户自建） */
+    val serverId: Long? = null,
+    /** 来源：user / server */
+    val source: String = "user"
 )

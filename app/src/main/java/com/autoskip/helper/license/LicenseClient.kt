@@ -32,7 +32,15 @@ object LicenseClient {
         val reason: String,
         val expireAt: Long,
         val serverNow: Long,
-        val features: Map<String, Boolean>
+        val features: Map<String, Boolean>,
+        val rulesVersion: Long = 0
+    )
+
+    /** 拉取规则结果（原始 JSON，交给 RuleSync 解析） */
+    data class RulesResult(
+        val ok: Boolean,
+        val version: Long,
+        val rawJson: String
     )
 
     suspend fun activate(base: String, code: String, deviceId: String, deviceName: String): ActivateResult =
@@ -64,7 +72,19 @@ object LicenseClient {
             val expireAt = parseLong(resp, "expireAt")
             val serverNow = parseLong(resp, "serverNow")
             val features = parseFeatures(resp)
-            CheckResult(ok, reason, expireAt, serverNow, features)
+            val rulesVersion = parseLong(resp, "rulesVersion")
+            CheckResult(ok, reason, expireAt, serverNow, features, rulesVersion)
+        }
+
+    /** 拉取全量服务端规则 */
+    suspend fun fetchRules(base: String, deviceId: String): RulesResult =
+        withContext(Dispatchers.IO) {
+            val body = "{"deviceId":"" + esc(deviceId) + ""}"
+            val resp = post(base + "/rules/get", body)
+            if (resp == null) return@withContext RulesResult(false, 0, "")
+            val ok = parseBool(resp, "ok")
+            val version = parseLong(resp, "version")
+            RulesResult(ok, version, resp)
         }
 
     private fun post(url: String, body: String): String? {

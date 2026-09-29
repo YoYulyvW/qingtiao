@@ -76,6 +76,14 @@ object LicenseManager {
                 p.setOffset(resp.serverNow - System.currentTimeMillis())
                 p.setLastHeartbeat(System.currentTimeMillis())
                 Log.i(TAG, "心跳成功")
+                // ★ 规则版本检查：服务端版本更新 → 触发同步
+                if (resp.rulesVersion > 0 && resp.rulesVersion != p.getRulesVersion()) {
+                    try {
+                        RuleSync.sync(ctx)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "规则同步异常", e)
+                    }
+                }
             } else {
                 // ★ 只有【明确拒绝】才锁；其余（server_error/空/未知/网络）一律不锁，避免抖动误锁
                 val definitiveReject = resp.reason == "blocked" ||

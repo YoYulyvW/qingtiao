@@ -33,6 +33,16 @@ interface RuleDao {
 
     @Query("DELETE FROM rules WHERE learned = 1 AND enabled = 0")
     suspend fun clearDisabledLearned()
+
+    // ===== 服务端规则同步 =====
+    @Query("SELECT * FROM rules WHERE source = 'server'")
+    suspend fun allServerRules(): List<RuleEntity>
+
+    @Query("SELECT * FROM rules WHERE serverId = :serverId LIMIT 1")
+    suspend fun getByServerId(serverId: Long): RuleEntity?
+
+    @Query("DELETE FROM rules WHERE serverId = :serverId")
+    suspend fun deleteByServerId(serverId: Long)
 }
 
 @Dao
@@ -57,6 +67,16 @@ interface CondRuleDao {
 
     @Query("UPDATE cond_rules SET hitCount = hitCount + 1 WHERE id = :id")
     suspend fun bumpHit(id: Long)
+
+    // ===== 服务端规则同步 =====
+    @Query("SELECT * FROM cond_rules WHERE source = 'server'")
+    suspend fun allServerRules(): List<CondRuleEntity>
+
+    @Query("SELECT * FROM cond_rules WHERE serverId = :serverId LIMIT 1")
+    suspend fun getByServerId(serverId: Long): CondRuleEntity?
+
+    @Query("DELETE FROM cond_rules WHERE serverId = :serverId")
+    suspend fun deleteByServerId(serverId: Long)
 }
 
 @Dao
@@ -81,6 +101,28 @@ interface WidgetRuleDao {
 
     @Query("UPDATE widget_rules SET hitCount = hitCount + 1 WHERE id = :id")
     suspend fun bumpHit(id: Long)
+
+    // ===== 服务端规则同步 =====
+    @Query("SELECT * FROM widget_rules WHERE source = 'server'")
+    suspend fun allServerRules(): List<WidgetRuleEntity>
+
+    @Query("SELECT * FROM widget_rules WHERE serverId = :serverId LIMIT 1")
+    suspend fun getByServerId(serverId: Long): WidgetRuleEntity?
+
+    @Query("DELETE FROM widget_rules WHERE serverId = :serverId")
+    suspend fun deleteByServerId(serverId: Long)
+}
+
+@Dao
+interface DeletedServerRuleDao {
+    @Query("SELECT serverId FROM deleted_server_rules")
+    suspend fun allServerIds(): List<Long>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(rule: DeletedServerRule)
+
+    @Query("DELETE FROM deleted_server_rules WHERE serverId = :serverId")
+    suspend fun deleteByServerId(serverId: Long)
 }
 
 @Dao

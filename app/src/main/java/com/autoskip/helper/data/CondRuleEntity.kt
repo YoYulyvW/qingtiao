@@ -27,5 +27,9 @@ data class CondRuleEntity(
     /** 延时检测（秒）：检测到条件后等 N 秒，仍存在才执行动作；0 = 立即执行 */
     val delaySec: Int = 3,
     val hitCount: Int = 0,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    /** 服务端分配 ID（null=用户自建） */
+    val serverId: Long? = null,
+    /** 来源：user / server */
+    val source: String = "user"
 )
