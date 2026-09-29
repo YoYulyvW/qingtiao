@@ -40,6 +40,8 @@ object LicenseManager {
         scope.launch {
             // ① 加载本地缓存
             val cachedJson = p.getFeaturesJson()
+            val savedCode = p.getCode()
+            Log.i(TAG, "启动：激活码=" + (if (savedCode.isBlank()) "(空)" else savedCode) + " 缓存=" + cachedJson.length + "字节")
             if (cachedJson.isNotBlank()) {
                 val map = parseFeatures(cachedJson)
                 FeatureGate.loadCache(map, p.getExpireAt(), p.getOffset())
@@ -85,19 +87,21 @@ object LicenseManager {
                     }
                 }
             } else {
-                // ★ 只有【明确拒绝】才锁；其余（server_error/空/未知/网络）一律不锁，避免抖动误锁
-                val definitiveReject = resp.reason == "blocked" ||
-                    resp.reason == "expired" ||
-                    resp.reason == "not_activated" ||
-                    resp.reason == "code_disabled"
-                if (definitiveReject) {
-                    FeatureGate.lockImmediately()
-                    p.clearCache()
-                    Log.w(TAG, "服务端拒绝：" + resp.reason)
-                } else {
-                    // server_error / 空 / 未知 reason / 网络 → 视为异常，沿用缓存
-                    FeatureGate.onNetworkError()
-                    Log.w(TAG, "心跳异常(不锁)：" + resp.reason)
+                when (resp.reason) {
+                    "not_activated" -> {
+                        // 服务端无此设备记录（可能 DB 抖动/重部署）→ 锁 UI 但保留本地缓存
+                        FeatureGate.lockImmediately()
+                        Log.w(TAG, "服务端无设备记录，锁定（保留本地缓存）")
+                    }
+                    "blocked", "expired", "code_disabled" -> {
+                        FeatureGate.lockImmediately()
+                        p.clearCache()
+                        Log.w(TAG, "服务端拒绝：" + resp.reason)
+                    }
+                    else -> {
+                        FeatureGate.onNetworkError()
+                        Log.w(TAG, "心跳异常(不锁)：" + resp.reason)
+                    }
                 }
             }
         } catch (e: Exception) {

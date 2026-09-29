@@ -22,6 +22,13 @@ import org.json.JSONObject
 object RuleSync {
     private const val TAG = "RuleSync"
 
+    /** 安全取字符串：JSON null 或空 → null（修复 org.json optString 把 null 变 "null" 的问题） */
+    private fun JSONObject.optStr(key: String): String? {
+        if (isNull(key)) return null
+        val v = optString(key, "")
+        return if (v.isBlank() || v == "null") null else v
+    }
+
     /**
      * 全量同步。
      * @return 成功与否
@@ -73,10 +80,10 @@ object RuleSync {
                     toInsertRules.add(
                         RuleEntity(
                             id = existing?.id ?: 0,
-                            name = content.optString("name", content.optString("text", "")),
-                            text = content.optString("text", ""),
-                            viewId = content.optString("viewId", "").ifBlank { null },
-                            packageName = content.optString("packageName", "").ifBlank { null },
+                            name = content.optStr("name") ?: content.optStr("text") ?: "",
+                            text = content.optStr("text") ?: "",
+                            viewId = content.optStr("viewId"),
+                            packageName = content.optStr("packageName"),
                             exact = content.optBoolean("exact", false),
                             enabled = enabled,
                             learned = false,
@@ -91,12 +98,12 @@ object RuleSync {
                     toInsertConds.add(
                         CondRuleEntity(
                             id = existing?.id ?: 0,
-                            name = content.optString("name", ""),
-                            hasText = content.optString("hasText", ""),
-                            andText = content.optString("andText", "").ifBlank { null },
-                            actionType = content.optString("actionType", "CLICK_ICON"),
-                            actionText = content.optString("actionText", "").ifBlank { null },
-                            packageName = content.optString("packageName", "").ifBlank { null },
+                            name = content.optStr("name") ?: "",
+                            hasText = content.optStr("hasText") ?: "",
+                            andText = content.optStr("andText"),
+                            actionType = content.optStr("actionType") ?: "CLICK_ICON",
+                            actionText = content.optStr("actionText"),
+                            packageName = content.optStr("packageName"),
                             enabled = enabled,
                             delaySec = content.optInt("delaySec", 3),
                             serverId = serverId,
@@ -110,13 +117,13 @@ object RuleSync {
                     toInsertWidgets.add(
                         WidgetRuleEntity(
                             id = existing?.id ?: 0,
-                            remark = content.optString("remark", ""),
-                            widgetId = content.optString("widgetId", ""),
-                            matchText = content.optString("matchText", "").ifBlank { null },
-                            actionType = content.optString("actionType", "CLICK"),
+                            remark = content.optStr("remark") ?: "",
+                            widgetId = content.optStr("widgetId") ?: "",
+                            matchText = content.optStr("matchText"),
+                            actionType = content.optStr("actionType") ?: "CLICK",
                             coordX = content.optInt("coordX", 0),
                             coordY = content.optInt("coordY", 0),
-                            packageName = content.optString("packageName", "").ifBlank { null },
+                            packageName = content.optStr("packageName"),
                             enabled = enabled,
                             serverId = serverId,
                             source = "server"
