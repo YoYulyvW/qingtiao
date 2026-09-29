@@ -446,13 +446,8 @@ class AutoClickAccessibilityService : AccessibilityService() {
             val curNum = extractEpisodeNumber(nodes)
             val curAuthor = extractAuthor(nodes)
 
-            // ★ 倍速已稳定 → 不再长按呼出菜单
-            if (stableSpeed) {
-                if (diag) DramaDebug.add("倍速已稳定，跳过长按")
-                return
-            }
-
-            // 新剧检测：① 集数回退 ② 发布者变化 ③ 集数跨度异常大
+            // ★ 新剧检测（必须在"稳定跳过长按"之前，否则稳定后永远走不到这里，换剧无法复位）
+            //   ① 集数回退 ② 发布者变化 ③ 集数跨度异常大
             val newByEpisode = curNum != null && lastLongPressEpNum > 0 && curNum < lastLongPressEpNum
             val newByAuthor = curAuthor != null && lastAuthor != null && curAuthor != lastAuthor
             val newByGap = curNum != null && lastLongPressEpNum > 0 &&
@@ -471,6 +466,12 @@ class AutoClickAccessibilityService : AccessibilityService() {
                 selectedConfirmCount = 0
             }
             if (curAuthor != null) lastAuthor = curAuthor
+
+            // ★ 倍速已稳定 → 不再长按呼出菜单（放在换剧检测之后）
+            if (stableSpeed) {
+                if (diag) DramaDebug.add("倍速已稳定，跳过长按")
+                return
+            }
 
             // 本次用哪个间隔：上次菜单是"识别图片"版→img间隔，否则→普通间隔
             val interval = if (menuHasImg) dramaImgInterval else dramaNormalInterval
