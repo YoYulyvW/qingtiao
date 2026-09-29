@@ -79,7 +79,7 @@ object LicenseClient {
     /** 拉取全量服务端规则 */
     suspend fun fetchRules(base: String, deviceId: String): RulesResult =
         withContext(Dispatchers.IO) {
-            val body = "{"deviceId":"" + esc(deviceId) + ""}"
+            val body = "{\"deviceId\":\"" + esc(deviceId) + "\"}"
             val resp = post(base + "/rules/get", body)
             if (resp == null) return@withContext RulesResult(false, 0, "")
             val ok = parseBool(resp, "ok")
