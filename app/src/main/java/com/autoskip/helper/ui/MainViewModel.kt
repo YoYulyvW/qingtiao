@@ -53,21 +53,48 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun setClickDelay(ms: Long) = viewModelScope.launch { repo.setClickDelay(ms) }
 
-    fun addRule(rule: RuleEntity) = viewModelScope.launch { repo.addRule(rule) }
+    // ===== 普通规则（门控 RULE_NORMAL）=====
+    fun addRule(rule: RuleEntity) = viewModelScope.launch {
+        if (!com.autoskip.helper.license.FeatureGate.isEnabled(com.autoskip.helper.license.FeatureGate.Feat.RULE_NORMAL)) return@launch
+        repo.addRule(rule)
+    }
+    fun updateRule(rule: RuleEntity) = viewModelScope.launch {
+        if (!com.autoskip.helper.license.FeatureGate.isEnabled(com.autoskip.helper.license.FeatureGate.Feat.RULE_NORMAL)) return@launch
+        repo.updateRule(rule)
+    }
+    fun deleteRule(rule: RuleEntity) = viewModelScope.launch {
+        if (!com.autoskip.helper.license.FeatureGate.isEnabled(com.autoskip.helper.license.FeatureGate.Feat.RULE_NORMAL)) return@launch
+        repo.deleteRule(rule)
+    }
 
-    fun updateRule(rule: RuleEntity) = viewModelScope.launch { repo.updateRule(rule) }
+    // ===== 条件规则（门控 RULE_COND）=====
+    fun addCondRule(rule: com.autoskip.helper.data.CondRuleEntity) = viewModelScope.launch {
+        if (!com.autoskip.helper.license.FeatureGate.isEnabled(com.autoskip.helper.license.FeatureGate.Feat.RULE_COND)) return@launch
+        repo.addCondRule(rule)
+    }
+    fun updateCondRule(rule: com.autoskip.helper.data.CondRuleEntity) = viewModelScope.launch {
+        if (!com.autoskip.helper.license.FeatureGate.isEnabled(com.autoskip.helper.license.FeatureGate.Feat.RULE_COND)) return@launch
+        repo.updateCondRule(rule)
+    }
+    fun deleteCondRule(rule: com.autoskip.helper.data.CondRuleEntity) = viewModelScope.launch {
+        if (!com.autoskip.helper.license.FeatureGate.isEnabled(com.autoskip.helper.license.FeatureGate.Feat.RULE_COND)) return@launch
+        repo.deleteCondRule(rule)
+    }
 
-    fun deleteRule(rule: RuleEntity) = viewModelScope.launch { repo.deleteRule(rule) }
-
-    fun addCondRule(rule: com.autoskip.helper.data.CondRuleEntity) = viewModelScope.launch { repo.addCondRule(rule) }
-    fun updateCondRule(rule: com.autoskip.helper.data.CondRuleEntity) = viewModelScope.launch { repo.updateCondRule(rule) }
-    fun deleteCondRule(rule: com.autoskip.helper.data.CondRuleEntity) = viewModelScope.launch { repo.deleteCondRule(rule) }
-
-    // ===== 控件规则 =====
+    // ===== 控件规则（门控 RULE_WIDGET）=====
     val widgetRules = repo.widgetRules.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-    fun addWidgetRule(rule: com.autoskip.helper.data.WidgetRuleEntity) = viewModelScope.launch { repo.addWidgetRule(rule) }
-    fun updateWidgetRule(rule: com.autoskip.helper.data.WidgetRuleEntity) = viewModelScope.launch { repo.updateWidgetRule(rule) }
-    fun deleteWidgetRule(rule: com.autoskip.helper.data.WidgetRuleEntity) = viewModelScope.launch { repo.deleteWidgetRule(rule) }
+    fun addWidgetRule(rule: com.autoskip.helper.data.WidgetRuleEntity) = viewModelScope.launch {
+        if (!com.autoskip.helper.license.FeatureGate.isEnabled(com.autoskip.helper.license.FeatureGate.Feat.RULE_WIDGET)) return@launch
+        repo.addWidgetRule(rule)
+    }
+    fun updateWidgetRule(rule: com.autoskip.helper.data.WidgetRuleEntity) = viewModelScope.launch {
+        if (!com.autoskip.helper.license.FeatureGate.isEnabled(com.autoskip.helper.license.FeatureGate.Feat.RULE_WIDGET)) return@launch
+        repo.updateWidgetRule(rule)
+    }
+    fun deleteWidgetRule(rule: com.autoskip.helper.data.WidgetRuleEntity) = viewModelScope.launch {
+        if (!com.autoskip.helper.license.FeatureGate.isEnabled(com.autoskip.helper.license.FeatureGate.Feat.RULE_WIDGET)) return@launch
+        repo.deleteWidgetRule(rule)
+    }
 
     fun clearLogs() = viewModelScope.launch { repo.clearLogs() }
 
@@ -111,17 +138,21 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun setDramaImgInterval(v: Int) = viewModelScope.launch { repo.setDramaImgInterval(v) }
     fun setDramaNormalInterval(v: Int) = viewModelScope.launch { repo.setDramaNormalInterval(v) }
 
+    // ===== 白名单（门控 WHITELIST）=====
     fun toggleWhitelistPkg(pkg: String) = viewModelScope.launch {
+        if (!com.autoskip.helper.license.FeatureGate.isEnabled(com.autoskip.helper.license.FeatureGate.Feat.WHITELIST)) return@launch
         val cur = repo.whitelistPkgs.first()
         if (pkg in cur) repo.setWhitelist(cur - pkg) else repo.setWhitelist(cur + pkg)
     }
 
     fun removeFromWhitelist(pkg: String) = viewModelScope.launch {
+        if (!com.autoskip.helper.license.FeatureGate.isEnabled(com.autoskip.helper.license.FeatureGate.Feat.WHITELIST)) return@launch
         repo.setWhitelist(repo.whitelistPkgs.first() - pkg)
     }
 
     /** 添加一条自定义通配/包名规则 */
     fun addWhitelistPattern(pattern: String) = viewModelScope.launch {
+        if (!com.autoskip.helper.license.FeatureGate.isEnabled(com.autoskip.helper.license.FeatureGate.Feat.WHITELIST)) return@launch
         val p = pattern.trim()
         if (p.isBlank()) return@launch
         val cur = repo.whitelistPkgs.first()
@@ -130,6 +161,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     /** 学习模式：开启后，用户在其他 App 手动点击的按钮会被自动记录为规则 */
     fun setLearnMode(on: Boolean) {
+        // ★ 门控：学习模式
+        if (on && !com.autoskip.helper.license.FeatureGate.isEnabled(com.autoskip.helper.license.FeatureGate.Feat.LEARNING)) return
         _learnMode.value = on
         val svc = AutoClickAccessibilityService.instance ?: return
         svc.learnCallback = if (on) {

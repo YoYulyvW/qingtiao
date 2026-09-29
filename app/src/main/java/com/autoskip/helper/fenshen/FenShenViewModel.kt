@@ -53,6 +53,11 @@ class FenShenViewModel(app: Application) : AndroidViewModel(app) {
 
     fun start(config: FenShenConfig, onNeedFloat: () -> Unit) {
         val ctx = getApplication<Application>()
+        // ★ 门控：分身功能未授权 → 提示并拒绝
+        if (!com.autoskip.helper.license.FeatureGate.isEnabled(com.autoskip.helper.license.FeatureGate.Feat.FENSHEN)) {
+            android.widget.Toast.makeText(ctx, "分身功能未授权", android.widget.Toast.LENGTH_SHORT).show()
+            return
+        }
         // 启动时持久化配置
         viewModelScope.launch { prefs.save(config) }
         // 注意：必须用 IO 线程执行引擎，否则节点遍历会阻塞主线程，导致悬浮窗按钮点不动

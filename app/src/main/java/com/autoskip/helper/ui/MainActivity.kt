@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
@@ -13,17 +14,21 @@ import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.Icon
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.autoskip.helper.fenshen.FenShenScreen
+import com.autoskip.helper.license.FeatureGate
+import com.autoskip.helper.ui.screens.ActivateScreen
 import com.autoskip.helper.ui.screens.CondRulesScreen
 import com.autoskip.helper.ui.screens.DramaScreen
 import com.autoskip.helper.ui.screens.HomeScreen
@@ -50,6 +55,25 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun AppRoot(vm: MainViewModel) {
+    val licenseState by FeatureGate.state.collectAsState()
+
+    // ★ 授权状态判断
+    when (licenseState) {
+        FeatureGate.State.LOADING -> {
+            // 启动瞬间：加载缓存中，显示占位，避免误显示激活页
+            Box(
+                Modifier.fillMaxSize(),
+                contentAlignment = androidx.compose.ui.Alignment.Center
+            ) { CircularProgressIndicator() }
+            return
+        }
+        FeatureGate.State.LOCKED -> {
+            ActivateScreen()
+            return
+        }
+        else -> { /* ACTIVE → 继续主界面 */ }
+    }
+
     var tab by remember { mutableStateOf(0) }
     var showFenShen by remember { mutableStateOf(false) }
     var showDrama by remember { mutableStateOf(false) }

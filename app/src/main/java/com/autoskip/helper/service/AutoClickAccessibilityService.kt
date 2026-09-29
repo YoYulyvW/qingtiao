@@ -235,6 +235,8 @@ class AutoClickAccessibilityService : AccessibilityService() {
             try {
                 delay(dramaIntervalMs)
                 if (!dramaEnabled) continue
+                // ★ 门控：短剧功能未授权 → 跳过
+                if (!com.autoskip.helper.license.FeatureGate.isEnabled(com.autoskip.helper.license.FeatureGate.Feat.DRAMA)) continue
                 // 只用"当前前台窗口"判断，无状态、绝不卡住
                 val pkg = currentRootPackage() ?: continue
                 // 前台是系统UI（桌面/多任务）→ 跳过这轮
@@ -284,6 +286,8 @@ class AutoClickAccessibilityService : AccessibilityService() {
 
     /** 短剧页面核心处理 */
     private suspend fun handleDrama(pkg: String, diag: Boolean) {
+        // ★ 门控：短剧功能未授权 → 不做任何短剧动作
+        if (!com.autoskip.helper.license.FeatureGate.isEnabled(com.autoskip.helper.license.FeatureGate.Feat.DRAMA)) return
         // ★ 长按后窗口期：完全不碰节点树。
         //   长按会弹菜单+播放窗口动画，此期间读节点树会与无障碍框架死锁（卡死）。
         val nowMs = System.currentTimeMillis()
@@ -372,7 +376,7 @@ class AutoClickAccessibilityService : AccessibilityService() {
                 if (target != null) {
                     if (isTargetSelected) {
                         DramaDebug.add("菜单已弹出: " + menuTargetVal + " 已是选中态，不点")
-                    } else if (dramaClickSpeedOn) {
+                    } else if (dramaClickSpeedOn && com.autoskip.helper.license.FeatureGate.isEnabled(com.autoskip.helper.license.FeatureGate.Feat.DRAMA_SPEED)) {
                         val ep = pendingEpisode ?: currentEpisode
                         DramaDebug.add("菜单已弹出: 点击 " + menuTargetVal + "（集 " + (ep ?: "?") + "）")
                         clickNode(findClickableAncestor(target) ?: target)
@@ -395,7 +399,7 @@ class AutoClickAccessibilityService : AccessibilityService() {
         }
 
         // 0.5) 暂停恢复：检测到"暂停"控件 → 坐标点击恢复播放
-        if (dramaResumePauseOn) {
+        if (dramaResumePauseOn && com.autoskip.helper.license.FeatureGate.isEnabled(com.autoskip.helper.license.FeatureGate.Feat.DRAMA_RESUME)) {
             val pauseNode = findPauseControl(nodes)
             if (pauseNode != null) {
                 val r = android.graphics.Rect()
@@ -414,7 +418,7 @@ class AutoClickAccessibilityService : AccessibilityService() {
                 if (diag) DramaDebug.add("已在目标倍速 $cur，不点")
                 return
             }
-            if (dramaClickSpeedOn) {
+            if (dramaClickSpeedOn && com.autoskip.helper.license.FeatureGate.isEnabled(com.autoskip.helper.license.FeatureGate.Feat.DRAMA_SPEED)) {
                 DramaDebug.add("倍速 $cur → 点击切换")
                 clickNode(speedNode)
             } else if (diag) {
@@ -503,6 +507,11 @@ class AutoClickAccessibilityService : AccessibilityService() {
                 if (diag) DramaDebug.add("「自动长按」已关闭，不呼出菜单")
                 return
             }
+            // ★ 门控：长按二级
+            if (!com.autoskip.helper.license.FeatureGate.isEnabled(com.autoskip.helper.license.FeatureGate.Feat.DRAMA_LONGPRESS)) {
+                if (diag) DramaDebug.add("「长按」未授权")
+                return
+            }
             lastDramaClickTime = now
             pendingEpisode = currentEpisode
             pendingEpisodeNum = curNum
@@ -517,6 +526,11 @@ class AutoClickAccessibilityService : AccessibilityService() {
         // 没有倍速按钮 → 可能是普通视频流
         if (!dramaAutoMount) {
             if (diag) DramaDebug.add("无倍速按钮，且已关自动挂载（节点数 ${nodes.size}）")
+            return
+        }
+        // ★ 门控：挂载二级
+        if (!com.autoskip.helper.license.FeatureGate.isEnabled(com.autoskip.helper.license.FeatureGate.Feat.DRAMA_MOUNT)) {
+            if (diag) DramaDebug.add("「挂载」未授权")
             return
         }
 
@@ -1052,6 +1066,8 @@ class AutoClickAccessibilityService : AccessibilityService() {
 
     /** 实际事件处理（在 IO 线程执行） */
     private fun doProcessEvent() {
+        // ★ 门控：自动跳过总开关
+        if (!com.autoskip.helper.license.FeatureGate.isEnabled(com.autoskip.helper.license.FeatureGate.Feat.AUTOSKIP)) return
         val pkg = currentRootPackage() ?: return
         if (pkg == packageName) return
         if (Matcher.isSystemUi(pkg)) return
@@ -1073,7 +1089,7 @@ class AutoClickAccessibilityService : AccessibilityService() {
             }
             // ★ 广告推送：首次 + 周期重推（URL 为空则不推）
             //   首次检测到退出短剧 → 推一次；之后停留在该页每 90 秒重推，至多 3 次
-            if (pushUrl.isNotBlank()) {
+            if (pushUrl.isNotBlank() && com.autoskip.helper.license.FeatureGate.isEnabled(com.autoskip.helper.license.FeatureGate.Feat.PUSH)) {
                 val nowP = System.currentTimeMillis()
                 val needFirst = !adPushSent
                 val needRepeat = adPushSent && adPushCount < AD_PUSH_MAX &&

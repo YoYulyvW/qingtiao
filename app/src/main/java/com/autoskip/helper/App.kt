@@ -5,6 +5,7 @@ import com.autoskip.helper.data.AppDatabase
 import com.autoskip.helper.data.Prefs
 import com.autoskip.helper.data.Repository
 import com.autoskip.helper.data.RuleEntity
+import com.autoskip.helper.license.LicenseManager
 import com.autoskip.helper.service.Matcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -30,6 +31,8 @@ class App : Application() {
             runCatching { repo.migrateCondRulesV1() }
             runCatching { repo.seedCondRulesIfNeeded() }
         }
+        // ★ 启动授权（先加载缓存，再起心跳）
+        runCatching { LicenseManager.start(this) }
     }
 
     /**
