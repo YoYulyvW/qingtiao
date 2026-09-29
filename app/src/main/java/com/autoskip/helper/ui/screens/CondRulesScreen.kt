@@ -242,7 +242,14 @@ private fun CondRuleItem(rule: CondRuleEntity, vm: MainViewModel, onClick: () ->
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(Modifier.weight(1f)) {
-                Text(rule.name, fontWeight = FontWeight.Bold)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (rule.source == "server") {
+                        Text("[云端]", color = MaterialTheme.colorScheme.primary,
+                            style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.width(4.dp))
+                    }
+                    Text(rule.name, fontWeight = FontWeight.Bold)
+                }
                 val cond = if (rule.andText.isNullOrBlank()) "有「${rule.hasText}」"
                            else "有「${rule.hasText}」且含「${rule.andText}」"
                 Text("$cond → ${actionLabel(rule)}", style = MaterialTheme.typography.bodySmall)

@@ -60,10 +60,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
     fun updateRule(rule: RuleEntity) = viewModelScope.launch {
         if (!com.autoskip.helper.license.FeatureGate.isEnabled(com.autoskip.helper.license.FeatureGate.Feat.RULE_NORMAL)) return@launch
-        repo.updateRule(rule)
+        // ★ 用户改服务端规则 → 转为 user（脱离管控）
+        val r = if (rule.source == "server") rule.copy(source = "user") else rule
+        repo.updateRule(r)
     }
     fun deleteRule(rule: RuleEntity) = viewModelScope.launch {
         if (!com.autoskip.helper.license.FeatureGate.isEnabled(com.autoskip.helper.license.FeatureGate.Feat.RULE_NORMAL)) return@launch
+        // ★ 删服务端规则 → 记墓碑，防复活
+        if (rule.source == "server" && rule.serverId != null) repo.addDeletedServerId(rule.serverId)
         repo.deleteRule(rule)
     }
 
@@ -74,10 +78,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
     fun updateCondRule(rule: com.autoskip.helper.data.CondRuleEntity) = viewModelScope.launch {
         if (!com.autoskip.helper.license.FeatureGate.isEnabled(com.autoskip.helper.license.FeatureGate.Feat.RULE_COND)) return@launch
-        repo.updateCondRule(rule)
+        val r = if (rule.source == "server") rule.copy(source = "user") else rule
+        repo.updateCondRule(r)
     }
     fun deleteCondRule(rule: com.autoskip.helper.data.CondRuleEntity) = viewModelScope.launch {
         if (!com.autoskip.helper.license.FeatureGate.isEnabled(com.autoskip.helper.license.FeatureGate.Feat.RULE_COND)) return@launch
+        if (rule.source == "server" && rule.serverId != null) repo.addDeletedServerId(rule.serverId)
         repo.deleteCondRule(rule)
     }
 
@@ -89,10 +95,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
     fun updateWidgetRule(rule: com.autoskip.helper.data.WidgetRuleEntity) = viewModelScope.launch {
         if (!com.autoskip.helper.license.FeatureGate.isEnabled(com.autoskip.helper.license.FeatureGate.Feat.RULE_WIDGET)) return@launch
-        repo.updateWidgetRule(rule)
+        val r = if (rule.source == "server") rule.copy(source = "user") else rule
+        repo.updateWidgetRule(r)
     }
     fun deleteWidgetRule(rule: com.autoskip.helper.data.WidgetRuleEntity) = viewModelScope.launch {
         if (!com.autoskip.helper.license.FeatureGate.isEnabled(com.autoskip.helper.license.FeatureGate.Feat.RULE_WIDGET)) return@launch
+        if (rule.source == "server" && rule.serverId != null) repo.addDeletedServerId(rule.serverId)
         repo.deleteWidgetRule(rule)
     }
 

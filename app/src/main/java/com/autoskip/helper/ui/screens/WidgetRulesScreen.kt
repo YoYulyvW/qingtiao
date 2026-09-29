@@ -132,7 +132,14 @@ private fun WidgetRuleItem(rule: WidgetRuleEntity, vm: MainViewModel, onClick: (
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(Modifier.weight(1f)) {
-                Text(rule.remark.ifBlank { "(无备注)" }, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (rule.source == "server") {
+                        Text("[云端]", color = MaterialTheme.colorScheme.primary,
+                            style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                        androidx.compose.foundation.layout.Spacer(Modifier.width(4.dp))
+                    }
+                    Text(rule.remark.ifBlank { "(无备注)" }, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                }
                 Text("ID: " + rule.widgetId, style = MaterialTheme.typography.bodySmall)
                 if (!rule.matchText.isNullOrBlank()) {
                     Text("且文本含: " + rule.matchText, style = MaterialTheme.typography.bodySmall)

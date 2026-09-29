@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -162,6 +163,11 @@ private fun RuleItem(rule: RuleEntity, vm: MainViewModel, onClick: () -> Unit) {
         ) {
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (rule.source == "server") {
+                        Text("[云端]", color = MaterialTheme.colorScheme.primary,
+                            style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.width(4.dp))
+                    }
                     Text(rule.text, fontWeight = FontWeight.Bold)
                     if (rule.learned) {
                         Text(
