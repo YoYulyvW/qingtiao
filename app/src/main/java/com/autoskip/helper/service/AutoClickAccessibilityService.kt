@@ -628,8 +628,21 @@ class AutoClickAccessibilityService : AccessibilityService() {
         return best
     }
 
-    /** 提取发布者（@开头），用于检测新剧 */
+    /**
+     * 提取发布者，用于检测新剧。
+     * ① 优先按控件 ID（后缀 title）找，取其 text（分身上也能读到）
+     * ② 兜底：按 text 以 @ 开头找
+     */
     private fun extractAuthor(nodes: List<android.view.accessibility.AccessibilityNodeInfo>): String? {
+        // ① 按控件 ID 后缀 "title" 找
+        for (n in nodes) {
+            val id = n.viewIdResourceName ?: continue
+            if (id.endsWith("/title") || id.endsWith(":title")) {
+                val t = n.text?.toString()?.trim() ?: continue
+                if (t.isNotBlank()) return t
+            }
+        }
+        // ② 兜底：text 以 @ 开头
         for (n in nodes) {
             val t = n.text?.toString()?.trim() ?: continue
             if (t.startsWith("@") && t.length > 1) return t
