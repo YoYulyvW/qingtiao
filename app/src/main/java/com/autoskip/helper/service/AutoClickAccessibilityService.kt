@@ -163,6 +163,16 @@ class AutoClickAccessibilityService : AccessibilityService() {
     /** 上次菜单是否是「识别图片」版（决定用哪个间隔） */
     @Volatile private var menuHasImg = false
 
+    // ===== 稳定倍速识别（同剧连续确认已选中目标倍速后，不再长按）=====
+    /** 已确认稳定目标倍速的剧标识（发布者），非空且匹配时跳过长按 */
+    private var stableSpeedAuthor: String? = null
+    /** 连续确认"目标倍速已选中"的次数（同一部剧内累计） */
+    private var selectedConfirmCount = 0
+    /** 上次确认选中时的剧标识（换剧则重置计数） */
+    private var selectedConfirmAuthor: String? = null
+    /** 连续确认几次后判定稳定（跳过长按） */
+    private val STABLE_CONFIRM_NEEDED = 2
+
     override fun onServiceConnected() {
         super.onServiceConnected()
         instance = this
@@ -325,40 +335,57 @@ class AutoClickAccessibilityService : AccessibilityService() {
         // 提取当前集数（发布者下方，形如"第1集"）
         currentEpisode = extractEpisode(nodes)
 
-        // 0) 长按菜单是否已弹出？（多重特征，任一命中即视为菜单）
+        // 0) 长按菜单是否已弹出？（同时看 text 和 desc，兼容分身版）
         val hasMenu = nodes.any {
             val t = it.text?.toString()?.trim() ?: ""
+            val d = it.contentDescription?.toString() ?: ""
             t == "倍速" || t == "清屏播放" || t == "合拍" ||
                 t == "转发到日常" || t == "举报" ||
                 t == "0.75" || t == "1.0" || t == "1.25" ||
-                t == "1.5" || t == "2.0" || t == "3.0"
+                t == "1.5" || t == "2.0" || t == "3.0" ||
+                d.contains("倍速")
         }
         if (hasMenu) {
             expectingMenuTime = 0L   // 菜单已确认出现，清除等待标记
             // 记录菜单类型（是否含"识别图片"），决定下次间隔
             menuHasImg = nodes.any { it.text?.toString()?.trim() == "识别图片" }
 
+            // ★ 稳定倍速识别：目标倍速已"已选定"则累计确认，达到阈值标记本剧稳定
+            val menuTargetVal = speedToMenuText(dramaTargetSpeed)
+            val targetNode = nodes.firstOrNull { nodeSpeedValue(it) == menuTargetVal }
+            val isTargetSelected = targetNode != null && nodeIsSelected(targetNode)
+            val curAuthorNow = extractAuthor(nodes)
+            if (isTargetSelected) {
+                if (curAuthorNow != null && curAuthorNow == selectedConfirmAuthor) {
+                    selectedConfirmCount++
+                } else {
+                    selectedConfirmAuthor = curAuthorNow
+                    selectedConfirmCount = 1
+                }
+                if (selectedConfirmCount >= STABLE_CONFIRM_NEEDED && curAuthorNow != null) {
+                    stableSpeedAuthor = curAuthorNow
+                    DramaDebug.add("倍速已连续确认稳定，本剧后续不再长按")
+                }
+            }
+
             // 只在首次看到菜单时处理（menuClickedTime 非 0 表示本次已处理）
             if (menuClickedTime == 0L) {
-                val menuTarget = speedToMenuText(dramaTargetSpeed)
-                val target = nodes.firstOrNull {
-                    val t = it.text?.toString()?.trim() ?: ""
-                    // 只点目标倍速，且必须不在黑名单里
-                    t == menuTarget && t !in MENU_BLACKLIST
-                }
+                // 用 nodeSpeedValue 找目标倍速项（兼容 text/desc）
+                val target = nodes.firstOrNull { nodeSpeedValue(it) == menuTargetVal }
                 if (target != null) {
-                    if (dramaClickSpeedOn) {
+                    if (isTargetSelected) {
+                        DramaDebug.add("菜单已弹出: " + menuTargetVal + " 已是选中态，不点")
+                    } else if (dramaClickSpeedOn) {
                         val ep = pendingEpisode ?: currentEpisode
-                        DramaDebug.add("菜单已弹出: 点击 $menuTarget（集 ${ep ?: "?"}）")
+                        DramaDebug.add("菜单已弹出: 点击 " + menuTargetVal + "（集 " + (ep ?: "?") + "）")
                         clickNode(findClickableAncestor(target) ?: target)
                         if (ep != null) lastSpedEpisode = ep
                     } else {
                         DramaDebug.add("菜单已弹出，但「自动点击倍数」已关闭")
                     }
                 } else {
-                    val menuTexts = nodes.mapNotNull { it.text?.toString()?.trim()?.takeIf { t -> t.isNotBlank() } }
-                        .filter { it in setOf("0.75","1.0","1.25","1.5","2.0","3.0") || it.contains("倍速") }
-                    DramaDebug.add("菜单已弹出，找不到 $menuTarget（实际倍速项: ${menuTexts.joinToString(",")}）")
+                    val menuTexts = nodes.mapNotNull { nodeSpeedValue(it) }
+                    DramaDebug.add("菜单已弹出，找不到 " + menuTargetVal + "（实际倍速项: " + menuTexts.joinToString(",") + "）")
                 }
                 menuClickedTime = System.currentTimeMillis()
                 // 记录本次呼出的集数数字（无论是否点到 3.0，都算呼出过）
@@ -422,6 +449,12 @@ class AutoClickAccessibilityService : AccessibilityService() {
             val curNum = extractEpisodeNumber(nodes)
             val curAuthor = extractAuthor(nodes)
 
+            // ★ 稳定剧跳过长按：本剧已确认倍速稳定 → 不再长按呼出菜单
+            if (stableSpeedAuthor != null && curAuthor != null && curAuthor == stableSpeedAuthor) {
+                if (diag) DramaDebug.add("本剧倍速已稳定，跳过长按")
+                return
+            }
+
             // 新剧检测：① 集数回退 ② 发布者变化 ③ 集数跨度异常大
             val newByEpisode = curNum != null && lastLongPressEpNum > 0 && curNum < lastLongPressEpNum
             val newByAuthor = curAuthor != null && lastAuthor != null && curAuthor != lastAuthor
@@ -433,9 +466,13 @@ class AutoClickAccessibilityService : AccessibilityService() {
                     newByAuthor -> "发布者变化"
                     else -> "集数跨度大"
                 }
-                DramaDebug.add("检测到新剧（$reason），重置呼出计数与菜单类型")
+                DramaDebug.add("检测到新剧（" + reason + "），重置呼出计数与菜单类型")
                 lastLongPressEpNum = -1
                 menuHasImg = false
+                // 换剧 → 清空稳定标记与确认计数
+                stableSpeedAuthor = null
+                selectedConfirmAuthor = null
+                selectedConfirmCount = 0
             }
             if (curAuthor != null) lastAuthor = curAuthor
 
@@ -870,6 +907,27 @@ class AutoClickAccessibilityService : AccessibilityService() {
     private fun speedToMenuText(speed: String): String {
         val num = speed.removeSuffix("x").removeSuffix("X")
         return if (num.contains(".")) num else "$num.0"
+    }
+
+    /**
+     * 从节点提取倍速值（如 "3.0"）。同时看 text 和 contentDescription：
+     * - text 形如 "3.0"
+     * - desc 形如 "已选定，3.0倍速，按钮" 或 "2.0倍速，按钮"
+     * 找不到返回 null。
+     */
+    private fun nodeSpeedValue(node: android.view.accessibility.AccessibilityNodeInfo): String? {
+        val text = node.text?.toString()?.trim() ?: ""
+        if (Regex("^[0-9]+(\\.[0-9]+)?$").matches(text)) return text
+        val desc = node.contentDescription?.toString() ?: ""
+        val m = Regex("([0-9]+(?:\\.[0-9]+)?)\\s*倍速").find(desc)
+        return m?.groupValues?.get(1)
+    }
+
+    /** 节点是否处于"已选定"态（优先读标准属性，其次读 desc 里的"已选定"） */
+    private fun nodeIsSelected(node: android.view.accessibility.AccessibilityNodeInfo): Boolean {
+        if (node.isSelected || node.isChecked) return true
+        val desc = node.contentDescription?.toString() ?: ""
+        return desc.contains("已选定") || desc.contains("已选中")
     }
 
     /** 点击节点 */
