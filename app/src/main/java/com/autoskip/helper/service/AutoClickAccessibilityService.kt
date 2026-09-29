@@ -281,7 +281,10 @@ class AutoClickAccessibilityService : AccessibilityService() {
      */
     private fun extractCloneName(pkg: String): String? {
         val m = Regex("_(\\d+)$").find(pkg) ?: return null
-        return "分身" + m.groupValues[1]
+        val digits = m.groupValues[1]
+        // 去掉首位（固定为多出的"1"），toInt 去前导零
+        val num = digits.drop(1).toIntOrNull() ?: return null
+        return "分身" + num
     }
 
     /** 短剧页面核心处理 */
