@@ -50,7 +50,7 @@ class LicensePrefs(private val context: Context) {
 
     /** 最后心跳成功时间 */
     suspend fun getLastHeartbeat(): Long = context.licenseStore.data.map { (it[KEY_LAST_HB] ?: "0").toLongOrNull() ?: 0L }.first()
-    suspend fun setLastHeartbeat(v: Long) { context.licenseStore.edit { it[KEY_LAST_HB] = v } }
+    suspend fun setLastHeartbeat(v: Long) { context.licenseStore.edit { it[KEY_LAST_HB] = v.toString() } }
 
     /** 清空授权缓存（被服务端封禁时调用） */
     suspend fun clearCache() {
