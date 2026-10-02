@@ -182,7 +182,7 @@ fun ActivateScreen() {
         Text(
             "激活后，功能可用性由服务端控制；服务端离线时已授权设备仍可正常使用（直至到期）。",
             fontSize = 11.sp,
-            color = MaterialTheme.colorScheme.outline,
+            color = com.autoskip.helper.ui.theme.HarmonyColor.Gray6,
             textAlign = TextAlign.Center
         )
     }

@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -61,6 +62,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // ★ 沉浸式：内容延伸到状态栏/导航栏下方，状态栏透明
+        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
         setContent {
             AutoSkipTheme {
                 AppRoot(vm)
@@ -120,9 +123,11 @@ private fun AppRoot(vm: MainViewModel) {
     }
 
     Scaffold(
+        contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
         bottomBar = {
-            // HyperOS 风格底部导航
+            // HarmonyOS 风格底部导航
             NavigationBar(
+                modifier = Modifier.navigationBarsPadding(),
                 containerColor = com.autoskip.helper.ui.theme.HarmonyColor.White,
                 tonalElevation = 0.dp
             ) {
@@ -151,8 +156,8 @@ private fun AppRoot(vm: MainViewModel) {
             }
         }
     ) { padding ->
-        Box(Modifier.padding(padding)) {
-            // 页面切换淡入淡出动画（HyperOS 标准转场 250ms）
+        Box(Modifier.padding(padding).statusBarsPadding()) {
+            // 页面切换淡入淡出动画（HarmonyOS 标准转场 250ms）
             AnimatedContent(
                 targetState = tab,
                 transitionSpec = {

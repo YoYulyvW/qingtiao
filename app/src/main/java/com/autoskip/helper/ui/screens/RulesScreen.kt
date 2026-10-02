@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -158,7 +159,12 @@ fun RulesScreen(vm: MainViewModel, onOpenCondRules: () -> Unit = {}, onOpenWidge
 
 @Composable
 private fun RuleItem(rule: RuleEntity, vm: MainViewModel, onClick: () -> Unit) {
-    Card(Modifier.fillMaxWidth().clickable { onClick() }) {
+    Card(
+        Modifier.fillMaxWidth().clickable { onClick() },
+        shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusCard),
+        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = com.autoskip.helper.ui.theme.HarmonyColor.White),
+        elevation = androidx.compose.material3.CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
         Row(
             Modifier.fillMaxWidth().padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -186,7 +192,7 @@ private fun RuleItem(rule: RuleEntity, vm: MainViewModel, onClick: () -> Unit) {
                 )
                 if (!rule.viewId.isNullOrBlank()) {
                     Text(rule.viewId, style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.outline, maxLines = 1)
+                        color = com.autoskip.helper.ui.theme.HarmonyColor.Gray6, maxLines = 1)
                 }
             }
             Switch(checked = rule.enabled, onCheckedChange = {

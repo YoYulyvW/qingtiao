@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -135,6 +136,7 @@ fun FenShenScreen(onBack: () -> Unit, vm: FenShenViewModel = viewModel()) {
     )
 
     Scaffold(
+        modifier = Modifier.statusBarsPadding(),
         topBar = {
             TopAppBar(
                 title = { Text("自动分身 · 分身大师", fontWeight = FontWeight.Bold) },
@@ -252,7 +254,7 @@ fun FenShenScreen(onBack: () -> Unit, vm: FenShenViewModel = viewModel()) {
                         if (state.lastLog.isNotBlank()) {
                             Spacer(Modifier.height(6.dp))
                             Text(state.lastLog, style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.outline, maxLines = 2)
+                                color = com.autoskip.helper.ui.theme.HarmonyColor.Gray6, maxLines = 2)
                         }
                     }
                 }
@@ -262,7 +264,7 @@ fun FenShenScreen(onBack: () -> Unit, vm: FenShenViewModel = viewModel()) {
 
             // 停止条件：数量 / 截止序号 二选一
             Text("停止条件（二选一）", style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.outline)
+                color = com.autoskip.helper.ui.theme.HarmonyColor.Gray6)
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 androidx.compose.material3.RadioButton(
                     selected = !useStopIndex,
@@ -298,12 +300,12 @@ fun FenShenScreen(onBack: () -> Unit, vm: FenShenViewModel = viewModel()) {
             Text(
                 "按序号：分身名中「抖音XX」的 XX ≥ 截止值即停止（如截止 50 → 抖音50 及以上不再处理）",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.outline
+                color = com.autoskip.helper.ui.theme.HarmonyColor.Gray6
             )
 
             LabeledField("后缀格式", suffixFmt) { suffixFmt = it }
             Text("支持 {date} 日期、{date2} 补零日期、{time} 时间",
-                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+                style = MaterialTheme.typography.bodySmall, color = com.autoskip.helper.ui.theme.HarmonyColor.Gray6)
 
             SectionTitle("高级配置")
             LabeledField("安装超时(秒)", installTimeout, true) { installTimeout = it }
@@ -315,11 +317,11 @@ fun FenShenScreen(onBack: () -> Unit, vm: FenShenViewModel = viewModel()) {
             }
             LabeledField("悬浮窗日志高度(dp)", logHeight, true) { logHeight = it }
             Text("悬浮窗日志区高度，默认 90；喜欢大可自行调高",
-                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+                style = MaterialTheme.typography.bodySmall, color = com.autoskip.helper.ui.theme.HarmonyColor.Gray6)
 
             SectionTitle("基准分辨率")
             Text("坐标基于此分辨率填写，运行时按真机等比换算",
-                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+                style = MaterialTheme.typography.bodySmall, color = com.autoskip.helper.ui.theme.HarmonyColor.Gray6)
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 OutlinedTextField(
                     value = testW, onValueChange = { testW = it },
@@ -338,7 +340,7 @@ fun FenShenScreen(onBack: () -> Unit, vm: FenShenViewModel = viewModel()) {
 
             SectionTitle("系统弹窗坐标")
             Text("设备不同可在此微调；用截图工具的坐标读数填入",
-                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+                style = MaterialTheme.typography.bodySmall, color = com.autoskip.helper.ui.theme.HarmonyColor.Gray6)
             Text("安装 / 打开 / 确定 / 不允许", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
             CoordRow("X", installX, "Y", installY, { installX = it }, { installY = it })
             Spacer(Modifier.height(6.dp))
@@ -352,7 +354,7 @@ fun FenShenScreen(onBack: () -> Unit, vm: FenShenViewModel = viewModel()) {
             Text(
                 "提示：运行时弹出悬浮窗显示实时进度，可暂停/终止。请保持分身大师与抖音的分身权限正常。",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.outline
+                color = com.autoskip.helper.ui.theme.HarmonyColor.Gray6
             )
             Spacer(Modifier.height(8.dp))
         }

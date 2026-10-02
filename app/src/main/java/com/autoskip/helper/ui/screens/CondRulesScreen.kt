@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -73,6 +74,7 @@ fun CondRulesScreen(onBack: () -> Unit, vm: MainViewModel) {
     }
 
     Scaffold(
+        modifier = Modifier.statusBarsPadding(),
         topBar = {
             TopAppBar(
                 title = { Text("条件规则", fontWeight = FontWeight.Bold) },
@@ -98,25 +100,37 @@ fun CondRulesScreen(onBack: () -> Unit, vm: MainViewModel) {
                     Text(
                         "条件规则：满足「有 + 且」条件时执行动作，优先级高于普通规则。",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.outline
+                        color = com.autoskip.helper.ui.theme.HarmonyColor.Gray6
                     )
                     Spacer(Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(
                             onClick = { vm.exportCondRules { copyToClipboard(it) } },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(10.dp)
+                            modifier = Modifier.weight(1f).height(com.autoskip.helper.ui.theme.Dimens.MinTouchTarget),
+                            shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusInput),
+                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                containerColor = com.autoskip.helper.ui.theme.HarmonyColor.BrandOrange,
+                                contentColor = com.autoskip.helper.ui.theme.HarmonyColor.White
+                            )
                         ) { Text("导出", fontSize = 14.sp) }
-                        Button(
+                        OutlinedButton(
                             onClick = { showImport = true },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(10.dp)
+                            modifier = Modifier.weight(1f).height(com.autoskip.helper.ui.theme.Dimens.MinTouchTarget),
+                            shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusInput),
+                            colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
+                                contentColor = com.autoskip.helper.ui.theme.HarmonyColor.TextPrimary
+                            )
                         ) { Text("导入", fontSize = 14.sp) }
                     }
                     Spacer(Modifier.height(8.dp))
                 }
                 item {
-                    Card(Modifier.fillMaxWidth()) {
+                    Card(
+                        Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusCard),
+                        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = com.autoskip.helper.ui.theme.HarmonyColor.White),
+                        elevation = androidx.compose.material3.CardDefaults.cardElevation(defaultElevation = 1.dp)
+                    ) {
                         Row(
                             Modifier.fillMaxWidth().padding(14.dp),
                             verticalAlignment = Alignment.CenterVertically,
@@ -127,7 +141,7 @@ fun CondRulesScreen(onBack: () -> Unit, vm: MainViewModel) {
                                 Text(
                                     "开启后避免在其它界面误触发返回，推荐开启。",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.outline
+                                    color = com.autoskip.helper.ui.theme.HarmonyColor.Gray6
                                 )
                             }
                             Switch(checked = condDramaOnly, onCheckedChange = { vm.setCondDramaOnly(it) })
@@ -210,7 +224,7 @@ private fun ImportDialog(
                 Text(
                     "每行一条：\n规则名|有|且|动作|动作文字|延时\n动作用：返回 / 点图标X / 点文字\n「且」可空，多个用 | 分隔",
                     fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.outline
+                    color = com.autoskip.helper.ui.theme.HarmonyColor.Gray6
                 )
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(
@@ -237,7 +251,12 @@ private fun ImportDialog(
 
 @Composable
 private fun CondRuleItem(rule: CondRuleEntity, vm: MainViewModel, onClick: () -> Unit) {
-    Card(Modifier.fillMaxWidth().clickable { onClick() }) {
+    Card(
+        Modifier.fillMaxWidth().clickable { onClick() },
+        shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusCard),
+        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = com.autoskip.helper.ui.theme.HarmonyColor.White),
+        elevation = androidx.compose.material3.CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
         Row(
             Modifier.fillMaxWidth().padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -255,7 +274,7 @@ private fun CondRuleItem(rule: CondRuleEntity, vm: MainViewModel, onClick: () ->
                            else "有「${rule.hasText}」且含「${rule.andText}」"
                 Text("$cond → ${actionLabel(rule)}", style = MaterialTheme.typography.bodySmall)
                 Text("命中 ${rule.hitCount} 次", style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.outline)
+                    color = com.autoskip.helper.ui.theme.HarmonyColor.Gray6)
             }
             Switch(checked = rule.enabled, onCheckedChange = {
                 vm.updateCondRule(rule.copy(enabled = it))
@@ -324,7 +343,7 @@ private fun CondRuleDialog(
                     )
                 }
                 Text("检测到条件后等 N 秒，仍存在才执行；0=立即", fontSize = 11.sp,
-                    color = MaterialTheme.colorScheme.outline)
+                    color = com.autoskip.helper.ui.theme.HarmonyColor.Gray6)
 
                 Text("【则】执行动作", fontWeight = FontWeight.Bold, fontSize = 13.sp)
                 val actions = listOf(

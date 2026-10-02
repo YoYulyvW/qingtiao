@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -91,6 +92,7 @@ fun SettingsScreen(
     }
 
     Scaffold(
+        modifier = Modifier.statusBarsPadding(),
         topBar = {
             TopAppBar(
                 title = { Text("高级设置", fontWeight = FontWeight.Bold, fontSize = 20.sp) },
@@ -130,7 +132,7 @@ fun SettingsScreen(
                     Text(
                         "检测到短剧广告时 POST JSON 推送；地址留空则不推送。",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.outline
+                        color = com.autoskip.helper.ui.theme.HarmonyColor.Gray6
                     )
                     Spacer(Modifier.height(8.dp))
 
@@ -198,7 +200,7 @@ fun SettingsScreen(
                         Column(Modifier.weight(1f)) {
                             Text("附带当前分身名", fontWeight = FontWeight.Bold, fontSize = 13.sp)
                             Text("如「分身34」，拼在识别字符后", style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.outline)
+                                color = com.autoskip.helper.ui.theme.HarmonyColor.Gray6)
                         }
                         androidx.compose.material3.Switch(
                             checked = includeClone,
@@ -242,7 +244,7 @@ fun SettingsScreen(
                     Text(
                         "格式：{\"text\":\"<识别字符> <分身>，<推送内容>\",\"user\":\"<user>\"}；token 在请求头",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.outline
+                        color = com.autoskip.helper.ui.theme.HarmonyColor.Gray6
                     )
                 }
             }

@@ -13,6 +13,14 @@ import androidx.compose.ui.unit.sp
 
 /** HarmonyOS 浅色配色方案 */
 private val LightColors = lightColorScheme(
+    // ★ 卡片/容器色（覆盖 M3 默认带主色倾向的灰）
+    surfaceContainerLowest = HarmonyColor.White,
+    surfaceContainerLow = HarmonyColor.White,
+    surfaceContainer = HarmonyColor.GrayBG,
+    surfaceContainerHigh = HarmonyColor.Gray1,
+    surfaceContainerHighest = HarmonyColor.Gray1,
+    surfaceBright = HarmonyColor.White,
+    surfaceDim = HarmonyColor.Gray1,
     primary = HarmonyColor.BrandOrange,
     onPrimary = HarmonyColor.White,
     primaryContainer = HarmonyColor.IconOrangeBg,
@@ -36,6 +44,13 @@ private val LightColors = lightColorScheme(
 
 /** HarmonyOS 深色配色方案 */
 private val DarkColors = darkColorScheme(
+    surfaceContainerLowest = HarmonyColor.DarkCard,
+    surfaceContainerLow = HarmonyColor.DarkCard,
+    surfaceContainer = HarmonyColor.DarkBG,
+    surfaceContainerHigh = HarmonyColor.DarkTertiary,
+    surfaceContainerHighest = HarmonyColor.DarkTertiary,
+    surfaceBright = HarmonyColor.DarkTertiary,
+    surfaceDim = HarmonyColor.DarkBG,
     primary = HarmonyColor.BrandOrangeDark,
     onPrimary = Color(0xFF001A33),
     primaryContainer = Color(0xFF003366),

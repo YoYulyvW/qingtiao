@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -78,6 +79,7 @@ fun DramaScreen(onBack: () -> Unit, vm: MainViewModel) {
     }
 
     Scaffold(
+        modifier = Modifier.statusBarsPadding(),
         topBar = {
             TopAppBar(
                 title = { Text("短剧自动倍速", fontWeight = FontWeight.Bold) },
@@ -105,11 +107,12 @@ fun DramaScreen(onBack: () -> Unit, vm: MainViewModel) {
             // 无障碍状态（紧凑）
             Card(
                 Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusCard),
                 colors = CardDefaults.cardColors(
-                    containerColor = if (serviceOn) MaterialTheme.colorScheme.primaryContainer
-                    else MaterialTheme.colorScheme.errorContainer
-                )
+                    containerColor = if (serviceOn) com.autoskip.helper.ui.theme.HarmonyColor.StatusOKBg
+                    else com.autoskip.helper.ui.theme.HarmonyColor.StatusWarnBg
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
                 Row(Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically) {
@@ -127,7 +130,12 @@ fun DramaScreen(onBack: () -> Unit, vm: MainViewModel) {
             }
 
             // 主开关组
-            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
+            Card(
+                Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusCard),
+                colors = CardDefaults.cardColors(containerColor = com.autoskip.helper.ui.theme.HarmonyColor.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            ) {
                 Column {
                     SwitchRow("自动倍速总开关", "抖音短剧中自动切到目标倍速", dramaEnabled, 14.dp) {
                         vm.setDramaEnabled(it)
@@ -140,7 +148,12 @@ fun DramaScreen(onBack: () -> Unit, vm: MainViewModel) {
             }
 
             // 功能开关组
-            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
+            Card(
+                Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusCard),
+                colors = CardDefaults.cardColors(containerColor = com.autoskip.helper.ui.theme.HarmonyColor.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            ) {
                 Column {
                     SwitchRow("自动长按", "长按视频呼出倍速菜单", longPressOn, 14.dp) {
                         vm.setDramaLongPress(it)
@@ -161,7 +174,12 @@ fun DramaScreen(onBack: () -> Unit, vm: MainViewModel) {
             }
 
             // 目标倍速
-            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
+            Card(
+                Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusCard),
+                colors = CardDefaults.cardColors(containerColor = com.autoskip.helper.ui.theme.HarmonyColor.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            ) {
                 Column(Modifier.padding(14.dp)) {
                     Text("目标倍速", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     Spacer(Modifier.height(8.dp))
@@ -173,7 +191,12 @@ fun DramaScreen(onBack: () -> Unit, vm: MainViewModel) {
             }
 
             // 呼出间隔
-            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
+            Card(
+                Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusCard),
+                colors = CardDefaults.cardColors(containerColor = com.autoskip.helper.ui.theme.HarmonyColor.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            ) {
                 Column(Modifier.padding(14.dp)) {
                     Text("菜单呼出间隔（按集数）", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     Spacer(Modifier.height(8.dp))
@@ -188,7 +211,12 @@ fun DramaScreen(onBack: () -> Unit, vm: MainViewModel) {
             }
 
             // 检测间隔
-            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
+            Card(
+                Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusCard),
+                colors = CardDefaults.cardColors(containerColor = com.autoskip.helper.ui.theme.HarmonyColor.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            ) {
                 Column(Modifier.padding(14.dp)) {
                     CompactNumField("检测间隔(ms)", intervalMs.toString()) { v ->
                         if (v in 200..5000) vm.setDramaInterval(v.toLong())
@@ -197,7 +225,12 @@ fun DramaScreen(onBack: () -> Unit, vm: MainViewModel) {
             }
 
             // 识别日志
-            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
+            Card(
+                Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusCard),
+                colors = CardDefaults.cardColors(containerColor = com.autoskip.helper.ui.theme.HarmonyColor.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            ) {
                 Column(Modifier.padding(14.dp)) {
                     Row(
                         Modifier.fillMaxWidth(),
@@ -215,7 +248,7 @@ fun DramaScreen(onBack: () -> Unit, vm: MainViewModel) {
                     Spacer(Modifier.height(6.dp))
                     if (debugLogs.isEmpty()) {
                         Text("暂无日志", style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.outline)
+                            color = com.autoskip.helper.ui.theme.HarmonyColor.Gray6)
                     } else {
                         Box(
                             Modifier
@@ -253,7 +286,7 @@ private fun SwitchRow(title: String, subtitle: String, checked: Boolean, pad: an
         Column(Modifier.weight(1f)) {
             Text(title, fontWeight = FontWeight.Bold, fontSize = 14.sp)
             Text(subtitle, style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.outline)
+                color = com.autoskip.helper.ui.theme.HarmonyColor.Gray6)
         }
         Switch(checked = checked, onCheckedChange = onChange)
     }

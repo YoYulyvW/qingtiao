@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -60,6 +61,7 @@ fun WidgetRulesScreen(onBack: () -> Unit, vm: MainViewModel) {
     var showAdd by remember { mutableStateOf(false) }
 
     Scaffold(
+        modifier = Modifier.statusBarsPadding(),
         topBar = {
             TopAppBar(
                 title = { Text("控件规则", fontWeight = FontWeight.Bold) },
@@ -85,7 +87,7 @@ fun WidgetRulesScreen(onBack: () -> Unit, vm: MainViewModel) {
                     Text(
                         "按控件 ID 定位控件并执行动作。优先级高于条件规则与普通规则。",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.outline
+                        color = com.autoskip.helper.ui.theme.HarmonyColor.Gray6
                     )
                     Spacer(Modifier.height(8.dp))
                 }
@@ -127,7 +129,12 @@ fun WidgetRulesScreen(onBack: () -> Unit, vm: MainViewModel) {
 
 @Composable
 private fun WidgetRuleItem(rule: WidgetRuleEntity, vm: MainViewModel, onClick: () -> Unit) {
-    Card(Modifier.fillMaxWidth().clickable { onClick() }) {
+    Card(
+        Modifier.fillMaxWidth().clickable { onClick() },
+        shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusCard),
+        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = com.autoskip.helper.ui.theme.HarmonyColor.White),
+        elevation = androidx.compose.material3.CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
         Row(
             Modifier.fillMaxWidth().padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -149,7 +156,7 @@ private fun WidgetRuleItem(rule: WidgetRuleEntity, vm: MainViewModel, onClick: (
                     color = MaterialTheme.colorScheme.primary)
                 if (rule.hitCount > 0) {
                     Text("命中 " + rule.hitCount + " 次", style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.outline)
+                        color = com.autoskip.helper.ui.theme.HarmonyColor.Gray6)
                 }
             }
             Switch(checked = rule.enabled, onCheckedChange = {

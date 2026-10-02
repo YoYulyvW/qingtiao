@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -104,7 +105,12 @@ fun WhitelistScreen(vm: MainViewModel) {
         }
 
         // 通配规则区：展示所有含 * 的规则 + 自定义添加
-        Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+        Card(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusCard),
+            colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = com.autoskip.helper.ui.theme.HarmonyColor.White),
+            elevation = androidx.compose.material3.CardDefaults.cardElevation(defaultElevation = 1.dp)
+        ) {
             Column(Modifier.padding(12.dp)) {
                 Text("通配 / 自定义包名", fontWeight = FontWeight.Bold)
                 Text(
@@ -116,7 +122,7 @@ fun WhitelistScreen(vm: MainViewModel) {
                 val patterns = wlPkgs.filter { it.contains("*") }.sorted()
                 if (patterns.isEmpty()) {
                     Text("暂无通配规则", style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.outline)
+                        color = com.autoskip.helper.ui.theme.HarmonyColor.Gray6)
                 } else {
                     patterns.forEach { p ->
                         Row(
@@ -187,7 +193,12 @@ fun WhitelistScreen(vm: MainViewModel) {
 
 @Composable
 private fun AppRow(app: AppInfo, checked: Boolean, onToggle: () -> Unit) {
-    Card(Modifier.fillMaxWidth()) {
+    Card(
+        Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusCard),
+        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = com.autoskip.helper.ui.theme.HarmonyColor.White),
+        elevation = androidx.compose.material3.CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
         Row(
             Modifier.fillMaxWidth().padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -205,7 +216,7 @@ private fun AppRow(app: AppInfo, checked: Boolean, onToggle: () -> Unit) {
                 Text(
                     app.packageName,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.outline,
+                    color = com.autoskip.helper.ui.theme.HarmonyColor.Gray6,
                     maxLines = 1
                 )
             }
