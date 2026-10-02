@@ -3,8 +3,16 @@ package com.autoskip.helper.ui.screens
 import android.content.Context
 import android.content.Intent
 import android.provider.Settings
-import androidx.compose.foundation.clickable
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,16 +20,22 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -32,16 +46,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.autoskip.helper.service.AutoClickAccessibilityService
 import com.autoskip.helper.ui.MainViewModel
+import com.autoskip.helper.ui.theme.Dimens
+import com.autoskip.helper.ui.theme.HyperColor
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(vm: MainViewModel) {
-    val context = LocalContext.current
+    val context = androidx.compose.ui.platform.LocalContext.current
     val enabled by vm.enabled.collectAsState()
     val today by vm.todayCount.collectAsState()
     val total by vm.totalCount.collectAsState()
@@ -50,7 +66,6 @@ fun HomeScreen(vm: MainViewModel) {
 
     var serviceOn by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
-        // 简单轮询，判断服务是否运行
         while (true) {
             serviceOn = isAccessibilityEnabled(context)
             kotlinx.coroutines.delay(1000)
@@ -61,129 +76,218 @@ fun HomeScreen(vm: MainViewModel) {
         Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            .padding(horizontal = Dimens.SpaceL)
+            .padding(top = Dimens.SpaceM, bottom = Dimens.SpaceXXXL),
+        verticalArrangement = Arrangement.spacedBy(Dimens.SpaceS)
     ) {
-        Text("开饭小工具", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        StatusCard(serviceOn) {
+            if (!serviceOn) openAccessibilitySettings(context)
+        }
 
-        // 服务状态卡
+        SectionLabel("快捷开关")
         Card(
             Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = if (serviceOn) MaterialTheme.colorScheme.surfaceVariant
-                else MaterialTheme.colorScheme.errorContainer
-            )
+            shape = RoundedCornerShape(Dimens.RadiusCard),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
         ) {
-            Column(Modifier.padding(16.dp)) {
-                Text(
-                    if (serviceOn) "无障碍服务：已开启 ✓" else "无障碍服务：未开启 ✗",
-                    fontWeight = FontWeight.Bold
+            Column {
+                SwitchRow(
+                    title = "自动点击总开关",
+                    subtitle = if (enabled) "当前：开启" else "当前：已暂停",
+                    checked = enabled,
+                    onCheckedChange = { vm.setEnabled(it) }
                 )
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    if (serviceOn) "自动跳过已就绪，可返回桌面正常使用其他 App。"
-                    else "需要开启无障碍服务才能自动点击弹窗按钮。",
-                    style = MaterialTheme.typography.bodySmall
+                HDivider()
+                SwitchRow(
+                    title = "学习模式",
+                    subtitle = "手动点一次，自动生成规则",
+                    checked = learnMode,
+                    onCheckedChange = { vm.setLearnMode(it) }
                 )
-                Spacer(Modifier.height(12.dp))
-                Button(onClick = { openAccessibilitySettings(context) }) {
-                    Text(if (serviceOn) "管理无障碍服务" else "去开启无障碍服务")
-                }
-            }
-        }
-
-        // 总开关
-        Card(Modifier.fillMaxWidth()) {
-            Row(
-                Modifier.fillMaxWidth().padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column {
-                    Text("自动点击总开关", fontWeight = FontWeight.Bold)
-                    Text(
-                        if (enabled) "当前：开启" else "当前：已暂停",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-                Switch(checked = enabled, onCheckedChange = { vm.setEnabled(it) })
-            }
-        }
-
-        // 学习模式
-        Card(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(16.dp)) {
-                Row(
-                    Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                AnimatedVisibility(
+                    visible = learnMode,
+                    enter = fadeIn() + expandVertically(),
+                    exit = fadeOut() + shrinkVertically()
                 ) {
-                    Column(Modifier.weight(1f)) {
-                        Text("学习模式", fontWeight = FontWeight.Bold)
-                        Text(
-                            "开启后，请到目标 App 手动点一次要跳过的按钮，会自动生成规则。",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                    Switch(checked = learnMode, onCheckedChange = { vm.setLearnMode(it) })
-                }
-                if (learnMode) {
-                    Spacer(Modifier.height(8.dp))
                     Text(
                         "学习进行中…… 请切换到目标 App，点击需要自动跳过的按钮。",
-                        color = MaterialTheme.colorScheme.primary,
-                        style = MaterialTheme.typography.bodySmall
+                        color = HyperColor.BrandOrange,
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(horizontal = Dimens.SpaceM, vertical = Dimens.SpaceS)
                     )
                 }
             }
         }
 
-        // 点击延迟
-        Card(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(16.dp)) {
-                Text("点击延迟：${delay} 毫秒", fontWeight = FontWeight.Bold)
-                Text(
-                    "弹窗出现后等待该时间再点击，避免误触。网络慢的弹窗可调大。",
-                    style = MaterialTheme.typography.bodySmall
-                )
+        SectionLabel("今日数据", topSpace = true)
+        Row(horizontalArrangement = Arrangement.spacedBy(Dimens.SpaceM)) {
+            StatCard("今日跳过", today.toString(), Modifier.weight(1f))
+            StatCard("累计跳过", total.toString(), Modifier.weight(1f))
+        }
+
+        SectionLabel("点击延迟", topSpace = true)
+        Card(
+            Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(Dimens.RadiusCard),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        ) {
+            Column(Modifier.padding(Dimens.SpaceM)) {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("弹窗出现后等待", fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                    Text(delay.toString() + " ms", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = HyperColor.BrandOrange)
+                }
+                Spacer(Modifier.height(Dimens.SpaceXS))
                 Slider(
                     value = delay.toFloat(),
                     onValueChange = { vm.setClickDelay(it.toLong()) },
                     valueRange = 0f..2000f,
-                    steps = 19
+                    steps = 19,
+                    colors = SliderDefaults.colors(
+                        thumbColor = HyperColor.BrandOrange,
+                        activeTrackColor = HyperColor.BrandOrange
+                    )
                 )
             }
         }
 
-        // 统计
-        Card(Modifier.fillMaxWidth()) {
-            Row(Modifier.fillMaxWidth().padding(16.dp), Arrangement.SpaceEvenly) {
-                StatItem("今日跳过", today.toString())
-                StatItem("累计跳过", total.toString())
-            }
-        }
-
+        Spacer(Modifier.height(Dimens.SpaceXS))
         OutlinedButton(
             onClick = { vm.clearLogs() },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth().height(Dimens.MinTouchTarget),
+            shape = RoundedCornerShape(Dimens.RadiusInput),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface)
         ) {
-            Text("清空统计与记录")
+            Text("清空统计与记录", fontSize = 14.sp)
         }
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(Dimens.SpaceM))
         Text(
             "小提示：为确保长期后台存活，请在系统「电池 / 应用启动管理」中将本应用设为允许自启动、不受限制。",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.outline
+            fontSize = 11.sp,
+            color = HyperColor.Gray4,
+            lineHeight = 16.sp
         )
     }
 }
 
 @Composable
-private fun StatItem(label: String, value: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-        Text(label, style = MaterialTheme.typography.bodySmall)
+private fun StatusCard(serviceOn: Boolean, onEnable: () -> Unit) {
+    val bg by animateColorAsState(
+        if (serviceOn) HyperColor.StatusOKBg else HyperColor.StatusWarnBg,
+        animationSpec = tween(300), label = "statusBg"
+    )
+    Card(
+        Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(Dimens.RadiusCard),
+        colors = CardDefaults.cardColors(containerColor = bg),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(Dimens.SpaceM),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                Modifier
+                    .size(10.dp)
+                    .clip(CircleShape)
+                    .background(if (serviceOn) HyperColor.Success else HyperColor.Warning)
+            )
+            Spacer(Modifier.width(Dimens.SpaceM))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    if (serviceOn) "无障碍服务已开启" else "无障碍服务未开启",
+                    fontSize = 15.sp, fontWeight = FontWeight.Medium,
+                    color = HyperColor.TextPrimary
+                )
+                Text(
+                    if (serviceOn) "自动跳过已就绪" else "需开启才能自动点击",
+                    fontSize = 12.sp, color = HyperColor.Gray6
+                )
+            }
+            if (!serviceOn) {
+                Button(
+                    onClick = onEnable,
+                    shape = RoundedCornerShape(Dimens.RadiusInput),
+                    colors = ButtonDefaults.buttonColors(containerColor = HyperColor.BrandOrange)
+                ) { Text("去开启", fontSize = 13.sp) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SectionLabel(text: String, topSpace: Boolean = false) {
+    if (topSpace) Spacer(Modifier.height(Dimens.SpaceS))
+    Text(
+        text,
+        fontSize = 13.sp,
+        color = HyperColor.Gray4,
+        modifier = Modifier.padding(start = Dimens.SpaceXS, bottom = Dimens.SpaceXS)
+    )
+}
+
+@Composable
+private fun SwitchRow(
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        Modifier.fillMaxWidth().padding(Dimens.SpaceM),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(title, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+            Text(subtitle, fontSize = 12.sp, color = HyperColor.Gray6)
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = HyperColor.White,
+                checkedTrackColor = HyperColor.BrandOrange,
+                uncheckedThumbColor = HyperColor.White,
+                uncheckedTrackColor = HyperColor.Gray3
+            )
+        )
+    }
+}
+
+@Composable
+private fun HDivider() {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = Dimens.SpaceM)
+            .height(1.dp)
+            .background(HyperColor.Gray2)
+    )
+}
+
+@Composable
+private fun StatCard(label: String, value: String, modifier: Modifier = Modifier) {
+    Card(
+        modifier,
+        shape = RoundedCornerShape(Dimens.RadiusCard),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(
+            Modifier.fillMaxWidth().padding(vertical = Dimens.SpaceL),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(value, fontSize = 30.sp, fontWeight = FontWeight.Bold, color = HyperColor.BrandOrange)
+            Spacer(Modifier.height(Dimens.SpaceXS))
+            Text(label, fontSize = 12.sp, color = HyperColor.Gray6)
+        }
     }
 }
 
