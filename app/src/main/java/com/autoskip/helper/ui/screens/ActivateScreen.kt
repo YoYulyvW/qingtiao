@@ -2,6 +2,7 @@ package com.autoskip.helper.ui.screens
 
 import android.content.ClipboardManager
 import android.content.Context
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -63,25 +64,31 @@ fun ActivateScreen() {
     Column(
         Modifier
             .fillMaxSize()
+            .background(com.autoskip.helper.ui.theme.HyperColor.GrayBG)
             .verticalScroll(rememberScrollState())
-            .padding(24.dp),
+            .padding(horizontal = com.autoskip.helper.ui.theme.Dimens.SpaceXXL),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text("开饭小工具", fontSize = 26.sp, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(8.dp))
+        Text("🍚", fontSize = 56.sp)
+        Spacer(Modifier.height(com.autoskip.helper.ui.theme.Dimens.SpaceM))
+        Text("开饭小工具", fontSize = 24.sp, fontWeight = FontWeight.Bold,
+            color = com.autoskip.helper.ui.theme.HyperColor.TextPrimary)
+        Spacer(Modifier.height(com.autoskip.helper.ui.theme.Dimens.SpaceS))
         Text(
             if (locked) "授权已失效，请重新激活" else "本应用需联网验证授权后使用",
-            color = MaterialTheme.colorScheme.outline, fontSize = 13.sp
+            color = com.autoskip.helper.ui.theme.HyperColor.Gray4, fontSize = 13.sp
         )
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(com.autoskip.helper.ui.theme.Dimens.SpaceXXXL))
 
         Card(
             Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(14.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusCard),
+            colors = CardDefaults.cardColors(containerColor = com.autoskip.helper.ui.theme.HyperColor.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
         ) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(Modifier.padding(com.autoskip.helper.ui.theme.Dimens.SpaceXL),
+                verticalArrangement = Arrangement.spacedBy(com.autoskip.helper.ui.theme.Dimens.SpaceM)) {
 
                 OutlinedTextField(
                     value = code,
@@ -90,7 +97,7 @@ fun ActivateScreen() {
                     placeholder = { Text("如 VIP-2609-1F0EF8C0") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp)
+                    shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusInput)
                 )
 
                 // ★ 粘贴按钮：直接读剪贴板整段赋值，绕过输入法分词
@@ -112,16 +119,16 @@ fun ActivateScreen() {
                         }
                     },
                     modifier = Modifier.align(Alignment.End)
-                ) { Text("从剪贴板粘贴", fontSize = 12.sp) }
+                ) { Text("从剪贴板粘贴", fontSize = 12.sp, color = com.autoskip.helper.ui.theme.HyperColor.BrandOrange) }
 
                 OutlinedTextField(
                     value = deviceName,
                     onValueChange = { deviceName = it },
-                    label = { Text("设备名（可选，便于识别）") },
+                    label = { Text("设备名（可选）") },
                     placeholder = { Text("如 1号板") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp)
+                    shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusInput)
                 )
 
                 Button(
@@ -142,15 +149,20 @@ fun ActivateScreen() {
                             }
                         }
                     },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().height(com.autoskip.helper.ui.theme.Dimens.MinTouchTarget),
                     enabled = !loading,
-                    shape = RoundedCornerShape(8.dp)
+                    shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusLarge),
+                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                        containerColor = com.autoskip.helper.ui.theme.HyperColor.BrandOrange,
+                        contentColor = com.autoskip.helper.ui.theme.HyperColor.White
+                    )
                 ) {
                     if (loading) {
-                        CircularProgressIndicator(Modifier.width(18.dp).height(18.dp), strokeWidth = 2.dp)
+                        CircularProgressIndicator(Modifier.width(18.dp).height(18.dp), strokeWidth = 2.dp,
+                            color = com.autoskip.helper.ui.theme.HyperColor.White)
                         Spacer(Modifier.width(8.dp))
                     }
-                    Text(if (loading) "激活中…" else "激活", fontSize = 15.sp)
+                    Text(if (loading) "激活中…" else "激活", fontSize = 15.sp, fontWeight = FontWeight.Medium)
                 }
 
                 if (message.isNotBlank()) {
