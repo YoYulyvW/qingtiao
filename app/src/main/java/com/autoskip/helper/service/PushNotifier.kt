@@ -40,16 +40,25 @@ object PushNotifier {
         withContext(Dispatchers.IO) {
             val body = buildJson(text, user)
             for (attempt in 1..MAX_RETRY) {
+                var conn: java.net.HttpURLConnection? = null
+                var shouldRetry = true
                 try {
-                    val conn = open(url, token)
+                    conn = open(url, token)
                     OutputStreamWriter(conn.outputStream, "UTF-8").use { it.write(body) }
                     val code = conn.responseCode
-                    conn.disconnect()
                     Log.i(TAG, "push code=" + code + " attempt=" + attempt)
                     if (code in 200..299) return@withContext
+                    // ★ 4xx 是客户端错误（参数/权限），重试无意义 → 直接放弃
+                    if (code in 400..499) {
+                        shouldRetry = false
+                        Log.w(TAG, "push 客户端错误 " + code + "，不重试")
+                    }
                 } catch (e: Exception) {
                     Log.e(TAG, "push fail attempt=" + attempt + " : " + e.message)
+                } finally {
+                    try { conn?.disconnect() } catch (_: Exception) {}
                 }
+                if (!shouldRetry) return@withContext
                 if (attempt < MAX_RETRY) delay(RETRY_GAP_MS)
             }
             Log.e(TAG, "push give up after " + MAX_RETRY + " attempts")
@@ -96,7 +105,19 @@ object PushNotifier {
         return sb.toString()
     }
 
-    private fun esc(s: String): String {
-        return s.replace("\\", "\\\\").replace("\"", "\\\"")
+    /** 完整 JSON 字符串转义：反斜杠、双引号、控制字符（换行/制表符等） */
+    private fun esc(s: String): String = buildString {
+        for (c in s) {
+            when (c) {
+                '\\' -> append("\\\\")
+                '"' -> append("\\\"")
+                '\n' -> append("\\n")
+                '\r' -> append("\\r")
+                '\t' -> append("\\t")
+                '\b' -> append("\\b")
+                '\u000C' -> append("\\f")
+                else -> if (c < ' ') append(String.format("\\u%04x", c.code)) else append(c)
+            }
+        }
     }
 }

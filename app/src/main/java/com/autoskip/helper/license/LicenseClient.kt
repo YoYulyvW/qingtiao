@@ -88,8 +88,9 @@ object LicenseClient {
         }
 
     private fun post(url: String, body: String): String? {
+        var conn: HttpURLConnection? = null
         return try {
-            val conn = (URL(url).openConnection() as HttpURLConnection).apply {
+            conn = (URL(url).openConnection() as HttpURLConnection).apply {
                 requestMethod = "POST"
                 connectTimeout = TIMEOUT_MS
                 readTimeout = TIMEOUT_MS
@@ -103,12 +104,14 @@ object LicenseClient {
             } else {
                 conn.errorStream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() } ?: ""
             }
-            conn.disconnect()
             Log.i(TAG, "POST " + url + " code=" + code)
             if (text.isBlank()) null else text
         } catch (e: Exception) {
             Log.e(TAG, "post fail: " + e.message)
             null
+        } finally {
+            // ★ 无论成功失败都断开连接，防泄漏
+            try { conn?.disconnect() } catch (_: Exception) {}
         }
     }
 
@@ -145,8 +148,21 @@ object LicenseClient {
         return out
     }
 
-    private fun esc(s: String): String =
-        s.replace("\\", "\\\\").replace("\"", "\\\"")
+    /** 完整 JSON 字符串转义：反斜杠、双引号、控制字符（换行/制表符等） */
+    private fun esc(s: String): String = buildString {
+        for (c in s) {
+            when (c) {
+                '\\' -> append("\\\\")
+                '"' -> append("\\\"")
+                '\n' -> append("\\n")
+                '\r' -> append("\\r")
+                '\t' -> append("\\t")
+                '\b' -> append("\\b")
+                '\u000C' -> append("\\f")
+                else -> if (c < ' ') append(String.format("\\u%04x", c.code)) else append(c)
+            }
+        }
+    }
 
     private fun unesc(s: String): String =
         s.replace("\\\"", "\"").replace("\\\\", "\\")

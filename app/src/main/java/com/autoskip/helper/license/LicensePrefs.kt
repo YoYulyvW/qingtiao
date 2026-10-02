@@ -27,7 +27,6 @@ class LicensePrefs(private val context: Context) {
 
     /** 服务端地址（固定内置，忽略历史残留，防止旧地址导致心跳失败） */
     val baseUrl = context.licenseStore.data.map { DEFAULT_BASE }
-    suspend fun setBaseUrl(v: String) { context.licenseStore.edit { it[KEY_BASE] = DEFAULT_BASE } }
 
     /** 激活码 */
     suspend fun getCode(): String = context.licenseStore.data.map { it[KEY_CODE] ?: "" }.first()

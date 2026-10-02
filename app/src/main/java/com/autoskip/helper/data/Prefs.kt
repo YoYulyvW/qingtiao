@@ -48,6 +48,7 @@ class Prefs(private val context: Context) {
     private val KEY_PUSH_MSG = stringPreferencesKey("push_msg")
     private val KEY_PUSH_TOKEN = stringPreferencesKey("push_token")
     private val KEY_PUSH_INCLUDE_CLONE = booleanPreferencesKey("push_include_clone")
+    private val KEY_LEARN_MODE = booleanPreferencesKey("learn_mode")
 
     val enabled: Flow<Boolean> = context.dataStore.data.map { it[KEY_ENABLED] ?: true }
     val clickDelayMs: Flow<Long> = context.dataStore.data.map { (it[KEY_DELAY] ?: "600").toLongOrNull() ?: 600L }
@@ -163,6 +164,10 @@ class Prefs(private val context: Context) {
     val pushIncludeClone: Flow<Boolean> = context.dataStore.data.map { it[KEY_PUSH_INCLUDE_CLONE] ?: true }
     suspend fun setPushIncludeClone(v: Boolean) { context.dataStore.edit { it[KEY_PUSH_INCLUDE_CLONE] = v } }
 
+    /** 学习模式开关（持久化，重启恢复） */
+    val learnMode: Flow<Boolean> = context.dataStore.data.map { it[KEY_LEARN_MODE] ?: false }
+    suspend fun setLearnMode(v: Boolean) { context.dataStore.edit { it[KEY_LEARN_MODE] = v } }
+
     suspend fun setDramaEnabled(v: Boolean) { context.dataStore.edit { it[KEY_DRAMA_ENABLED] = v } }
     suspend fun setDramaAutoMount(v: Boolean) { context.dataStore.edit { it[KEY_DRAMA_AUTO_MOUNT] = v } }
     suspend fun setDramaInterval(ms: Long) { context.dataStore.edit { it[KEY_DRAMA_INTERVAL] = ms.toString() } }
@@ -175,6 +180,32 @@ class Prefs(private val context: Context) {
     }
     suspend fun setWhitelist(pkgs: Set<String>) {
         context.dataStore.edit { it[KEY_WL_PKGS] = pkgs.joinToString("|") }
+    }
+
+    /** 原子添加白名单（读-改-写在同一 edit 事务内，避免并发丢更新） */
+    suspend fun addWhitelistPkg(pkg: String) {
+        context.dataStore.edit { p ->
+            val cur = (p[KEY_WL_PKGS] ?: "").split("|").filter { it.isNotBlank() }.toMutableSet()
+            if (cur.add(pkg)) p[KEY_WL_PKGS] = cur.joinToString("|")
+        }
+    }
+
+    /** 原子切换白名单成员（added=true 表示本次是加入） */
+    suspend fun toggleWhitelistPkg(pkg: String, onResult: (Boolean) -> Unit) {
+        context.dataStore.edit { p ->
+            val cur = (p[KEY_WL_PKGS] ?: "").split("|").filter { it.isNotBlank() }.toMutableSet()
+            val added = if (cur.contains(pkg)) { cur.remove(pkg); false } else { cur.add(pkg); true }
+            p[KEY_WL_PKGS] = cur.joinToString("|")
+            onResult(added)
+        }
+    }
+
+    /** 原子移除白名单成员 */
+    suspend fun removeWhitelistPkg(pkg: String) {
+        context.dataStore.edit { p ->
+            val cur = (p[KEY_WL_PKGS] ?: "").split("|").filter { it.isNotBlank() }.toMutableSet()
+            if (cur.remove(pkg)) p[KEY_WL_PKGS] = cur.joinToString("|")
+        }
     }
 
     companion object {

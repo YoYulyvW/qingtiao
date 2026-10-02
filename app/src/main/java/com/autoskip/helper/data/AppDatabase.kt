@@ -71,7 +71,9 @@ abstract class AppDatabase : RoomDatabase() {
                     "autoskip.db"
                 )
                     .addMigrations(MIGRATION_3_4, MIGRATION_4_5)
-                    .fallbackToDestructiveMigration()
+                    // ★ 仅对 v1/v2 老用户破坏性迁移（无法追溯其表结构）；
+                    //   v3/v4 用户走正常迁移，数据不丢
+                    .fallbackToDestructiveMigrationFrom(1, 2)
                     .build()
                     .also { INSTANCE = it }
             }

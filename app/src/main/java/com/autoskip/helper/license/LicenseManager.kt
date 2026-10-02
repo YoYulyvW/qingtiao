@@ -79,7 +79,7 @@ object LicenseManager {
                 p.setLastHeartbeat(System.currentTimeMillis())
                 Log.i(TAG, "心跳成功")
                 // ★ 规则版本检查：服务端版本更新 → 触发同步
-                if (resp.rulesVersion > 0 && resp.rulesVersion != p.getRulesVersion()) {
+                if (resp.rulesVersion > p.getRulesVersion()) {
                     try {
                         RuleSync.sync(ctx)
                     } catch (e: Exception) {

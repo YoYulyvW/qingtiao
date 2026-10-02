@@ -6,10 +6,9 @@ import androidx.lifecycle.viewModelScope
 import com.autoskip.helper.App
 import com.autoskip.helper.data.RuleEntity
 import com.autoskip.helper.service.AutoClickAccessibilityService
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -46,8 +45,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val condDramaOnly = repo.condDramaOnly.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
     val dramaClickSpeed = repo.dramaClickSpeed.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
-    private val _learnMode = MutableStateFlow(false)
-    val learnMode = _learnMode.asStateFlow()
+    // ★ 学习模式从 DataStore 读取（持久化，重启恢复）
+    val learnMode: StateFlow<Boolean> = repo.learnMode
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     fun setEnabled(v: Boolean) = viewModelScope.launch { repo.setEnabled(v) }
 
@@ -146,37 +146,36 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun setDramaImgInterval(v: Int) = viewModelScope.launch { repo.setDramaImgInterval(v) }
     fun setDramaNormalInterval(v: Int) = viewModelScope.launch { repo.setDramaNormalInterval(v) }
 
-    // ===== 白名单（门控 WHITELIST）=====
+    // ===== 白名单（门控 WHITELIST；原子操作防并发丢更新）=====
     fun toggleWhitelistPkg(pkg: String) = viewModelScope.launch {
         if (!com.autoskip.helper.license.FeatureGate.isEnabled(com.autoskip.helper.license.FeatureGate.Feat.WHITELIST)) return@launch
-        val cur = repo.whitelistPkgs.first()
-        if (pkg in cur) repo.setWhitelist(cur - pkg) else repo.setWhitelist(cur + pkg)
+        repo.toggleWhitelistPkgAtomically(pkg)
     }
 
     fun removeFromWhitelist(pkg: String) = viewModelScope.launch {
         if (!com.autoskip.helper.license.FeatureGate.isEnabled(com.autoskip.helper.license.FeatureGate.Feat.WHITELIST)) return@launch
-        repo.setWhitelist(repo.whitelistPkgs.first() - pkg)
+        repo.removeWhitelistPkgAtomically(pkg)
     }
 
-    /** 添加一条自定义通配/包名规则 */
+    /** 添加一条自定义通配/包名规则（原子） */
     fun addWhitelistPattern(pattern: String) = viewModelScope.launch {
         if (!com.autoskip.helper.license.FeatureGate.isEnabled(com.autoskip.helper.license.FeatureGate.Feat.WHITELIST)) return@launch
         val p = pattern.trim()
         if (p.isBlank()) return@launch
-        val cur = repo.whitelistPkgs.first()
-        if (p !in cur) repo.setWhitelist(cur + p)
+        repo.addToWhitelist(p)
     }
 
     /** 学习模式：开启后，用户在其他 App 手动点击的按钮会被自动记录为规则 */
-    fun setLearnMode(on: Boolean) {
+    fun setLearnMode(on: Boolean) = viewModelScope.launch {
         // ★ 门控：学习模式
-        if (on && !com.autoskip.helper.license.FeatureGate.isEnabled(com.autoskip.helper.license.FeatureGate.Feat.LEARNING)) return
-        _learnMode.value = on
-        val svc = AutoClickAccessibilityService.instance ?: return
+        if (on && !com.autoskip.helper.license.FeatureGate.isEnabled(com.autoskip.helper.license.FeatureGate.Feat.LEARNING)) return@launch
+        // ★ 持久化开关
+        repo.setLearnMode(on)
+        // ★ 更新服务回调
+        val svc = AutoClickAccessibilityService.instance ?: return@launch
         svc.learnCallback = if (on) {
             { node ->
                 viewModelScope.launch {
-                    // 学习到规则时，自动把该应用加入白名单
                     repo.addLearnedRuleIfAbsent(node.text, node.viewId, node.packageName)
                     repo.addToWhitelist(node.packageName)
                 }

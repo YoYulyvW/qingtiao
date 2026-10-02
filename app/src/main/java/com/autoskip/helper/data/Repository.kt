@@ -85,6 +85,7 @@ class Repository(
     val pushIncludeClone: Flow<Boolean> = prefs.pushIncludeClone
     val dramaLongPress: Flow<Boolean> = prefs.dramaLongPress
     val dramaClickSpeed: Flow<Boolean> = prefs.dramaClickSpeed
+    val learnMode: Flow<Boolean> = prefs.learnMode
 
     suspend fun addRule(rule: RuleEntity): Long = ruleDao.insert(rule)
 
@@ -216,6 +217,16 @@ class Repository(
     suspend fun setClickDelay(ms: Long) = prefs.setClickDelay(ms)
     suspend fun setWhitelistEnabled(v: Boolean) = prefs.setWhitelistEnabled(v)
     suspend fun setWhitelist(pkgs: Set<String>) = prefs.setWhitelist(pkgs)
+    /** 白名单原子翻转（true=加入，false=移除） */
+    suspend fun toggleWhitelistPkgAtomically(pkg: String): Boolean {
+        var added = false
+        prefs.toggleWhitelistPkg(pkg) { added = it }
+        return added
+    }
+    /** 白名单原子移除 */
+    suspend fun removeWhitelistPkgAtomically(pkg: String) {
+        prefs.removeWhitelistPkg(pkg)
+    }
     suspend fun setDramaEnabled(v: Boolean) = prefs.setDramaEnabled(v)
     suspend fun setDramaAutoMount(v: Boolean) = prefs.setDramaAutoMount(v)
     suspend fun setDramaInterval(ms: Long) = prefs.setDramaInterval(ms)
@@ -312,6 +323,7 @@ class Repository(
         return "导入完成：新增 $added，跳过 $skipped，失败 $failed"
     }
     suspend fun setDramaClickSpeed(v: Boolean) = prefs.setDramaClickSpeed(v)
+    suspend fun setLearnMode(v: Boolean) = prefs.setLearnMode(v)
 
     /**
      * v4 迁移：删除"倍速"类规则（1x/1.25x/1.5x/2x/3x 等），
@@ -382,10 +394,9 @@ class Repository(
         prefs.markMigratedV2()
     }
 
-    /** 将某个包名加入白名单（已存在则忽略） */
+    /** 将某个包名加入白名单（原子操作，避免读-改-写竞态） */
     suspend fun addToWhitelist(pkg: String) {
-        val cur = prefs.whitelistPkgs.first()
-        if (pkg !in cur) prefs.setWhitelist(cur + pkg)
+        prefs.addWhitelistPkg(pkg)
     }
 
     /**

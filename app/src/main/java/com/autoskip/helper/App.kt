@@ -22,34 +22,31 @@ class App : Application() {
     override fun onCreate() {
         super.onCreate()
         instance = this
-        appScope.launch { runCatching { repo.migrateV2IfNeeded() } }
-        appScope.launch { runCatching { repo.migrateV3IfNeeded() } }
-        appScope.launch { runCatching { repo.migrateV4IfNeeded() } }
-        appScope.launch { runCatching { repo.seedWhitelistIfNeeded() } }
-        seedDefaultRulesIfEmpty()
+        // ★ 所有迁移/种子串行化（同一协程按顺序执行），避免并发读写旧快照导致结果不确定
         appScope.launch {
+            runCatching { repo.migrateV2IfNeeded() }
+            runCatching { repo.migrateV3IfNeeded() }
+            runCatching { repo.migrateV4IfNeeded() }
+            runCatching { repo.seedWhitelistIfNeeded() }
             runCatching { repo.migrateCondRulesV1() }
             runCatching { repo.seedCondRulesIfNeeded() }
+            runCatching { seedDefaultRulesIfEmptyInternal() }
         }
         // ★ 启动授权（先加载缓存，再起心跳）
         runCatching { LicenseManager.start(this) }
     }
 
     /**
-     * 首次启动写入默认规则。
-     * 注意：逐条判重（不能只看"库是否为空"），避免与迁移协程并发执行时重复插入。
+     * 首次启动写入默认规则（挂起版，由迁移协程串行调用）。
+     * 注意：逐条判重，避免与迁移串行执行时重复插入。
      */
-    private fun seedDefaultRulesIfEmpty() {
-        appScope.launch {
-            runCatching {
-                val dao = database.ruleDao()
-                val existing = dao.all().map { it.text }.toSet()
-                Matcher.DEFAULT_TEXTS.forEach { t ->
-                    if (t !in existing) {
-                        // 内置规则：精确匹配
-                        dao.insert(RuleEntity(name = t, text = t, exact = true))
-                    }
-                }
+    private suspend fun seedDefaultRulesIfEmptyInternal() {
+        val dao = database.ruleDao()
+        val existing = dao.all().map { it.text }.toSet()
+        Matcher.DEFAULT_TEXTS.forEach { t ->
+            if (t !in existing) {
+                // 内置规则：精确匹配
+                dao.insert(RuleEntity(name = t, text = t, exact = true))
             }
         }
     }
