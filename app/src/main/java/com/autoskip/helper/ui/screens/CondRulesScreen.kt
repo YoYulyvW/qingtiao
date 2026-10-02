@@ -4,6 +4,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.widget.Toast
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -81,14 +82,14 @@ fun CondRulesScreen(onBack: () -> Unit, vm: MainViewModel) {
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White
+                    containerColor = com.autoskip.helper.ui.theme.HarmonyColor.White,
+                    titleContentColor = com.autoskip.helper.ui.theme.HarmonyColor.TextPrimary,
+                    navigationIconContentColor = com.autoskip.helper.ui.theme.HarmonyColor.TextPrimary
                 )
             )
         }
     ) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding)) {
+        Box(Modifier.fillMaxSize().background(com.autoskip.helper.ui.theme.HarmonyColor.GrayBG).padding(padding)) {
             LazyColumn(
                 Modifier.fillMaxSize().padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)

@@ -53,7 +53,7 @@ import androidx.compose.ui.unit.sp
 import com.autoskip.helper.service.AutoClickAccessibilityService
 import com.autoskip.helper.ui.MainViewModel
 import com.autoskip.helper.ui.theme.Dimens
-import com.autoskip.helper.ui.theme.HyperColor
+import com.autoskip.helper.ui.theme.HarmonyColor
 
 @Composable
 fun HomeScreen(vm: MainViewModel) {
@@ -112,7 +112,7 @@ fun HomeScreen(vm: MainViewModel) {
                 ) {
                     Text(
                         "学习进行中…… 请切换到目标 App，点击需要自动跳过的按钮。",
-                        color = HyperColor.BrandOrange,
+                        color = HarmonyColor.BrandOrange,
                         fontSize = 12.sp,
                         modifier = Modifier.padding(horizontal = Dimens.SpaceM, vertical = Dimens.SpaceS)
                     )
@@ -140,7 +140,7 @@ fun HomeScreen(vm: MainViewModel) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text("弹窗出现后等待", fontSize = 15.sp, fontWeight = FontWeight.Medium)
-                    Text(delay.toString() + " ms", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = HyperColor.BrandOrange)
+                    Text(delay.toString() + " ms", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = HarmonyColor.BrandOrange)
                 }
                 Spacer(Modifier.height(Dimens.SpaceXS))
                 Slider(
@@ -149,8 +149,8 @@ fun HomeScreen(vm: MainViewModel) {
                     valueRange = 0f..2000f,
                     steps = 19,
                     colors = SliderDefaults.colors(
-                        thumbColor = HyperColor.BrandOrange,
-                        activeTrackColor = HyperColor.BrandOrange
+                        thumbColor = HarmonyColor.BrandOrange,
+                        activeTrackColor = HarmonyColor.BrandOrange
                     )
                 )
             }
@@ -170,7 +170,7 @@ fun HomeScreen(vm: MainViewModel) {
         Text(
             "小提示：为确保长期后台存活，请在系统「电池 / 应用启动管理」中将本应用设为允许自启动、不受限制。",
             fontSize = 11.sp,
-            color = HyperColor.Gray4,
+            color = HarmonyColor.Gray4,
             lineHeight = 16.sp
         )
     }
@@ -179,7 +179,7 @@ fun HomeScreen(vm: MainViewModel) {
 @Composable
 private fun StatusCard(serviceOn: Boolean, onEnable: () -> Unit) {
     val bg by animateColorAsState(
-        if (serviceOn) HyperColor.StatusOKBg else HyperColor.StatusWarnBg,
+        if (serviceOn) HarmonyColor.StatusOKBg else HarmonyColor.StatusWarnBg,
         animationSpec = tween(300), label = "statusBg"
     )
     Card(
@@ -196,25 +196,25 @@ private fun StatusCard(serviceOn: Boolean, onEnable: () -> Unit) {
                 Modifier
                     .size(10.dp)
                     .clip(CircleShape)
-                    .background(if (serviceOn) HyperColor.Success else HyperColor.Warning)
+                    .background(if (serviceOn) HarmonyColor.Success else HarmonyColor.Warning)
             )
             Spacer(Modifier.width(Dimens.SpaceM))
             Column(Modifier.weight(1f)) {
                 Text(
                     if (serviceOn) "无障碍服务已开启" else "无障碍服务未开启",
                     fontSize = 15.sp, fontWeight = FontWeight.Medium,
-                    color = HyperColor.TextPrimary
+                    color = HarmonyColor.TextPrimary
                 )
                 Text(
                     if (serviceOn) "自动跳过已就绪" else "需开启才能自动点击",
-                    fontSize = 12.sp, color = HyperColor.Gray6
+                    fontSize = 12.sp, color = HarmonyColor.Gray6
                 )
             }
             if (!serviceOn) {
                 Button(
                     onClick = onEnable,
                     shape = RoundedCornerShape(Dimens.RadiusInput),
-                    colors = ButtonDefaults.buttonColors(containerColor = HyperColor.BrandOrange)
+                    colors = ButtonDefaults.buttonColors(containerColor = HarmonyColor.BrandOrange)
                 ) { Text("去开启", fontSize = 13.sp) }
             }
         }
@@ -227,7 +227,7 @@ private fun SectionLabel(text: String, topSpace: Boolean = false) {
     Text(
         text,
         fontSize = 13.sp,
-        color = HyperColor.Gray4,
+        color = HarmonyColor.Gray4,
         modifier = Modifier.padding(start = Dimens.SpaceXS, bottom = Dimens.SpaceXS)
     )
 }
@@ -246,16 +246,16 @@ private fun SwitchRow(
     ) {
         Column(Modifier.weight(1f)) {
             Text(title, fontSize = 15.sp, fontWeight = FontWeight.Medium)
-            Text(subtitle, fontSize = 12.sp, color = HyperColor.Gray6)
+            Text(subtitle, fontSize = 12.sp, color = HarmonyColor.Gray6)
         }
         Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
-                checkedThumbColor = HyperColor.White,
-                checkedTrackColor = HyperColor.BrandOrange,
-                uncheckedThumbColor = HyperColor.White,
-                uncheckedTrackColor = HyperColor.Gray3
+                checkedThumbColor = HarmonyColor.White,
+                checkedTrackColor = HarmonyColor.BrandOrange,
+                uncheckedThumbColor = HarmonyColor.White,
+                uncheckedTrackColor = HarmonyColor.Gray3
             )
         )
     }
@@ -268,7 +268,7 @@ private fun HDivider() {
             .fillMaxWidth()
             .padding(horizontal = Dimens.SpaceM)
             .height(1.dp)
-            .background(HyperColor.Gray2)
+            .background(HarmonyColor.Gray2)
     )
 }
 
@@ -284,9 +284,9 @@ private fun StatCard(label: String, value: String, modifier: Modifier = Modifier
             Modifier.fillMaxWidth().padding(vertical = Dimens.SpaceL),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(value, fontSize = 30.sp, fontWeight = FontWeight.Bold, color = HyperColor.BrandOrange)
+            Text(value, fontSize = 30.sp, fontWeight = FontWeight.Bold, color = HarmonyColor.BrandOrange)
             Spacer(Modifier.height(Dimens.SpaceXS))
-            Text(label, fontSize = 12.sp, color = HyperColor.Gray6)
+            Text(label, fontSize = 12.sp, color = HarmonyColor.Gray6)
         }
     }
 }

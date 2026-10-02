@@ -87,9 +87,9 @@ fun DramaScreen(onBack: () -> Unit, vm: MainViewModel) {
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White
+                    containerColor = com.autoskip.helper.ui.theme.HarmonyColor.White,
+                    titleContentColor = com.autoskip.helper.ui.theme.HarmonyColor.TextPrimary,
+                    navigationIconContentColor = com.autoskip.helper.ui.theme.HarmonyColor.TextPrimary
                 )
             )
         }

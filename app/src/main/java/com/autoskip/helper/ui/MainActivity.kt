@@ -123,7 +123,7 @@ private fun AppRoot(vm: MainViewModel) {
         bottomBar = {
             // HyperOS 风格底部导航
             NavigationBar(
-                containerColor = com.autoskip.helper.ui.theme.HyperColor.White,
+                containerColor = com.autoskip.helper.ui.theme.HarmonyColor.White,
                 tonalElevation = 0.dp
             ) {
                 val tabs = listOf(
@@ -140,11 +140,11 @@ private fun AppRoot(vm: MainViewModel) {
                         icon = { Icon(icon, contentDescription = label) },
                         label = { Text(label, fontSize = 10.sp) },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = com.autoskip.helper.ui.theme.HyperColor.BrandOrange,
-                            selectedTextColor = com.autoskip.helper.ui.theme.HyperColor.BrandOrange,
-                            unselectedIconColor = com.autoskip.helper.ui.theme.HyperColor.Gray4,
-                            unselectedTextColor = com.autoskip.helper.ui.theme.HyperColor.Gray4,
-                            indicatorColor = com.autoskip.helper.ui.theme.HyperColor.IconOrangeBg
+                            selectedIconColor = com.autoskip.helper.ui.theme.HarmonyColor.BrandOrange,
+                            selectedTextColor = com.autoskip.helper.ui.theme.HarmonyColor.BrandOrange,
+                            unselectedIconColor = com.autoskip.helper.ui.theme.HarmonyColor.Gray4,
+                            unselectedTextColor = com.autoskip.helper.ui.theme.HarmonyColor.Gray4,
+                            indicatorColor = com.autoskip.helper.ui.theme.HarmonyColor.IconOrangeBg
                         )
                     )
                 }

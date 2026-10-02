@@ -3,16 +3,16 @@ package com.autoskip.helper.ui.theme
 import androidx.compose.ui.unit.dp
 
 /**
- * HyperOS 设计令牌：间距与圆角。
- * 规范来源：小米 HyperOS 设计系统（4dp 基础网格）。
+ * HarmonyOS 设计令牌：间距与圆角。
+ * 规范来源：华为鸿蒙设计系统（8vp 基础网格）。
  */
 object Dimens {
-    // ===== 间距（4dp 网格）=====
+    // ===== 间距（8vp 网格，4vp 微调）=====
     /** 2dp - 极小 */
     val SpaceXXS = 2.dp
-    /** 4dp - 基础单位 */
+    /** 4dp - 微调单位 */
     val SpaceXS = 4.dp
-    /** 8dp - 次级单位 */
+    /** 8dp - 基础单位 */
     val SpaceS = 8.dp
     /** 12dp - 卡片内边距 */
     val SpaceM = 12.dp
@@ -25,17 +25,17 @@ object Dimens {
     /** 32dp - 页面顶部 */
     val SpaceXXXL = 32.dp
 
-    // ===== 圆角（HyperOS 体系）=====
-    /** 4dp - 标签/徽章 */
-    val RadiusTag = 4.dp
-    /** 8dp - 小组件 */
-    val RadiusSmall = 8.dp
-    /** 12dp - 输入框/小卡片 */
+    // ===== 圆角（鸿蒙体系）=====
+    /** 8dp - 标签/徽章 */
+    val RadiusTag = 8.dp
+    /** 12dp - 输入框/次级按钮 */
     val RadiusInput = 12.dp
-    /** 16dp - 标准卡片 */
-    val RadiusCard = 16.dp
-    /** 20dp - 大卡片/胶囊按钮/弹窗 */
-    val RadiusLarge = 20.dp
+    /** 16dp - 小卡片 */
+    val RadiusSmall = 16.dp
+    /** 20dp - 中卡片 */
+    val RadiusCard = 20.dp
+    /** 24dp - 大卡片/胶囊按钮/弹窗 */
+    val RadiusLarge = 24.dp
 
     // ===== 组件尺寸 =====
     /** 最小触控区域（无障碍） */

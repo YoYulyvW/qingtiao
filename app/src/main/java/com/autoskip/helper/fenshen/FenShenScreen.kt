@@ -144,9 +144,9 @@ fun FenShenScreen(onBack: () -> Unit, vm: FenShenViewModel = viewModel()) {
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White
+                    containerColor = com.autoskip.helper.ui.theme.HarmonyColor.White,
+                    titleContentColor = com.autoskip.helper.ui.theme.HarmonyColor.TextPrimary,
+                    navigationIconContentColor = com.autoskip.helper.ui.theme.HarmonyColor.TextPrimary
                 )
             )
         },

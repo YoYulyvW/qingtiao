@@ -97,12 +97,12 @@ fun SettingsScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Filled.ArrowBack, contentDescription = "返回",
-                            tint = com.autoskip.helper.ui.theme.HyperColor.TextPrimary)
+                            tint = com.autoskip.helper.ui.theme.HarmonyColor.TextPrimary)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = com.autoskip.helper.ui.theme.HyperColor.White,
-                    titleContentColor = com.autoskip.helper.ui.theme.HyperColor.TextPrimary
+                    containerColor = com.autoskip.helper.ui.theme.HarmonyColor.White,
+                    titleContentColor = com.autoskip.helper.ui.theme.HarmonyColor.TextPrimary
                 )
             )
         }
@@ -110,7 +110,7 @@ fun SettingsScreen(
         Column(
             Modifier
                 .fillMaxSize()
-                .background(com.autoskip.helper.ui.theme.HyperColor.GrayBG)
+                .background(com.autoskip.helper.ui.theme.HarmonyColor.GrayBG)
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = com.autoskip.helper.ui.theme.Dimens.SpaceL)
@@ -122,7 +122,7 @@ fun SettingsScreen(
             Card(
                 Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusCard),
-                colors = CardDefaults.cardColors(containerColor = com.autoskip.helper.ui.theme.HyperColor.White),
+                colors = CardDefaults.cardColors(containerColor = com.autoskip.helper.ui.theme.HarmonyColor.White),
                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
             ) {
                 Column(Modifier.padding(com.autoskip.helper.ui.theme.Dimens.SpaceM)) {
@@ -212,8 +212,8 @@ fun SettingsScreen(
                             modifier = Modifier.weight(1f).height(com.autoskip.helper.ui.theme.Dimens.MinTouchTarget),
                             shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusInput),
                             colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                                containerColor = com.autoskip.helper.ui.theme.HyperColor.BrandOrange,
-                                contentColor = com.autoskip.helper.ui.theme.HyperColor.White
+                                containerColor = com.autoskip.helper.ui.theme.HarmonyColor.BrandOrange,
+                                contentColor = com.autoskip.helper.ui.theme.HarmonyColor.White
                             )
                         ) { Text("保存", fontSize = 14.sp) }
                         OutlinedButton(
@@ -251,14 +251,14 @@ fun SettingsScreen(
 
             EntryCard(
                 icon = "📺",
-                iconBg = com.autoskip.helper.ui.theme.HyperColor.IconBlueBg,
+                iconBg = com.autoskip.helper.ui.theme.HarmonyColor.IconBlueBg,
                 title = "短剧自动倍速",
                 subtitle = "长按呼出菜单、自动切 3x、暂停恢复等",
                 onClick = onOpenDrama
             )
             EntryCard(
                 icon = "📱",
-                iconBg = com.autoskip.helper.ui.theme.HyperColor.IconPurpleBg,
+                iconBg = com.autoskip.helper.ui.theme.HarmonyColor.IconPurpleBg,
                 title = "自动分身（分身大师）",
                 subtitle = "批量创建抖音分身、改名、安装",
                 onClick = onOpenFenShen
@@ -275,7 +275,7 @@ private fun SectionLabelH(text: String) {
     Text(
         text,
         fontSize = 13.sp,
-        color = com.autoskip.helper.ui.theme.HyperColor.Gray4,
+        color = com.autoskip.helper.ui.theme.HarmonyColor.Gray4,
         modifier = Modifier.padding(start = 4.dp, top = 8.dp, bottom = 4.dp)
     )
 }
@@ -291,7 +291,7 @@ private fun EntryCard(
     Card(
         Modifier.fillMaxWidth().clickable { onClick() },
         shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusCard),
-        colors = CardDefaults.cardColors(containerColor = com.autoskip.helper.ui.theme.HyperColor.White),
+        colors = CardDefaults.cardColors(containerColor = com.autoskip.helper.ui.theme.HarmonyColor.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Row(
@@ -304,10 +304,10 @@ private fun EntryCard(
             ) { Text(icon, fontSize = 20.sp) }
             Spacer(Modifier.width(com.autoskip.helper.ui.theme.Dimens.SpaceM))
             Column(Modifier.weight(1f)) {
-                Text(title, fontWeight = FontWeight.Medium, fontSize = 15.sp, color = com.autoskip.helper.ui.theme.HyperColor.TextPrimary)
-                Text(subtitle, fontSize = 12.sp, color = com.autoskip.helper.ui.theme.HyperColor.Gray6)
+                Text(title, fontWeight = FontWeight.Medium, fontSize = 15.sp, color = com.autoskip.helper.ui.theme.HarmonyColor.TextPrimary)
+                Text(subtitle, fontSize = 12.sp, color = com.autoskip.helper.ui.theme.HarmonyColor.Gray6)
             }
-            Text("›", fontSize = 18.sp, color = com.autoskip.helper.ui.theme.HyperColor.Gray4)
+            Text("›", fontSize = 18.sp, color = com.autoskip.helper.ui.theme.HarmonyColor.Gray4)
         }
     }
 }

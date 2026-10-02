@@ -64,7 +64,7 @@ fun ActivateScreen() {
     Column(
         Modifier
             .fillMaxSize()
-            .background(com.autoskip.helper.ui.theme.HyperColor.GrayBG)
+            .background(com.autoskip.helper.ui.theme.HarmonyColor.GrayBG)
             .verticalScroll(rememberScrollState())
             .padding(horizontal = com.autoskip.helper.ui.theme.Dimens.SpaceXXL),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -73,18 +73,18 @@ fun ActivateScreen() {
         Text("🍚", fontSize = 56.sp)
         Spacer(Modifier.height(com.autoskip.helper.ui.theme.Dimens.SpaceM))
         Text("开饭小工具", fontSize = 24.sp, fontWeight = FontWeight.Bold,
-            color = com.autoskip.helper.ui.theme.HyperColor.TextPrimary)
+            color = com.autoskip.helper.ui.theme.HarmonyColor.TextPrimary)
         Spacer(Modifier.height(com.autoskip.helper.ui.theme.Dimens.SpaceS))
         Text(
             if (locked) "授权已失效，请重新激活" else "本应用需联网验证授权后使用",
-            color = com.autoskip.helper.ui.theme.HyperColor.Gray4, fontSize = 13.sp
+            color = com.autoskip.helper.ui.theme.HarmonyColor.Gray4, fontSize = 13.sp
         )
         Spacer(Modifier.height(com.autoskip.helper.ui.theme.Dimens.SpaceXXXL))
 
         Card(
             Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusCard),
-            colors = CardDefaults.cardColors(containerColor = com.autoskip.helper.ui.theme.HyperColor.White),
+            colors = CardDefaults.cardColors(containerColor = com.autoskip.helper.ui.theme.HarmonyColor.White),
             elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
         ) {
             Column(Modifier.padding(com.autoskip.helper.ui.theme.Dimens.SpaceXL),
@@ -119,7 +119,7 @@ fun ActivateScreen() {
                         }
                     },
                     modifier = Modifier.align(Alignment.End)
-                ) { Text("从剪贴板粘贴", fontSize = 12.sp, color = com.autoskip.helper.ui.theme.HyperColor.BrandOrange) }
+                ) { Text("从剪贴板粘贴", fontSize = 12.sp, color = com.autoskip.helper.ui.theme.HarmonyColor.BrandOrange) }
 
                 OutlinedTextField(
                     value = deviceName,
@@ -153,13 +153,13 @@ fun ActivateScreen() {
                     enabled = !loading,
                     shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusLarge),
                     colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                        containerColor = com.autoskip.helper.ui.theme.HyperColor.BrandOrange,
-                        contentColor = com.autoskip.helper.ui.theme.HyperColor.White
+                        containerColor = com.autoskip.helper.ui.theme.HarmonyColor.BrandOrange,
+                        contentColor = com.autoskip.helper.ui.theme.HarmonyColor.White
                     )
                 ) {
                     if (loading) {
                         CircularProgressIndicator(Modifier.width(18.dp).height(18.dp), strokeWidth = 2.dp,
-                            color = com.autoskip.helper.ui.theme.HyperColor.White)
+                            color = com.autoskip.helper.ui.theme.HarmonyColor.White)
                         Spacer(Modifier.width(8.dp))
                     }
                     Text(if (loading) "激活中…" else "激活", fontSize = 15.sp, fontWeight = FontWeight.Medium)

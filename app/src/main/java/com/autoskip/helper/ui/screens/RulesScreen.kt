@@ -1,5 +1,6 @@
 package com.autoskip.helper.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -36,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.autoskip.helper.data.RuleEntity
 import com.autoskip.helper.ui.MainViewModel
 
@@ -45,13 +47,13 @@ fun RulesScreen(vm: MainViewModel, onOpenCondRules: () -> Unit = {}, onOpenWidge
     var editing by remember { mutableStateOf<RuleEntity?>(null) }
     var showAdd by remember { mutableStateOf(false) }
 
-    Box(Modifier.fillMaxSize()) {
+    Box(Modifier.fillMaxSize().background(com.autoskip.helper.ui.theme.HarmonyColor.GrayBG)) {
         LazyColumn(
-            Modifier.fillMaxSize().padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            Modifier.fillMaxSize().padding(com.autoskip.helper.ui.theme.Dimens.SpaceL),
+            verticalArrangement = Arrangement.spacedBy(com.autoskip.helper.ui.theme.Dimens.SpaceS)
         ) {
             item {
-                Text("规则列表", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                Text("规则列表", fontSize = 20.sp, fontWeight = FontWeight.Medium)
                 Text(
                     "点击规则可修改；带「学习」标记的为学习模式自动生成。",
                     style = MaterialTheme.typography.bodySmall

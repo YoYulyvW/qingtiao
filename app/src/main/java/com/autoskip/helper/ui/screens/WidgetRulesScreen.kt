@@ -1,5 +1,6 @@
 package com.autoskip.helper.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -68,17 +69,17 @@ fun WidgetRulesScreen(onBack: () -> Unit, vm: MainViewModel) {
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White
+                    containerColor = com.autoskip.helper.ui.theme.HarmonyColor.White,
+                    titleContentColor = com.autoskip.helper.ui.theme.HarmonyColor.TextPrimary,
+                    navigationIconContentColor = com.autoskip.helper.ui.theme.HarmonyColor.TextPrimary
                 )
             )
         }
     ) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding)) {
+        Box(Modifier.fillMaxSize().background(com.autoskip.helper.ui.theme.HarmonyColor.GrayBG).padding(padding)) {
             LazyColumn(
-                Modifier.fillMaxSize().padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                Modifier.fillMaxSize().padding(com.autoskip.helper.ui.theme.Dimens.SpaceL),
+                verticalArrangement = Arrangement.spacedBy(com.autoskip.helper.ui.theme.Dimens.SpaceS)
             ) {
                 item {
                     Text(
