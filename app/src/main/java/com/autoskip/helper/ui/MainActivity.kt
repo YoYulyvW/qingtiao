@@ -156,7 +156,7 @@ private fun AppRoot(vm: MainViewModel) {
             }
         }
     ) { padding ->
-        Box(Modifier.padding(padding)) {
+        Box(Modifier.padding(padding).statusBarsPadding()) {
             // 页面切换淡入淡出动画（HarmonyOS 标准转场 250ms）
             AnimatedContent(
                 targetState = tab,
