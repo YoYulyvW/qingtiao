@@ -79,7 +79,7 @@ fun DramaScreen(onBack: () -> Unit, vm: MainViewModel) {
     }
 
     Scaffold(
-        modifier = Modifier.statusBarsPadding(),
+        contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = { Text("短剧自动倍速", fontWeight = FontWeight.Bold) },

@@ -155,7 +155,9 @@ fun FenShenScreen(onBack: () -> Unit, vm: FenShenViewModel = viewModel()) {
         bottomBar = {
             // 开始/终止按钮常驻底部
             Surface(color = com.autoskip.helper.ui.theme.HarmonyColor.White, shadowElevation = 8.dp) {
-                Box(Modifier.fillMaxWidth().padding(com.autoskip.helper.ui.theme.Dimens.SpaceL)) {
+                Box(Modifier.fillMaxWidth()
+                    .navigationBarsPadding()
+                    .padding(com.autoskip.helper.ui.theme.Dimens.SpaceL)) {
                     if (state.running) {
                         Button(
                             onClick = { vm.stop() },
@@ -190,8 +192,8 @@ fun FenShenScreen(onBack: () -> Unit, vm: FenShenViewModel = viewModel()) {
                 .fillMaxSize()
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+                .padding(com.autoskip.helper.ui.theme.Dimens.SpaceL),
+            verticalArrangement = Arrangement.spacedBy(com.autoskip.helper.ui.theme.Dimens.SpaceS)
         ) {
             // 权限状态卡
             Card(
@@ -329,14 +331,16 @@ fun FenShenScreen(onBack: () -> Unit, vm: FenShenViewModel = viewModel()) {
                 OutlinedTextField(
                     value = testW, onValueChange = { testW = it },
                     label = { Text("宽") }, singleLine = true,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).height(52.dp),
+                    shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusInput),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
                 Text("  ×  ", Modifier.padding(horizontal = 4.dp))
                 OutlinedTextField(
                     value = testH, onValueChange = { testH = it },
                     label = { Text("高") }, singleLine = true,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).height(52.dp),
+                    shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusInput),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
             }
@@ -386,12 +390,12 @@ private fun LabeledField(
     onChange: (String) -> Unit
 ) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(label, Modifier.width(120.dp))
+        Text(label, Modifier.width(110.dp), fontSize = 14.sp)
         OutlinedTextField(
             value = value,
             onValueChange = onChange,
             singleLine = true,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f).height(52.dp),
             shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusInput),
             keyboardOptions = if (numberOnly)
                 KeyboardOptions(keyboardType = KeyboardType.Number)
@@ -411,14 +415,14 @@ private fun CoordRow(
         OutlinedTextField(
             value = v1, onValueChange = on1,
             label = { Text(label1) }, singleLine = true,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f).height(52.dp),
             shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusInput),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
         )
         OutlinedTextField(
             value = v2, onValueChange = on2,
             label = { Text(label2) }, singleLine = true,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f).height(52.dp),
             shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusInput),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
         )

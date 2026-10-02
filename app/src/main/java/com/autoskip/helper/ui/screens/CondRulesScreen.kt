@@ -75,7 +75,7 @@ fun CondRulesScreen(onBack: () -> Unit, vm: MainViewModel) {
     }
 
     Scaffold(
-        modifier = Modifier.statusBarsPadding(),
+        contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = { Text("条件规则", fontWeight = FontWeight.Bold) },

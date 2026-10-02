@@ -92,7 +92,7 @@ fun SettingsScreen(
     }
 
     Scaffold(
-        modifier = Modifier.statusBarsPadding(),
+        contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = { Text("高级设置", fontWeight = FontWeight.Bold, fontSize = 20.sp) },

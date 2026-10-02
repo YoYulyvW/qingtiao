@@ -61,7 +61,7 @@ fun WidgetRulesScreen(onBack: () -> Unit, vm: MainViewModel) {
     var showAdd by remember { mutableStateOf(false) }
 
     Scaffold(
-        modifier = Modifier.statusBarsPadding(),
+        contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = { Text("控件规则", fontWeight = FontWeight.Bold) },
