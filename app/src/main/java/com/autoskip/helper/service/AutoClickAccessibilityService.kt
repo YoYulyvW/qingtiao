@@ -151,7 +151,7 @@ class AutoClickAccessibilityService : AccessibilityService() {
     private val pendingCondRules = HashMap<String, Long>()
 
     /** 条件规则冷却：规则id -> 上次执行时间。防返回键后页面动画期间被重复触发。 */
-    private val condRuleLastFire = HashMap<String, Long>()
+    private val condRuleLastFire = java.util.concurrent.ConcurrentHashMap<String, Long>()
     private val COND_FIRE_COOLDOWN = 2500L
 
     // ===== 呼出间隔配置 =====
@@ -1266,6 +1266,8 @@ class AutoClickAccessibilityService : AccessibilityService() {
                 val again = Matcher.matchCondRule(root, listOf(rule), curPkg)
                 pendingCondRules.remove(key)
                 if (again != null) {
+                    // ★ 提前置冷却：堵住"移除 pending → 主线程置冷却"之间的窗口期
+                    condRuleLastFire[key] = System.currentTimeMillis()
                     DramaDebug.add("条件规则延时 ${delaySec} 秒后仍存在，执行动作")
                     mainHandler.post { performCondAction(again, pkg) }
                 } else {
