@@ -137,7 +137,7 @@ fun FenShenScreen(onBack: () -> Unit, vm: FenShenViewModel = viewModel()) {
     )
 
     Scaffold(
-        modifier = Modifier.statusBarsPadding(),
+        contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = { Text("自动分身 · 分身大师", fontWeight = FontWeight.Bold) },
