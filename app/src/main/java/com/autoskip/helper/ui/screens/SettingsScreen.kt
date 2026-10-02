@@ -1,7 +1,9 @@
 package com.autoskip.helper.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -9,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -90,16 +93,16 @@ fun SettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("高级设置", fontWeight = FontWeight.Bold) },
+                title = { Text("高级设置", fontWeight = FontWeight.Bold, fontSize = 20.sp) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.Filled.ArrowBack, contentDescription = "返回",
+                            tint = com.autoskip.helper.ui.theme.HyperColor.TextPrimary)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White
+                    containerColor = com.autoskip.helper.ui.theme.HyperColor.White,
+                    titleContentColor = com.autoskip.helper.ui.theme.HyperColor.TextPrimary
                 )
             )
         }
@@ -107,15 +110,23 @@ fun SettingsScreen(
         Column(
             Modifier
                 .fillMaxSize()
+                .background(com.autoskip.helper.ui.theme.HyperColor.GrayBG)
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(horizontal = com.autoskip.helper.ui.theme.Dimens.SpaceL)
+                .padding(top = com.autoskip.helper.ui.theme.Dimens.SpaceM,
+                         bottom = com.autoskip.helper.ui.theme.Dimens.SpaceXXXL),
+            verticalArrangement = Arrangement.spacedBy(com.autoskip.helper.ui.theme.Dimens.SpaceS)
         ) {
             // 广告推送
-            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
-                Column(Modifier.padding(12.dp)) {
-                    Text("广告推送", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            Card(
+                Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusCard),
+                colors = CardDefaults.cardColors(containerColor = com.autoskip.helper.ui.theme.HyperColor.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            ) {
+                Column(Modifier.padding(com.autoskip.helper.ui.theme.Dimens.SpaceM)) {
+                    Text("广告推送", fontWeight = FontWeight.Bold, fontSize = 15.sp)
                     Text(
                         "检测到短剧广告时 POST JSON 推送；地址留空则不推送。",
                         style = MaterialTheme.typography.bodySmall,
@@ -131,7 +142,7 @@ fun SettingsScreen(
                         singleLine = true,
                         textStyle = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.fillMaxWidth().height(58.dp),
-                        shape = RoundedCornerShape(8.dp)
+                        shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusInput)
                     )
                     Spacer(Modifier.height(6.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -143,7 +154,7 @@ fun SettingsScreen(
                             singleLine = true,
                             textStyle = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.weight(1f).height(58.dp),
-                            shape = RoundedCornerShape(8.dp)
+                            shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusInput)
                         )
                         OutlinedTextField(
                             value = userText,
@@ -153,7 +164,7 @@ fun SettingsScreen(
                             singleLine = true,
                             textStyle = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.weight(1f).height(58.dp),
-                            shape = RoundedCornerShape(8.dp)
+                            shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusInput)
                         )
                     }
                     Spacer(Modifier.height(6.dp))
@@ -165,7 +176,7 @@ fun SettingsScreen(
                         singleLine = true,
                         textStyle = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.fillMaxWidth().height(58.dp),
-                        shape = RoundedCornerShape(8.dp)
+                        shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusInput)
                     )
                     Spacer(Modifier.height(6.dp))
                     OutlinedTextField(
@@ -176,7 +187,7 @@ fun SettingsScreen(
                         singleLine = true,
                         textStyle = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.fillMaxWidth().height(58.dp),
-                        shape = RoundedCornerShape(8.dp)
+                        shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusInput)
                     )
                     Spacer(Modifier.height(6.dp))
                     Row(
@@ -198,8 +209,12 @@ fun SettingsScreen(
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(
                             onClick = { saveAll() },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(8.dp)
+                            modifier = Modifier.weight(1f).height(com.autoskip.helper.ui.theme.Dimens.MinTouchTarget),
+                            shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusInput),
+                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                containerColor = com.autoskip.helper.ui.theme.HyperColor.BrandOrange,
+                                contentColor = com.autoskip.helper.ui.theme.HyperColor.White
+                            )
                         ) { Text("保存", fontSize = 14.sp) }
                         OutlinedButton(
                             onClick = {
@@ -215,7 +230,7 @@ fun SettingsScreen(
                                 }
                             },
                             modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(8.dp)
+                            shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusInput)
                         ) { Text("测试", fontSize = 14.sp) }
                     }
                     if (testResult.isNotBlank()) {
@@ -232,45 +247,67 @@ fun SettingsScreen(
                 }
             }
 
-            // 短剧入口
-            Card(
-                Modifier.fillMaxWidth().clickable { onOpenDrama() },
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
-            ) {
-                Row(
-                    Modifier.fillMaxWidth().padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text("短剧自动倍速", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                        Text("长按呼出菜单、自动切 3x、暂停恢复等", style = MaterialTheme.typography.bodySmall)
-                    }
-                    Text("›", style = MaterialTheme.typography.headlineSmall)
-                }
-            }
+            SectionLabelH("功能入口")
 
-            // 分身入口
-            Card(
-                Modifier.fillMaxWidth().clickable { onOpenFenShen() },
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
-            ) {
-                Row(
-                    Modifier.fillMaxWidth().padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text("自动分身（分身大师）", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                        Text("批量创建抖音分身、改名、安装", style = MaterialTheme.typography.bodySmall)
-                    }
-                    Text("›", style = MaterialTheme.typography.headlineSmall)
-                }
-            }
+            EntryCard(
+                icon = "📺",
+                iconBg = com.autoskip.helper.ui.theme.HyperColor.IconBlueBg,
+                title = "短剧自动倍速",
+                subtitle = "长按呼出菜单、自动切 3x、暂停恢复等",
+                onClick = onOpenDrama
+            )
+            EntryCard(
+                icon = "📱",
+                iconBg = com.autoskip.helper.ui.theme.HyperColor.IconPurpleBg,
+                title = "自动分身（分身大师）",
+                subtitle = "批量创建抖音分身、改名、安装",
+                onClick = onOpenFenShen
+            )
 
             Spacer(Modifier.height(6.dp))
+        }
+    }
+}
+
+
+@Composable
+private fun SectionLabelH(text: String) {
+    Text(
+        text,
+        fontSize = 13.sp,
+        color = com.autoskip.helper.ui.theme.HyperColor.Gray4,
+        modifier = Modifier.padding(start = 4.dp, top = 8.dp, bottom = 4.dp)
+    )
+}
+
+@Composable
+private fun EntryCard(
+    icon: String,
+    iconBg: Color,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit
+) {
+    Card(
+        Modifier.fillMaxWidth().clickable { onClick() },
+        shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusCard),
+        colors = CardDefaults.cardColors(containerColor = com.autoskip.helper.ui.theme.HyperColor.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(com.autoskip.helper.ui.theme.Dimens.SpaceM),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                Modifier.size(40.dp).background(iconBg, RoundedCornerShape(12.dp)),
+                contentAlignment = Alignment.Center
+            ) { Text(icon, fontSize = 20.sp) }
+            Spacer(Modifier.width(com.autoskip.helper.ui.theme.Dimens.SpaceM))
+            Column(Modifier.weight(1f)) {
+                Text(title, fontWeight = FontWeight.Medium, fontSize = 15.sp, color = com.autoskip.helper.ui.theme.HyperColor.TextPrimary)
+                Text(subtitle, fontSize = 12.sp, color = com.autoskip.helper.ui.theme.HyperColor.Gray6)
+            }
+            Text("›", fontSize = 18.sp, color = com.autoskip.helper.ui.theme.HyperColor.Gray4)
         }
     }
 }
