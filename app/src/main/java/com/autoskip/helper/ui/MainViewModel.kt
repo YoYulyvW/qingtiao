@@ -49,6 +49,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val learnMode: StateFlow<Boolean> = repo.learnMode
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
+    // ★ 识别提示悬浮窗开关
+    val overlayToastEnabled = repo.overlayToastEnabled
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+    fun setOverlayToastEnabled(v: Boolean) = viewModelScope.launch { repo.setOverlayToastEnabled(v) }
+
     fun setEnabled(v: Boolean) = viewModelScope.launch { repo.setEnabled(v) }
 
     fun setClickDelay(ms: Long) = viewModelScope.launch { repo.setClickDelay(ms) }

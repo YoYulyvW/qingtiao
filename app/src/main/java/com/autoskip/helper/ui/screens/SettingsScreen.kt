@@ -29,11 +29,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,6 +51,10 @@ import androidx.compose.ui.unit.sp
 import com.autoskip.helper.service.PushNotifier
 import com.autoskip.helper.ui.MainViewModel
 import kotlinx.coroutines.launch
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,6 +75,24 @@ fun SettingsScreen(
     var testResult by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+
+    // 识别提示悬浮窗
+    val overlayToastOn by vm.overlayToastEnabled.collectAsState()
+    var overlayPermGranted by remember { mutableStateOf(true) }
+
+    // 检查悬浮窗权限（每次进入设置页刷新一次）
+    LaunchedEffect(Unit) {
+        overlayPermGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
+            Settings.canDrawOverlays(context) else true
+    }
+
+    fun openOverlaySettings() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val i = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + context.packageName))
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(i)
+        }
+    }
 
     // ★ 一次性初始化：用 first() 读取 DataStore 真实值，避免 stateIn 初始空值导致的字段错乱
     LaunchedEffect(Unit) {
@@ -247,6 +271,45 @@ fun SettingsScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = com.autoskip.helper.ui.theme.HarmonyColor.Gray6
                     )
+                }
+            }
+
+            SectionLabelH("识别提示")
+
+            Card(
+                Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusCard),
+                colors = CardDefaults.cardColors(containerColor = com.autoskip.helper.ui.theme.HarmonyColor.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            ) {
+                Column(Modifier.padding(com.autoskip.helper.ui.theme.Dimens.SpaceM)) {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text("显示识别提示", fontWeight = FontWeight.Medium, fontSize = 15.sp,
+                                color = com.autoskip.helper.ui.theme.HarmonyColor.TextPrimary)
+                            Text("识别到弹窗/条件/控件时，在屏幕上方显示 2 秒提示",
+                                fontSize = 12.sp, color = com.autoskip.helper.ui.theme.HarmonyColor.Gray6)
+                        }
+                        Switch(
+                            checked = overlayToastOn && overlayPermGranted,
+                            onCheckedChange = { on ->
+                                if (on && !overlayPermGranted) {
+                                    openOverlaySettings()
+                                } else {
+                                    vm.setOverlayToastEnabled(on)
+                                }
+                            }
+                        )
+                    }
+                    if (!overlayPermGranted) {
+                        Spacer(Modifier.height(6.dp))
+                        Text("⚠ 需要悬浮窗权限，点击开关后去授权",
+                            fontSize = 12.sp, color = com.autoskip.helper.ui.theme.HarmonyColor.Warning)
+                    }
                 }
             }
 

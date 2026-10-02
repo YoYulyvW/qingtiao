@@ -49,6 +49,7 @@ class Prefs(private val context: Context) {
     private val KEY_PUSH_TOKEN = stringPreferencesKey("push_token")
     private val KEY_PUSH_INCLUDE_CLONE = booleanPreferencesKey("push_include_clone")
     private val KEY_LEARN_MODE = booleanPreferencesKey("learn_mode")
+    private val KEY_OVERLAY_TOAST = booleanPreferencesKey("overlay_toast")
 
     val enabled: Flow<Boolean> = context.dataStore.data.map { it[KEY_ENABLED] ?: true }
     val clickDelayMs: Flow<Long> = context.dataStore.data.map { (it[KEY_DELAY] ?: "600").toLongOrNull() ?: 600L }
@@ -167,6 +168,10 @@ class Prefs(private val context: Context) {
     /** 学习模式开关（持久化，重启恢复） */
     val learnMode: Flow<Boolean> = context.dataStore.data.map { it[KEY_LEARN_MODE] ?: false }
     suspend fun setLearnMode(v: Boolean) { context.dataStore.edit { it[KEY_LEARN_MODE] = v } }
+
+    /** 识别提示悬浮窗开关（默认关；需要悬浮窗权限） */
+    val overlayToastEnabled: Flow<Boolean> = context.dataStore.data.map { it[KEY_OVERLAY_TOAST] ?: false }
+    suspend fun setOverlayToastEnabled(v: Boolean) { context.dataStore.edit { it[KEY_OVERLAY_TOAST] = v } }
 
     suspend fun setDramaEnabled(v: Boolean) { context.dataStore.edit { it[KEY_DRAMA_ENABLED] = v } }
     suspend fun setDramaAutoMount(v: Boolean) { context.dataStore.edit { it[KEY_DRAMA_AUTO_MOUNT] = v } }

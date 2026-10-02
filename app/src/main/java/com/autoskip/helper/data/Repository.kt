@@ -86,6 +86,7 @@ class Repository(
     val dramaLongPress: Flow<Boolean> = prefs.dramaLongPress
     val dramaClickSpeed: Flow<Boolean> = prefs.dramaClickSpeed
     val learnMode: Flow<Boolean> = prefs.learnMode
+    val overlayToastEnabled: Flow<Boolean> = prefs.overlayToastEnabled
 
     suspend fun addRule(rule: RuleEntity): Long = ruleDao.insert(rule)
 
@@ -324,6 +325,7 @@ class Repository(
     }
     suspend fun setDramaClickSpeed(v: Boolean) = prefs.setDramaClickSpeed(v)
     suspend fun setLearnMode(v: Boolean) = prefs.setLearnMode(v)
+    suspend fun setOverlayToastEnabled(v: Boolean) = prefs.setOverlayToastEnabled(v)
 
     /**
      * v4 迁移：删除"倍速"类规则（1x/1.25x/1.5x/2x/3x 等），

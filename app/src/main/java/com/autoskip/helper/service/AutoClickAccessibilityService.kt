@@ -92,6 +92,9 @@ class AutoClickAccessibilityService : AccessibilityService() {
     /** 控件规则调试日志限频时间戳 */
     private var lastWidgetRuleLogTime = 0L
 
+    /** 识别提示悬浮窗开关（由 DataStore 同步） */
+    @Volatile private var overlayToastOn = false
+
     /** 短剧挂载控件 ID（fullId 后缀）。
      *  只保留 2go（"短剧"文字控件，text 必为"短剧"，最可靠）。
      *  n3i(图标) 和 4ef(剧名，text 常为 null) 都会误匹配，已移除。 */
@@ -207,6 +210,8 @@ class AutoClickAccessibilityService : AccessibilityService() {
         scope.launch { repo.dramaDebug.collect { DramaDebug.enabled = it } }
         scope.launch { repo.dramaImgInterval.collect { dramaImgInterval = it } }
         scope.launch { repo.dramaNormalInterval.collect { dramaNormalInterval = it } }
+        // ★ 识别提示悬浮窗开关
+        scope.launch { repo.overlayToastEnabled.collect { overlayToastOn = it } }
 
         // 启动短剧加速轮询（单线程节点调度器：与事件处理串行，避免并发遍历死锁）
         scope.launch(nodeDispatcher) { dramaLoop() }
@@ -755,20 +760,24 @@ class AutoClickAccessibilityService : AccessibilityService() {
             when (rule.actionType) {
                 com.autoskip.helper.data.WidgetAction.CLICK -> {
                     DramaDebug.add("控件规则[点击]: " + rule.remark)
+                    if (overlayToastOn) OverlayToast.show(this, "[控件] " + rule.remark + " → 点击")
                     clickNode(findClickableAncestor(node) ?: node)
                 }
                 com.autoskip.helper.data.WidgetAction.LONG_PRESS -> {
                     DramaDebug.add("控件规则[长按]: " + rule.remark)
+                    if (overlayToastOn) OverlayToast.show(this, "[控件] " + rule.remark + " → 长按")
                     val r = android.graphics.Rect()
                     node.getBoundsInScreen(r)
                     longPressAt(r.centerX().toFloat(), r.centerY().toFloat())
                 }
                 com.autoskip.helper.data.WidgetAction.BACK -> {
                     DramaDebug.add("控件规则[返回]: " + rule.remark)
+                    if (overlayToastOn) OverlayToast.show(this, "[控件] " + rule.remark + " → 返回")
                     mainHandler.post { performGlobalAction(GLOBAL_ACTION_BACK) }
                 }
                 com.autoskip.helper.data.WidgetAction.COORD -> {
                     DramaDebug.add("控件规则[坐标点击]: " + rule.remark + " (" + rule.coordX + "," + rule.coordY + ")")
+                    if (overlayToastOn) OverlayToast.show(this, "[控件] " + rule.remark + " → 坐标点击")
                     tapAt(rule.coordX.toFloat(), rule.coordY.toFloat())
                 }
             }
@@ -1273,6 +1282,16 @@ class AutoClickAccessibilityService : AccessibilityService() {
     private fun performCondAction(cond: CondMatchResult, pkg: String) {
         lastClickTime = System.currentTimeMillis()
         condRuleLastFire[cond.rule.id.toString()] = System.currentTimeMillis()   // ★ 记录冷却
+        // ★ 识别提示：条件规则命中
+        if (overlayToastOn) {
+            val desc = when (cond.actionType) {
+                com.autoskip.helper.data.CondAction.BACK -> "返回键"
+                com.autoskip.helper.data.CondAction.CLICK_TEXT -> "点"" + (cond.matchedText) + """
+                com.autoskip.helper.data.CondAction.CLICK_ICON -> "点图标X"
+                else -> "?"
+            }
+            OverlayToast.show(this, "[条件] " + cond.rule.name + " → " + desc)
+        }
         mainHandler.postDelayed({
             try {
                 when (cond.actionType) {
@@ -1320,6 +1339,8 @@ class AutoClickAccessibilityService : AccessibilityService() {
 
     private fun performClick(result: MatchResult, pkg: String) {
         lastClickTime = System.currentTimeMillis()
+        // ★ 识别提示：普通规则命中
+        if (overlayToastOn) OverlayToast.show(this, "[规则] 识别到"" + result.matchedText + "" → 点击")
         mainHandler.postDelayed({
             try {
                 val node = result.node
