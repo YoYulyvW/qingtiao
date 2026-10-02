@@ -24,9 +24,26 @@ class LicensePrefs(private val context: Context) {
     private val KEY_BASE = stringPreferencesKey("lic_base")           // 服务端地址
     private val KEY_DEVICE_NAME = stringPreferencesKey("lic_device_name")
     private val KEY_RULES_VERSION = stringPreferencesKey("lic_rules_version")
+    private val KEY_ENDPOINTS = stringPreferencesKey("lic_endpoints")       // 服务端下发的域名 JSON 数组
+    private val KEY_BEST_BASE = stringPreferencesKey("lic_best_base")       // 探测出的最优域名
+    private val KEY_BEST_PROBED_AT = stringPreferencesKey("lic_best_probed_at") // 上次探测时间戳
 
-    /** 服务端地址（固定内置，忽略历史残留，防止旧地址导致心跳失败） */
-    val baseUrl = context.licenseStore.data.map { DEFAULT_BASE }
+    /** 服务端地址（兼容旧代码：返回 bestBase 或 内置兜底） */
+    val baseUrl = context.licenseStore.data.map { prefs ->
+        prefs[KEY_BEST_BASE]?.takeIf { it.isNotBlank() } ?: BUILTIN_BASE
+    }
+
+    /** 服务端下发的候选域名列表（JSON 数组字符串） */
+    suspend fun getEndpointsJson(): String = context.licenseStore.data.map { it[KEY_ENDPOINTS] ?: "" }.first()
+    suspend fun setEndpointsJson(v: String) { context.licenseStore.edit { it[KEY_ENDPOINTS] = v } }
+
+    /** 探测出的最优域名（首次为空，用内置兜底） */
+    suspend fun getBestBase(): String = context.licenseStore.data.map { it[KEY_BEST_BASE] ?: "" }.first()
+    suspend fun setBestBase(v: String) { context.licenseStore.edit { it[KEY_BEST_BASE] = v } }
+
+    /** 上次探测时间戳 */
+    suspend fun getBestProbedAt(): Long = context.licenseStore.data.map { (it[KEY_BEST_PROBED_AT] ?: "0").toLongOrNull() ?: 0L }.first()
+    suspend fun setBestProbedAt(v: Long) { context.licenseStore.edit { it[KEY_BEST_PROBED_AT] = v.toString() } }
 
     /** 激活码 */
     suspend fun getCode(): String = context.licenseStore.data.map { it[KEY_CODE] ?: "" }.first()
@@ -66,7 +83,9 @@ class LicensePrefs(private val context: Context) {
     }
 
     companion object {
-        /** ★ 默认服务端地址（内置，UI 不展示） */
-        const val DEFAULT_BASE = "https://push.lyvw.eu.org"
+        /** ★ 内置兜底域名（CF Tunnel，永不过期） */
+        const val BUILTIN_BASE = "https://pybot.eu.org"
+        /** 兼容旧代码的别名 */
+        const val DEFAULT_BASE = BUILTIN_BASE
     }
 }

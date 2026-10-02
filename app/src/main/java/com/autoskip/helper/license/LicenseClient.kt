@@ -33,7 +33,9 @@ object LicenseClient {
         val expireAt: Long,
         val serverNow: Long,
         val features: Map<String, Boolean>,
-        val rulesVersion: Long = 0
+        val rulesVersion: Long = 0,
+        /** ★ 服务端下发的候选心跳域名（null=字段缺失，保留本地缓存；空数组=清空） */
+        val endpoints: List<String>? = null
     )
 
     /** 拉取规则结果（原始 JSON，交给 RuleSync 解析） */
@@ -73,7 +75,8 @@ object LicenseClient {
             val serverNow = parseLong(resp, "serverNow")
             val features = parseFeatures(resp)
             val rulesVersion = parseLong(resp, "rulesVersion")
-            CheckResult(ok, reason, expireAt, serverNow, features, rulesVersion)
+            val endpoints = parseEndpoints(resp)
+            CheckResult(ok, reason, expireAt, serverNow, features, rulesVersion, endpoints)
         }
 
     /** 拉取全量服务端规则 */
@@ -86,6 +89,57 @@ object LicenseClient {
             val version = parseLong(resp, "version")
             RulesResult(ok, version, resp)
         }
+
+    /**
+     * 解析 endpoints 数组：{"endpoints":["https://a","https://b"]}
+     * 返回 null 表示字段不存在（保留本地缓存）；返回空数组表示服务端明确清空。
+     */
+    private fun parseEndpoints(json: String): List<String>? {
+        val idx = json.indexOf("\"endpoints\"")
+        if (idx < 0) return null
+        val arrStart = json.indexOf('[', idx)
+        if (arrStart < 0) return null
+        val arrEnd = json.indexOf(']', arrStart)
+        if (arrEnd < 0) return null
+        val inner = json.substring(arrStart + 1, arrEnd).trim()
+        if (inner.isEmpty()) return emptyList()
+        val out = ArrayList<String>()
+        // 匹配 "..." （字符串项）
+        Regex("\"((?:[^\"\\\\]|\\\\.)*)\"").findAll(inner).forEach {
+            val s = unesc(it.groupValues[1]).trim()
+            if (s.startsWith("http://") || s.startsWith("https://")) out.add(s)
+        }
+        return out
+    }
+
+    /**
+     * 并发探测候选域名，返回延迟最低的。
+     * - 用 GET / 检测 200，超时 3 秒
+     * - 全部失败 → 返回第一个
+     */
+    suspend fun probeBest(candidates: List<String>): String = withContext(Dispatchers.IO) {
+        val list = candidates.map { it.trim().trimEnd('/') }.filter { it.isNotBlank() }.distinct()
+        if (list.isEmpty()) return@withContext ""
+        val results = list.map { url ->
+            kotlinx.coroutines.async(Dispatchers.IO) {
+                val t0 = System.currentTimeMillis()
+                val ok = try {
+                    val conn = (URL("$url/").openConnection() as HttpURLConnection).apply {
+                        requestMethod = "GET"
+                        connectTimeout = 3000
+                        readTimeout = 3000
+                    }
+                    val code = conn.responseCode
+                    try { conn.disconnect() } catch (_: Exception) {}
+                    code == 200
+                } catch (e: Exception) { false }
+                url to if (ok) (System.currentTimeMillis() - t0) else -1L
+            }
+        }.map { it.await() }
+        val okList = results.filter { it.second >= 0 }
+        Log.i(TAG, "probe: " + results.joinToString { it.first + "=" + it.second + "ms" })
+        okList.minByOrNull { it.second }?.first ?: list.first()
+    }
 
     private fun post(url: String, body: String): String? {
         var conn: HttpURLConnection? = null

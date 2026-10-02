@@ -18,6 +18,10 @@ import kotlinx.coroutines.launch
 object LicenseManager {
     private const val TAG = "LicenseManager"
     private const val CHECK_INTERVAL = 60_000L
+    /** 探测缓存有效期（24 小时） */
+    private const val PROBE_CACHE_MS = 24 * 3600_000L
+    /** 连续网络失败次数（触发重探） */
+    @Volatile private var hbFailCount = 0
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var started = false
@@ -49,7 +53,10 @@ object LicenseManager {
                 // 无缓存 = 从未激活 → 明确进入未激活态，显示激活页
                 FeatureGate.lockImmediately()
             }
-            // ② 起心跳循环
+            // ★ ② 探测最优域名（24 小时缓存有效则跳过）
+            runCatching { ensureBestBase(p) }
+            // ③ 起心跳循环（首次加随机抖动 0-60s，避免 80 台设备同时打）
+            delay((0..60_000L).random())
             while (true) {
                 heartBeat(app, p)
                 delay(CHECK_INTERVAL)
@@ -63,6 +70,45 @@ object LicenseManager {
         scope.launch { heartBeat(app, LicensePrefs(app)) }
     }
 
+    /**
+     * 探测最优域名：
+     * - 24 小时内已探测过且缓存有效 → 跳过
+     * - 候选 = [内置兜底] ∪ [本地缓存的 endpoints]
+     * - 选出延迟最低的写入 bestBase
+     */
+    private suspend fun ensureBestBase(p: LicensePrefs) {
+        val cached = p.getBestBase()
+        val probedAt = p.getBestProbedAt()
+        val fresh = cached.isNotBlank() &&
+            (System.currentTimeMillis() - probedAt < PROBE_CACHE_MS)
+        if (fresh) {
+            Log.i(TAG, "沿用缓存的 bestBase=" + cached)
+            return
+        }
+        val candidates = buildCandidates(p)
+        val best = LicenseClient.probeBest(candidates)
+        if (best.isNotBlank()) {
+            p.setBestBase(best)
+            p.setBestProbedAt(System.currentTimeMillis())
+            Log.i(TAG, "探测完成，bestBase=" + best)
+        }
+    }
+
+    /** 构造候选域名列表：内置兜底 + 服务端下发的 endpoints（去重） */
+    private suspend fun buildCandidates(p: LicensePrefs): List<String> {
+        val out = ArrayList<String>()
+        out.add(LicensePrefs.BUILTIN_BASE)
+        val json = p.getEndpointsJson()
+        if (json.isNotBlank()) {
+            // 简单解析：["https://a","https://b"]
+            Regex("\"((?:[^\"\\\\]|\\\\.)*)\"").findAll(json).forEach {
+                val s = it.groupValues[1].trim()
+                if ((s.startsWith("http://") || s.startsWith("https://")) && s !in out) out.add(s)
+            }
+        }
+        return out
+    }
+
     private suspend fun heartBeat(ctx: Context, p: LicensePrefs) {
         // 互斥：上一次心跳没跑完就跳过本次
         if (!heartBeatLock.compareAndSet(false, true)) return
@@ -71,6 +117,30 @@ object LicenseManager {
             val deviceId = deviceId(ctx)
             if (deviceId.isBlank()) return
             val resp = LicenseClient.check(base, deviceId)
+            // ★ 网络失败计数：连续 3 次 → 重探
+            if (resp.reason == "network") {
+                hbFailCount++
+                if (hbFailCount >= 3) {
+                    hbFailCount = 0
+                    Log.w(TAG, "连续 3 次网络失败，触发重探")
+                    runCatching { ensureBestBase(p) }
+                }
+                FeatureGate.onNetworkError()
+                return
+            } else {
+                hbFailCount = 0
+            }
+            // ★ 处理服务端下发的 endpoints（null=保留旧缓存，[]=清空）
+            resp.endpoints?.let { list ->
+                val json = list.joinToString(",", "[", "]") { "\"" + it + "\"" }
+                p.setEndpointsJson(json)
+                Log.i(TAG, "更新 endpoints: " + list.size + " 个")
+                // 若当前 bestBase 不在新列表中且不是内置 → 立即重探
+                val cur = p.getBestBase()
+                if (cur.isNotBlank() && cur != LicensePrefs.BUILTIN_BASE && cur !in list) {
+                    runCatching { ensureBestBase(p) }
+                }
+            }
             if (resp.ok) {
                 FeatureGate.updateFeatures(resp.features, resp.expireAt, resp.serverNow)
                 p.setFeaturesJson(toJson(resp.features))
