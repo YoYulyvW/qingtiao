@@ -160,7 +160,7 @@ class Repository(
                 hasText = "登录",
                 andText = "自动注册|+86",
                 actionType = CondAction.BACK,
-                delaySec = 0
+                delaySec = 2
             ),
             CondRuleEntity(
                 name = "登录+自动注册/帮助→返回",
@@ -181,19 +181,40 @@ class Repository(
                 hasText = "关注",
                 andText = "作品|粉丝",
                 actionType = CondAction.BACK,
-                delaySec = 0
+                delaySec = 2
             ),
             CondRuleEntity(
                 name = "关注+刚刚看过→返回",
                 hasText = "关注",
                 andText = "刚刚看过",
                 actionType = CondAction.BACK,
-                delaySec = 0
+                delaySec = 3
             )
         )
         defaults.forEach { r ->
             if (r.name !in existing) condRuleDao.insert(r)
         }
+    }
+
+    /**
+     * 条件规则 delaySec 覆盖迁移 v1：
+     * 用最新默认延时覆盖同名内置规则的 delaySec（用户手动改过的名字不同则不动）。
+     * 目标：把 3 条内置规则的延时从旧值更新到新值。
+     */
+    suspend fun migrateCondDelayV1IfNeeded() {
+        if (prefs.migratedCondDelayV1.first()) return
+        val overrides = mapOf(
+            "登录+自动注册/+86→返回" to 2,
+            "关注+作品/粉丝→返回" to 2,
+            "关注+刚刚看过→返回" to 3
+        )
+        condRuleDao.all().forEach { r ->
+            val newDelay = overrides[r.name] ?: return@forEach
+            if (r.delaySec != newDelay) {
+                condRuleDao.update(r.copy(delaySec = newDelay))
+            }
+        }
+        prefs.markMigratedCondDelayV1()
     }
 
     /**

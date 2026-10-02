@@ -30,6 +30,7 @@ class App : Application() {
             runCatching { repo.seedWhitelistIfNeeded() }
             runCatching { repo.migrateCondRulesV1() }
             runCatching { repo.seedCondRulesIfNeeded() }
+            runCatching { repo.migrateCondDelayV1IfNeeded() }
             runCatching { seedDefaultRulesIfEmptyInternal() }
         }
         // ★ 启动授权（先加载缓存，再起心跳）

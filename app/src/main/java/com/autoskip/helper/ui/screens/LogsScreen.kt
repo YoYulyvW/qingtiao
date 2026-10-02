@@ -40,7 +40,8 @@ fun LogsScreen(vm: MainViewModel) {
     LazyColumn(
         Modifier.fillMaxSize().background(HarmonyColor.GrayBG)
             .padding(horizontal = Dimens.SpaceL)
-            .padding(top = Dimens.SpaceM, bottom = Dimens.SpaceXXXL),
+            .padding(top = Dimens.SpaceM),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 96.dp),
         verticalArrangement = Arrangement.spacedBy(Dimens.SpaceS)
     ) {
         item {
