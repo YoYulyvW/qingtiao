@@ -13,10 +13,24 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Shield
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -26,6 +40,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.autoskip.helper.fenshen.FenShenScreen
 import com.autoskip.helper.license.FeatureGate
 import com.autoskip.helper.ui.screens.ActivateScreen
@@ -105,42 +121,46 @@ private fun AppRoot(vm: MainViewModel) {
 
     Scaffold(
         bottomBar = {
-            NavigationBar {
-                NavigationBarItem(
-                    selected = tab == 0,
-                    onClick = { tab = 0 },
-                    icon = { Icon(Icons.Filled.Home, contentDescription = null) },
-                    label = { Text("首页") }
+            // HyperOS 风格底部导航
+            NavigationBar(
+                containerColor = com.autoskip.helper.ui.theme.HyperColor.White,
+                tonalElevation = 0.dp
+            ) {
+                val tabs = listOf(
+                    Triple(0, Icons.Filled.Home, "首页"),
+                    Triple(1, Icons.Filled.Edit, "规则"),
+                    Triple(2, Icons.Filled.Shield, "白名单"),
+                    Triple(3, Icons.Filled.List, "记录"),
+                    Triple(4, Icons.Filled.Settings, "设置")
                 )
-                NavigationBarItem(
-                    selected = tab == 1,
-                    onClick = { tab = 1 },
-                    icon = { Icon(Icons.Filled.Edit, contentDescription = null) },
-                    label = { Text("规则") }
-                )
-                NavigationBarItem(
-                    selected = tab == 2,
-                    onClick = { tab = 2 },
-                    icon = { Icon(Icons.Filled.Shield, contentDescription = null) },
-                    label = { Text("白名单") }
-                )
-                NavigationBarItem(
-                    selected = tab == 3,
-                    onClick = { tab = 3 },
-                    icon = { Icon(Icons.Filled.List, contentDescription = null) },
-                    label = { Text("记录") }
-                )
-                NavigationBarItem(
-                    selected = tab == 4,
-                    onClick = { tab = 4 },
-                    icon = { Icon(Icons.Filled.Settings, contentDescription = null) },
-                    label = { Text("设置") }
-                )
+                tabs.forEach { (idx, icon, label) ->
+                    NavigationBarItem(
+                        selected = tab == idx,
+                        onClick = { tab = idx },
+                        icon = { Icon(icon, contentDescription = label) },
+                        label = { Text(label, fontSize = 10.sp) },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = com.autoskip.helper.ui.theme.HyperColor.BrandOrange,
+                            selectedTextColor = com.autoskip.helper.ui.theme.HyperColor.BrandOrange,
+                            unselectedIconColor = com.autoskip.helper.ui.theme.HyperColor.Gray4,
+                            unselectedTextColor = com.autoskip.helper.ui.theme.HyperColor.Gray4,
+                            indicatorColor = com.autoskip.helper.ui.theme.HyperColor.IconOrangeBg
+                        )
+                    )
+                }
             }
         }
     ) { padding ->
         Box(Modifier.padding(padding)) {
-            when (tab) {
+            // 页面切换淡入淡出动画（HyperOS 标准转场 250ms）
+            AnimatedContent(
+                targetState = tab,
+                transitionSpec = {
+                    fadeIn(tween(250)) togetherWith fadeOut(tween(200))
+                },
+                label = "tabContent"
+            ) { currentTab ->
+            when (currentTab) {
                 0 -> HomeScreen(vm)
                 1 -> RulesScreen(vm, onOpenCondRules = { showCondRules = true }, onOpenWidgetRules = { showWidgetRules = true })
                 2 -> WhitelistScreen(vm)
@@ -151,6 +171,7 @@ private fun AppRoot(vm: MainViewModel) {
                     onOpenDrama = { showDrama = true },
                     onOpenFenShen = { showFenShen = true }
                 )
+            }
             }
         }
     }
