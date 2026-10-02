@@ -1286,7 +1286,7 @@ class AutoClickAccessibilityService : AccessibilityService() {
         if (overlayToastOn) {
             val desc = when (cond.actionType) {
                 com.autoskip.helper.data.CondAction.BACK -> "返回键"
-                com.autoskip.helper.data.CondAction.CLICK_TEXT -> "点"" + (cond.matchedText) + """
+                com.autoskip.helper.data.CondAction.CLICK_TEXT -> "点\"" + cond.matchedText + "\""
                 com.autoskip.helper.data.CondAction.CLICK_ICON -> "点图标X"
                 else -> "?"
             }
@@ -1340,7 +1340,7 @@ class AutoClickAccessibilityService : AccessibilityService() {
     private fun performClick(result: MatchResult, pkg: String) {
         lastClickTime = System.currentTimeMillis()
         // ★ 识别提示：普通规则命中
-        if (overlayToastOn) OverlayToast.show(this, "[规则] 识别到"" + result.matchedText + "" → 点击")
+        if (overlayToastOn) OverlayToast.show(this, "[规则] 识别到\"" + result.matchedText + "\" → 点击")
         mainHandler.postDelayed({
             try {
                 val node = result.node
