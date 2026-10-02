@@ -24,6 +24,7 @@ class Prefs(private val context: Context) {
     private val KEY_MIGRATED_V4 = booleanPreferencesKey("migrated_v4")
     private val KEY_MIGRATED_COND_V1 = booleanPreferencesKey("migrated_cond_v1")
     private val KEY_MIGRATED_COND_DELAY_V1 = booleanPreferencesKey("migrated_cond_delay_v1")
+    private val KEY_RULE_SEEDED = booleanPreferencesKey("rule_seeded_v1")
     private val KEY_COND_DRAMA_ONLY = booleanPreferencesKey("cond_drama_only")
     // 短剧自动3倍速
     private val KEY_DRAMA_ENABLED = booleanPreferencesKey("drama_enabled")
@@ -92,6 +93,10 @@ class Prefs(private val context: Context) {
     suspend fun markMigratedCondV1() { context.dataStore.edit { it[KEY_MIGRATED_COND_V1] = true } }
     val migratedCondDelayV1: Flow<Boolean> = context.dataStore.data.map { it[KEY_MIGRATED_COND_DELAY_V1] ?: false }
     suspend fun markMigratedCondDelayV1() { context.dataStore.edit { it[KEY_MIGRATED_COND_DELAY_V1] = true } }
+
+    /** 内置规则是否已 seed 过（只做一次，避免云端删除后被重新 seed） */
+    val ruleSeeded: Flow<Boolean> = context.dataStore.data.map { it[KEY_RULE_SEEDED] ?: false }
+    suspend fun markRuleSeeded() { context.dataStore.edit { it[KEY_RULE_SEEDED] = true } }
 
     /** 条件规则仅在抖音/白名单内生效（默认开，避免其他界面误触） */
     val condDramaOnly: Flow<Boolean> = context.dataStore.data.map { it[KEY_COND_DRAMA_ONLY] ?: true }

@@ -29,6 +29,15 @@ object RuleSync {
         return if (v.isBlank() || v == "null") null else v
     }
 
+    /** 去重 key：普通规则 = text + packageName */
+    private fun ruleKey(text: String, pkg: String) = text + "\u0001" + pkg
+    /** 去重 key：条件规则 = hasText + andText + actionType + actionText */
+    private fun condKey(hasText: String, andText: String, actionType: String, actionText: String) =
+        hasText + "\u0001" + andText + "\u0001" + actionType + "\u0001" + actionText
+    /** 去重 key：控件规则 = widgetId + matchText + actionType */
+    private fun widgetKey(widgetId: String, matchText: String, actionType: String) =
+        widgetId + "\u0001" + matchText + "\u0001" + actionType
+
     /**
      * 全量同步。
      * @return 成功与否
@@ -55,6 +64,15 @@ object RuleSync {
         val toInsertConds = ArrayList<CondRuleEntity>()
         val toInsertWidgets = ArrayList<WidgetRuleEntity>()
 
+        // 本地全部规则（用于内容去重）
+        val localRules = repo.allRulesForDedup()
+        val localConds = repo.allCondsForDedup()
+        val localWidgets = repo.allWidgetsForDedup()
+        // 等价 key 集合
+        val localRuleKeys = localRules.map { ruleKey(it.text, it.packageName ?: "") }.toHashSet()
+        val localCondKeys = localConds.map { condKey(it.hasText, it.andText ?: "", it.actionType, it.actionText ?: "") }.toHashSet()
+        val localWidgetKeys = localWidgets.map { widgetKey(it.widgetId, it.matchText ?: "", it.actionType) }.toHashSet()
+
         val arr = try {
             JSONObject(res.rawJson).optJSONArray("rules") ?: JSONArray()
         } catch (e: Exception) {
@@ -77,15 +95,24 @@ object RuleSync {
                 "rule" -> {
                     val existing = repo.getServerRuleByServerId("rule", serverId) as? RuleEntity
                     if (existing != null && existing.source == "user") continue  // 本地改过，优先
+                    val text = content.optStr("text") ?: ""
+                    val pkg = content.optStr("packageName")
+                    // ★ 新增（本地无此 serverId）时做内容去重
+                    if (existing == null) {
+                        val k = ruleKey(text, pkg ?: "")
+                        if (k in localRuleKeys) continue   // 已有等价规则 → 跳过
+                        localRuleKeys.add(k)
+                    }
                     toInsertRules.add(
                         RuleEntity(
                             id = existing?.id ?: 0,
-                            name = content.optStr("name") ?: content.optStr("text") ?: "",
-                            text = content.optStr("text") ?: "",
+                            name = content.optStr("name") ?: text,
+                            text = text,
                             viewId = content.optStr("viewId"),
-                            packageName = content.optStr("packageName"),
+                            packageName = pkg,
                             exact = content.optBoolean("exact", false),
-                            enabled = enabled,
+                            // ★ 保留本地 enabled（已存在时）；新增用云端
+                            enabled = existing?.enabled ?: enabled,
                             learned = false,
                             serverId = serverId,
                             source = "server"
@@ -95,16 +122,26 @@ object RuleSync {
                 "cond" -> {
                     val existing = repo.getServerRuleByServerId("cond", serverId) as? CondRuleEntity
                     if (existing != null && existing.source == "user") continue
+                    val hasText = content.optStr("hasText") ?: ""
+                    val andText = content.optStr("andText")
+                    val actionType = content.optStr("actionType") ?: "CLICK_ICON"
+                    val actionText = content.optStr("actionText")
+                    if (existing == null) {
+                        val k = condKey(hasText, andText ?: "", actionType, actionText ?: "")
+                        if (k in localCondKeys) continue
+                        localCondKeys.add(k)
+                    }
                     toInsertConds.add(
                         CondRuleEntity(
                             id = existing?.id ?: 0,
                             name = content.optStr("name") ?: "",
-                            hasText = content.optStr("hasText") ?: "",
-                            andText = content.optStr("andText"),
-                            actionType = content.optStr("actionType") ?: "CLICK_ICON",
-                            actionText = content.optStr("actionText"),
+                            hasText = hasText,
+                            andText = andText,
+                            actionType = actionType,
+                            actionText = actionText,
                             packageName = content.optStr("packageName"),
-                            enabled = enabled,
+                            // ★ 保留本地 enabled
+                            enabled = existing?.enabled ?: enabled,
                             delaySec = content.optInt("delaySec", 3),
                             serverId = serverId,
                             source = "server"
@@ -114,17 +151,26 @@ object RuleSync {
                 "widget" -> {
                     val existing = repo.getServerRuleByServerId("widget", serverId) as? WidgetRuleEntity
                     if (existing != null && existing.source == "user") continue
+                    val widgetId = content.optStr("widgetId") ?: ""
+                    val matchText = content.optStr("matchText")
+                    val actionType = content.optStr("actionType") ?: "CLICK"
+                    if (existing == null) {
+                        val k = widgetKey(widgetId, matchText ?: "", actionType)
+                        if (k in localWidgetKeys) continue
+                        localWidgetKeys.add(k)
+                    }
                     toInsertWidgets.add(
                         WidgetRuleEntity(
                             id = existing?.id ?: 0,
                             remark = content.optStr("remark") ?: "",
-                            widgetId = content.optStr("widgetId") ?: "",
-                            matchText = content.optStr("matchText"),
-                            actionType = content.optStr("actionType") ?: "CLICK",
+                            widgetId = widgetId,
+                            matchText = matchText,
+                            actionType = actionType,
                             coordX = content.optInt("coordX", 0),
                             coordY = content.optInt("coordY", 0),
                             packageName = content.optStr("packageName"),
-                            enabled = enabled,
+                            // ★ 保留本地 enabled
+                            enabled = existing?.enabled ?: enabled,
                             serverId = serverId,
                             source = "server"
                         )

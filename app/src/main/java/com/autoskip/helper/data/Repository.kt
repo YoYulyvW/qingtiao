@@ -17,6 +17,11 @@ class Repository(
     /** 供 RuleSync 做事务 */
     fun database(): AppDatabase = db
 
+    // ===== 去重用查询（RuleSync 用）=====
+    suspend fun allRulesForDedup(): List<RuleEntity> = ruleDao.all()
+    suspend fun allCondsForDedup(): List<CondRuleEntity> = condRuleDao.all()
+    suspend fun allWidgetsForDedup(): List<WidgetRuleEntity> = widgetRuleDao.all()
+
     /**
      * 规则同步（事务）：全量替换服务端规则。
      * 由 RuleSync 计算好"要保留的 serverId 集合 + 要插入/更新的规则"后调用。
@@ -146,53 +151,69 @@ class Repository(
     suspend fun enabledRules(): List<RuleEntity> = ruleDao.enabledRules()
 
     /**
-     * 首次启动预置内置条件规则（逐条判重，避免重复）。
+     * 首次启动预置内置条件规则（固定 serverId 2001-2005）。
+     * ★ 只做一次（标记位 ruleSeeded），避免云端删除后被重新 seed。
+     * ★ 使用固定 serverId，便于云端同 ID 覆盖。
      */
     suspend fun seedCondRulesIfNeeded() {
+        if (prefs.ruleSeeded.first()) return
         // 清理历史错误命名的内置规则（"分享到日常" → "转发到日常"）
         condRuleDao.all().forEach { r ->
             if (r.name == "推荐+分享到日常/举报→返回") condRuleDao.delete(r)
         }
-        val existing = condRuleDao.all().map { it.name }.toSet()
+        val existingByName = condRuleDao.all().map { it.name }.toSet()
+        val existingIds = condRuleDao.all().mapNotNull { it.serverId }.toSet()
         val defaults = listOf(
             CondRuleEntity(
+                serverId = 2001L,
                 name = "登录+自动注册/+86→返回",
                 hasText = "登录",
                 andText = "自动注册|+86",
                 actionType = CondAction.BACK,
-                delaySec = 2
+                delaySec = 2,
+                source = "server"
             ),
             CondRuleEntity(
+                serverId = 2002L,
                 name = "登录+自动注册/帮助→返回",
                 hasText = "登录",
                 andText = "自动注册|帮助",
                 actionType = CondAction.BACK,
-                delaySec = 3
+                delaySec = 3,
+                source = "server"
             ),
             CondRuleEntity(
+                serverId = 2003L,
                 name = "推荐+转发到日常/举报→返回",
                 hasText = "推荐",
                 andText = "转发到日常|举报",
                 actionType = CondAction.BACK,
-                delaySec = 3
+                delaySec = 3,
+                source = "server"
             ),
             CondRuleEntity(
+                serverId = 2004L,
                 name = "关注+作品/粉丝→返回",
                 hasText = "关注",
                 andText = "作品|粉丝",
                 actionType = CondAction.BACK,
-                delaySec = 2
+                delaySec = 2,
+                source = "server"
             ),
             CondRuleEntity(
+                serverId = 2005L,
                 name = "关注+刚刚看过→返回",
                 hasText = "关注",
                 andText = "刚刚看过",
                 actionType = CondAction.BACK,
-                delaySec = 3
+                delaySec = 3,
+                source = "server"
             )
         )
         defaults.forEach { r ->
-            if (r.name !in existing) condRuleDao.insert(r)
+            if (r.name !in existingByName && r.serverId !in existingIds) {
+                condRuleDao.insert(r)
+            }
         }
     }
 

@@ -152,6 +152,8 @@ class AutoClickAccessibilityService : AccessibilityService() {
 
     /** 条件规则冷却：规则id -> 上次执行时间。防返回键后页面动画期间被重复触发。 */
     private val condRuleLastFire = java.util.concurrent.ConcurrentHashMap<String, Long>()
+    /** 条件规则"等价内容"最近执行时间（防两条等价规则并发触发同一动作） */
+    private val condContentLastFire = java.util.concurrent.ConcurrentHashMap<String, Long>()
     private val COND_FIRE_COOLDOWN = 2500L
 
     // ===== 呼出间隔配置 =====
@@ -1282,8 +1284,18 @@ class AutoClickAccessibilityService : AccessibilityService() {
 
     /** 执行条件规则的动作 */
     private fun performCondAction(cond: CondMatchResult, pkg: String) {
-        lastClickTime = System.currentTimeMillis()
-        condRuleLastFire[cond.rule.id.toString()] = System.currentTimeMillis()   // ★ 记录冷却
+        // ★ 等价内容去重：1 秒内相同内容（hasText+andText+actionType+actionText）只执行一次
+        val contentKey = cond.rule.hasText + "\u0001" + (cond.rule.andText ?: "") +
+            "\u0001" + cond.rule.actionType + "\u0001" + (cond.rule.actionText ?: "")
+        val nowMs = System.currentTimeMillis()
+        val lastByContent = condContentLastFire[contentKey] ?: 0L
+        if (nowMs - lastByContent < 1000L) {
+            DramaDebug.add("等价规则 1 秒内已执行，跳过：" + cond.rule.name)
+            return
+        }
+        condContentLastFire[contentKey] = nowMs
+        lastClickTime = nowMs
+        condRuleLastFire[cond.rule.id.toString()] = nowMs   // ★ 记录冷却
         // ★ 识别提示：条件规则命中
         if (overlayToastOn) {
             val desc = when (cond.actionType) {
