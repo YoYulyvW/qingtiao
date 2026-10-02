@@ -73,13 +73,12 @@ fun WhitelistScreen(vm: MainViewModel) {
     Column(Modifier.fillMaxSize().background(com.autoskip.helper.ui.theme.HarmonyColor.GrayBG)) {
         // 顶部：总开关 + 说明
         Card(
-            Modifier.fillMaxWidth().padding(16.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = if (wlEnabled) MaterialTheme.colorScheme.surfaceVariant
-                else MaterialTheme.colorScheme.surface
-            )
+            Modifier.fillMaxWidth().padding(com.autoskip.helper.ui.theme.Dimens.SpaceL),
+            shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusCard),
+            colors = CardDefaults.cardColors(containerColor = com.autoskip.helper.ui.theme.HarmonyColor.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
         ) {
-            Column(Modifier.padding(16.dp)) {
+            Column(Modifier.padding(com.autoskip.helper.ui.theme.Dimens.SpaceM)) {
                 Row(
                     Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -106,7 +105,7 @@ fun WhitelistScreen(vm: MainViewModel) {
 
         // 通配规则区：展示所有含 * 的规则 + 自定义添加
         Card(
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            Modifier.fillMaxWidth().padding(horizontal = com.autoskip.helper.ui.theme.Dimens.SpaceL),
             shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusCard),
             colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = com.autoskip.helper.ui.theme.HarmonyColor.White),
             elevation = androidx.compose.material3.CardDefaults.cardElevation(defaultElevation = 1.dp)
@@ -164,7 +163,8 @@ fun WhitelistScreen(vm: MainViewModel) {
             onValueChange = { query = it },
             label = { Text("搜索应用名 / 包名") },
             singleLine = true,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+            modifier = Modifier.fillMaxWidth().padding(horizontal = com.autoskip.helper.ui.theme.Dimens.SpaceL),
+            shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusInput)
         )
         Spacer(Modifier.height(8.dp))
 

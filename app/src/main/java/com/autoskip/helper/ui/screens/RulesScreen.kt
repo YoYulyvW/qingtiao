@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -63,55 +64,63 @@ fun RulesScreen(vm: MainViewModel, onOpenCondRules: () -> Unit = {}, onOpenWidge
             }
             item {
                 Card(
-                    Modifier
-                        .fillMaxWidth()
-                        .clickable { onOpenCondRules() },
+                    Modifier.fillMaxWidth().clickable { onOpenCondRules() },
+                    shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusCard),
                     colors = androidx.compose.material3.CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.tertiaryContainer
-                    )
+                        containerColor = com.autoskip.helper.ui.theme.HarmonyColor.White
+                    ),
+                    elevation = androidx.compose.material3.CardDefaults.cardElevation(defaultElevation = 1.dp)
                 ) {
                     Row(
-                        Modifier.fillMaxWidth().padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        Modifier.fillMaxWidth().padding(com.autoskip.helper.ui.theme.Dimens.SpaceM),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
+                        androidx.compose.foundation.layout.Box(
+                            Modifier.size(40.dp)
+                                .background(com.autoskip.helper.ui.theme.HarmonyColor.IconOrangeBg, RoundedCornerShape(12.dp)),
+                            contentAlignment = Alignment.Center
+                        ) { Text("⚡", fontSize = 20.sp) }
+                        Spacer(Modifier.width(com.autoskip.helper.ui.theme.Dimens.SpaceM))
                         Column(Modifier.weight(1f)) {
-                            Text("条件规则", fontWeight = FontWeight.Bold)
+                            Text("条件规则", fontWeight = FontWeight.Medium, fontSize = 15.sp, color = com.autoskip.helper.ui.theme.HarmonyColor.TextPrimary)
                             Text(
-                                "有 X 且 Y → 执行动作（点文字/点图标X/返回键）",
-                                style = MaterialTheme.typography.bodySmall
+                                "有 X 且 Y → 执行动作",
+                                fontSize = 12.sp, color = com.autoskip.helper.ui.theme.HarmonyColor.Gray6
                             )
                         }
-                        Text("›", style = MaterialTheme.typography.headlineSmall)
+                        Text("›", fontSize = 18.sp, color = com.autoskip.helper.ui.theme.HarmonyColor.Gray4)
                     }
                 }
-                Spacer(Modifier.height(4.dp))
             }
             item {
                 Card(
-                    Modifier
-                        .fillMaxWidth()
-                        .clickable { onOpenWidgetRules() },
+                    Modifier.fillMaxWidth().clickable { onOpenWidgetRules() },
+                    shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusCard),
                     colors = androidx.compose.material3.CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer
-                    )
+                        containerColor = com.autoskip.helper.ui.theme.HarmonyColor.White
+                    ),
+                    elevation = androidx.compose.material3.CardDefaults.cardElevation(defaultElevation = 1.dp)
                 ) {
                     Row(
-                        Modifier.fillMaxWidth().padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        Modifier.fillMaxWidth().padding(com.autoskip.helper.ui.theme.Dimens.SpaceM),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
+                        androidx.compose.foundation.layout.Box(
+                            Modifier.size(40.dp)
+                                .background(com.autoskip.helper.ui.theme.HarmonyColor.IconPurpleBg, RoundedCornerShape(12.dp)),
+                            contentAlignment = Alignment.Center
+                        ) { Text("🎯", fontSize = 20.sp) }
+                        Spacer(Modifier.width(com.autoskip.helper.ui.theme.Dimens.SpaceM))
                         Column(Modifier.weight(1f)) {
-                            Text("控件规则", fontWeight = FontWeight.Bold)
+                            Text("控件规则", fontWeight = FontWeight.Medium, fontSize = 15.sp, color = com.autoskip.helper.ui.theme.HarmonyColor.TextPrimary)
                             Text(
-                                "按控件 ID 定位 → 点击/长按/返回/坐标（最精准）",
-                                style = MaterialTheme.typography.bodySmall
+                                "按控件 ID 精准定位",
+                                fontSize = 12.sp, color = com.autoskip.helper.ui.theme.HarmonyColor.Gray6
                             )
                         }
-                        Text("›", style = MaterialTheme.typography.headlineSmall)
+                        Text("›", fontSize = 18.sp, color = com.autoskip.helper.ui.theme.HarmonyColor.Gray4)
                     }
                 }
-                Spacer(Modifier.height(4.dp))
             }
             if (rules.isEmpty()) {
                 item { Text("暂无规则，点右下角 + 添加，或使用首页的学习模式。") }

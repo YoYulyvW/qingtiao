@@ -154,13 +154,13 @@ fun FenShenScreen(onBack: () -> Unit, vm: FenShenViewModel = viewModel()) {
         },
         bottomBar = {
             // 开始/终止按钮常驻底部
-            Surface(shadowElevation = 8.dp) {
-                Box(Modifier.fillMaxWidth().padding(16.dp)) {
+            Surface(color = com.autoskip.helper.ui.theme.HarmonyColor.White, shadowElevation = 8.dp) {
+                Box(Modifier.fillMaxWidth().padding(com.autoskip.helper.ui.theme.Dimens.SpaceL)) {
                     if (state.running) {
                         Button(
                             onClick = { vm.stop() },
                             modifier = Modifier.fillMaxWidth().height(52.dp),
-                            shape = RoundedCornerShape(14.dp),
+                            shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusSmall),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.error
                             )
@@ -174,7 +174,7 @@ fun FenShenScreen(onBack: () -> Unit, vm: FenShenViewModel = viewModel()) {
                             onClick = { vm.start(buildConfig()) { vm.requestOverlayPermission() } },
                             enabled = serviceOn,
                             modifier = Modifier.fillMaxWidth().height(52.dp),
-                            shape = RoundedCornerShape(14.dp)
+                            shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusSmall)
                         ) {
                             Icon(Icons.Filled.PlayArrow, contentDescription = null)
                             Spacer(Modifier.width(8.dp))
@@ -196,14 +196,15 @@ fun FenShenScreen(onBack: () -> Unit, vm: FenShenViewModel = viewModel()) {
             // 权限状态卡
             Card(
                 Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusCard),
                 colors = CardDefaults.cardColors(
                     containerColor = if (serviceOn && overlayOn)
-                        MaterialTheme.colorScheme.primaryContainer
-                    else MaterialTheme.colorScheme.errorContainer
-                )
+                        com.autoskip.helper.ui.theme.HarmonyColor.StatusOKBg
+                    else com.autoskip.helper.ui.theme.HarmonyColor.StatusWarnBg
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
-                Column(Modifier.padding(16.dp)) {
+                Column(Modifier.padding(com.autoskip.helper.ui.theme.Dimens.SpaceM)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             if (serviceOn && overlayOn) Icons.Filled.CheckCircle else Icons.Filled.Warning,
@@ -242,9 +243,11 @@ fun FenShenScreen(onBack: () -> Unit, vm: FenShenViewModel = viewModel()) {
             if (state.running || state.currentIndex > 0) {
                 Card(
                     Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp)
+                    shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusCard),
+                    colors = CardDefaults.cardColors(containerColor = com.autoskip.helper.ui.theme.HarmonyColor.White),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                 ) {
-                    Column(Modifier.padding(16.dp)) {
+                    Column(Modifier.padding(com.autoskip.helper.ui.theme.Dimens.SpaceM)) {
                         Text(state.statusText, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(6.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -277,7 +280,7 @@ fun FenShenScreen(onBack: () -> Unit, vm: FenShenViewModel = viewModel()) {
                     enabled = !useStopIndex,
                     singleLine = true,
                     modifier = Modifier.weight(1.6f),
-                    shape = RoundedCornerShape(10.dp),
+                    shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusInput),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
             }
@@ -293,7 +296,7 @@ fun FenShenScreen(onBack: () -> Unit, vm: FenShenViewModel = viewModel()) {
                     enabled = useStopIndex,
                     singleLine = true,
                     modifier = Modifier.weight(1.6f),
-                    shape = RoundedCornerShape(10.dp),
+                    shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusInput),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
             }
@@ -389,7 +392,7 @@ private fun LabeledField(
             onValueChange = onChange,
             singleLine = true,
             modifier = Modifier.weight(1f),
-            shape = RoundedCornerShape(10.dp),
+            shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusInput),
             keyboardOptions = if (numberOnly)
                 KeyboardOptions(keyboardType = KeyboardType.Number)
             else KeyboardOptions.Default
@@ -409,14 +412,14 @@ private fun CoordRow(
             value = v1, onValueChange = on1,
             label = { Text(label1) }, singleLine = true,
             modifier = Modifier.weight(1f),
-            shape = RoundedCornerShape(10.dp),
+            shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusInput),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
         )
         OutlinedTextField(
             value = v2, onValueChange = on2,
             label = { Text(label2) }, singleLine = true,
             modifier = Modifier.weight(1f),
-            shape = RoundedCornerShape(10.dp),
+            shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusInput),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
         )
     }

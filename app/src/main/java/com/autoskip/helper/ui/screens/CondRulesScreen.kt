@@ -232,7 +232,7 @@ private fun ImportDialog(
                     value = text,
                     onValueChange = { text = it },
                     modifier = Modifier.fillMaxWidth().height(160.dp),
-                    shape = RoundedCornerShape(8.dp)
+                    shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusInput)
                 )
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -337,7 +337,7 @@ private fun CondRuleDialog(
                         onValueChange = { delaySec = it.filter { c -> c.isDigit() } },
                         singleLine = true,
                         modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(8.dp),
+                        shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusInput),
                         keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                             keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
                         )
@@ -357,13 +357,13 @@ private fun CondRuleDialog(
                         val sel = actionType == type
                         Button(
                             onClick = { actionType = type },
-                            shape = RoundedCornerShape(8.dp),
+                            shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusInput),
                             contentPadding = androidx.compose.foundation.layout.PaddingValues(
                                 horizontal = 10.dp, vertical = 4.dp
                             ),
                             colors = androidx.compose.material3.ButtonDefaults.buttonColors(
                                 containerColor = if (sel) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.surfaceVariant,
+                                else com.autoskip.helper.ui.theme.HarmonyColor.Gray1,
                                 contentColor = if (sel) Color.White
                                 else MaterialTheme.colorScheme.onSurfaceVariant
                             )

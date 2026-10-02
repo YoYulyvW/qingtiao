@@ -200,20 +200,20 @@ private fun WidgetRuleDialog(
                     value = remark, onValueChange = { remark = it },
                     label = { Text("备注（这个控件是什么）") },
                     singleLine = true, modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp)
+                    shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusInput)
                 )
                 OutlinedTextField(
                     value = widgetId, onValueChange = { widgetId = it },
                     label = { Text("控件 ID（完整或后缀，如 vfd）") },
                     placeholder = { Text("com.ss.android.ugc.aweme:id/vfd") },
                     singleLine = true, modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp)
+                    shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusInput)
                 )
                 OutlinedTextField(
                     value = matchText, onValueChange = { matchText = it },
                     label = { Text("且文本含（可选，控件text为空则留空）") },
                     singleLine = true, modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp)
+                    shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusInput)
                 )
                 Text("动作", fontWeight = FontWeight.Bold, fontSize = 13.sp)
                 val actions = listOf(
@@ -227,10 +227,10 @@ private fun WidgetRuleDialog(
                         val sel = actionType == type
                         Button(
                             onClick = { actionType = type },
-                            shape = RoundedCornerShape(8.dp),
+                            shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusInput),
                             contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                             colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                                containerColor = if (sel) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                                containerColor = if (sel) MaterialTheme.colorScheme.primary else com.autoskip.helper.ui.theme.HarmonyColor.Gray1,
                                 contentColor = if (sel) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         ) { Text(label, fontSize = 12.sp) }
@@ -242,7 +242,7 @@ private fun WidgetRuleDialog(
                         OutlinedTextField(
                             value = coordX, onValueChange = { coordX = it.filter { c -> c.isDigit() } },
                             singleLine = true, modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(8.dp),
+                            shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusInput),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                         )
                         Spacer(Modifier.width(8.dp))
@@ -250,7 +250,7 @@ private fun WidgetRuleDialog(
                         OutlinedTextField(
                             value = coordY, onValueChange = { coordY = it.filter { c -> c.isDigit() } },
                             singleLine = true, modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(8.dp),
+                            shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusInput),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                         )
                     }

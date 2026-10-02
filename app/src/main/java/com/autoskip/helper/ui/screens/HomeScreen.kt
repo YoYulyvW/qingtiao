@@ -88,7 +88,7 @@ fun HomeScreen(vm: MainViewModel) {
         Card(
             Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(Dimens.RadiusCard),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            colors = CardDefaults.cardColors(containerColor = HarmonyColor.White),
             elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
         ) {
             Column {
@@ -130,7 +130,7 @@ fun HomeScreen(vm: MainViewModel) {
         Card(
             Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(Dimens.RadiusCard),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            colors = CardDefaults.cardColors(containerColor = HarmonyColor.White),
             elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
         ) {
             Column(Modifier.padding(Dimens.SpaceM)) {
@@ -277,7 +277,7 @@ private fun StatCard(label: String, value: String, modifier: Modifier = Modifier
     Card(
         modifier,
         shape = RoundedCornerShape(Dimens.RadiusCard),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(containerColor = HarmonyColor.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(

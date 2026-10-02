@@ -254,7 +254,7 @@ fun DramaScreen(onBack: () -> Unit, vm: MainViewModel) {
                             Modifier
                                 .fillMaxWidth()
                                 .height(200.dp)
-                                .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
+                                .background(com.autoskip.helper.ui.theme.HarmonyColor.Gray1, RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusInput))
                         ) {
                             androidx.compose.foundation.lazy.LazyColumn(
                                 Modifier.fillMaxSize().padding(8.dp)
@@ -307,7 +307,7 @@ private fun CompactNumField(label: String, initial: String, onChange: (Int) -> U
             },
             singleLine = true,
             modifier = Modifier.weight(1f),
-            shape = RoundedCornerShape(8.dp),
+            shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusInput),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
         )
     }
@@ -319,10 +319,10 @@ private fun SpeedChip(text: String, target: String, modifier: Modifier = Modifie
     Button(
         onClick = onClick,
         modifier = modifier,
-        shape = RoundedCornerShape(8.dp),
+        shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusInput),
         colors = androidx.compose.material3.ButtonDefaults.buttonColors(
             containerColor = if (selected) MaterialTheme.colorScheme.primary
-            else MaterialTheme.colorScheme.surfaceVariant,
+            else com.autoskip.helper.ui.theme.HarmonyColor.Gray1,
             contentColor = if (selected) Color.White
             else MaterialTheme.colorScheme.onSurfaceVariant
         ),
