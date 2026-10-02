@@ -2,6 +2,7 @@ package com.autoskip.helper.license
 
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
@@ -121,7 +122,7 @@ object LicenseClient {
         val list = candidates.map { it.trim().trimEnd('/') }.filter { it.isNotBlank() }.distinct()
         if (list.isEmpty()) return@withContext ""
         val results = list.map { url ->
-            kotlinx.coroutines.async(Dispatchers.IO) {
+            async(Dispatchers.IO) {
                 val t0 = System.currentTimeMillis()
                 val ok = try {
                     val conn = (URL("$url/").openConnection() as HttpURLConnection).apply {
