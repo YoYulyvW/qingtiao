@@ -130,6 +130,9 @@ class Repository(
         else -> null
     }
 
+    /** 内置规则是否已 seed 过 */
+    suspend fun markRuleSeeded() = prefs.markRuleSeeded()
+
     /** 学习模式：若同文本+同包名的规则不存在，则新增一条学习规则 */
     suspend fun addLearnedRuleIfAbsent(text: String, viewId: String?, pkg: String) {
         val exists = ruleDao.all().any { it.text == text && it.packageName == pkg }
