@@ -68,6 +68,6 @@ class LicensePrefs(private val context: Context) {
 
     companion object {
         /** ★ 默认服务端地址（内置，UI 不展示） */
-        const val DEFAULT_BASE = "https://pybot.eu.org"
+        const val DEFAULT_BASE = "https://push.lyvw.eu.org"
     }
 }
