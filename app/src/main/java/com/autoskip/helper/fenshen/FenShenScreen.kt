@@ -332,7 +332,7 @@ fun FenShenScreen(onBack: () -> Unit, vm: FenShenViewModel = viewModel()) {
                 OutlinedTextField(
                     value = testW, onValueChange = { testW = it },
                     label = { Text("宽") }, singleLine = true,
-                    modifier = Modifier.weight(1f).height(52.dp),
+                    modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusInput),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
@@ -340,7 +340,7 @@ fun FenShenScreen(onBack: () -> Unit, vm: FenShenViewModel = viewModel()) {
                 OutlinedTextField(
                     value = testH, onValueChange = { testH = it },
                     label = { Text("高") }, singleLine = true,
-                    modifier = Modifier.weight(1f).height(52.dp),
+                    modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusInput),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
@@ -396,7 +396,7 @@ private fun LabeledField(
             value = value,
             onValueChange = onChange,
             singleLine = true,
-            modifier = Modifier.weight(1f).height(52.dp),
+            modifier = Modifier.weight(1f),
             shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusInput),
             keyboardOptions = if (numberOnly)
                 KeyboardOptions(keyboardType = KeyboardType.Number)
@@ -416,14 +416,14 @@ private fun CoordRow(
         OutlinedTextField(
             value = v1, onValueChange = on1,
             label = { Text(label1) }, singleLine = true,
-            modifier = Modifier.weight(1f).height(52.dp),
+            modifier = Modifier.weight(1f),
             shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusInput),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
         )
         OutlinedTextField(
             value = v2, onValueChange = on2,
             label = { Text(label2) }, singleLine = true,
-            modifier = Modifier.weight(1f).height(52.dp),
+            modifier = Modifier.weight(1f),
             shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusInput),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
         )
