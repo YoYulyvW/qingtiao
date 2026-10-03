@@ -67,4 +67,30 @@ object RemoteControlTester {
 
         return sb.toString()
     }
+
+    /**
+     * 测试 app_process 里加载 WebRTC（POC=2）
+     */
+    fun testWebRTCInAppProcess(ctx: Context): String {
+        val sb = StringBuilder()
+        fun line(s: String) {
+            Log.i(TAG, s)
+            sb.append(s).append('\n')
+            DramaDebug.add("[远控] " + s)
+        }
+
+        val apkPath = try {
+            ctx.packageManager.getApplicationInfo(ctx.packageName, 0).sourceDir
+        } catch (e: Exception) { "" }
+        line("APK 路径：$apkPath")
+        if (apkPath.isEmpty()) return sb.toString()
+
+        line("启动 app_process（poc=2 测 WebRTC）…")
+        val cmd = "CLASSPATH=$apkPath app_process /system/bin com.autoskip.helper.capture.CaptureMain poc=2"
+        val r = RootShell.exec(cmd, timeoutMs = 20_000)
+        line("退出码：${r.exitCode}")
+        line("输出：")
+        r.stdout.split('\n').forEach { line("  | $it") }
+        return sb.toString()
+    }
 }
