@@ -62,6 +62,17 @@
                 android:value="keep accessibility service alive" />
         </service>
 
+        <!-- 远程控制前台服务（WebRTC + 屏幕捕获 + 触控）-->
+        <service
+            android:name=".remote.RemoteControlService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="remote control webrtc" />
+        </service>
+
         <!-- 分身自动化专用无障碍服务（提供点击/滑动/全局操作） -->
         <service
             android:name=".fenshen.FenShenAccessibilityService"

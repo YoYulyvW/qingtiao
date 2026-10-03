@@ -380,6 +380,46 @@ fun SettingsScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
                     }
+
+                    Spacer(Modifier.height(12.dp))
+                    val rcSvcRunning = com.autoskip.helper.remote.RemoteControlService.isRunning()
+                    OutlinedButton(
+                        onClick = {
+                            val intent = android.content.Intent(context, com.autoskip.helper.remote.RemoteControlService::class.java)
+                            // deviceId 与 LicenseManager 保持一致（Android ID 派生的 SHA-256）
+                            intent.putExtra("deviceId", com.autoskip.helper.license.LicenseManager.deviceId(context))
+                            // 信令 URL：从 LicensePrefs 读 baseUrl，把 https:// 换成 wss://
+                            scope.launch {
+                                try {
+                                    val base = com.autoskip.helper.license.LicensePrefs(context).getBestBase()
+                                        .ifBlank { com.autoskip.helper.license.LicensePrefs.BUILTIN_BASE }
+                                    val wsBase = when {
+                                        base.startsWith("https://") -> "wss://" + base.substring(8)
+                                        base.startsWith("http://") -> "ws://" + base.substring(7)
+                                        else -> "ws://" + base
+                                    }
+                                    val signalUrl = wsBase.trimEnd('/') + "/ws/signal"
+                                    intent.putExtra("signalUrl", signalUrl)
+                                    if (rcSvcRunning) {
+                                        context.stopService(intent)
+                                    } else {
+                                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                                            context.startForegroundService(intent)
+                                        } else {
+                                            context.startService(intent)
+                                        }
+                                    }
+                                    rcResult = if (rcSvcRunning) "已请求停止" else "已请求启动（看日志）"
+                                } catch (e: Exception) {
+                                    rcResult = "失败：" + e.message
+                                }
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth().height(com.autoskip.helper.ui.theme.Dimens.MinTouchTarget),
+                        shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusInput)
+                    ) {
+                        Text(if (rcSvcRunning) "停止远控服务" else "启动远控服务", fontSize = 14.sp)
+                    }
                 }
             }
 
