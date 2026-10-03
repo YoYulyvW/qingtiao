@@ -112,17 +112,19 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           echo "=== 清理旧 Release（保留最新 3 个）==="
-          gh release list --repo ${{ github.repository }} --limit 100 \
-            --json tagName,createdAt \
-            --jq 'sort_by(.createdAt) | reverse | .[3:] | .[].tagName' > /tmp/old_tags.txt
-          if [ ! -s /tmp/old_tags.txt ]; then
+          # 用 gh api 列出（按创建时间倒序），跳过前 3，删除其余
+          gh api "repos/${{ github.repository }}/releases?per_page=100" \
+            --jq 'sort_by(.created_at) | reverse | .[3:] | .[].tag_name' > /tmp/old_tags.txt || echo "" > /tmp/old_tags.txt
+          COUNT=$(wc -l < /tmp/old_tags.txt | tr -d " ")
+          echo "待删除 Release 数: $COUNT"
+          if [ "$COUNT" = "0" ] || [ -z "$COUNT" ]; then
             echo "无旧 Release 需清理"
           else
             while IFS= read -r tag; do
               [ -z "$tag" ] && continue
               echo "删除 Release: $tag"
-              gh release delete "$tag" --repo ${{ github.repository }} --yes --cleanup-tag || echo "删除失败（忽略）"
+              gh release delete "$tag" --repo ${{ github.repository }} --yes --cleanup-tag 2>&1 || echo "删除 $tag 失败（忽略）"
             done < /tmp/old_tags.txt
           fi
           echo "=== 剩余 Release ==="
-          gh release list --repo ${{ github.repository }} --limit 5
+          gh api "repos/${{ github.repository }}/releases?per_page=100" --jq '.[].tag_name' || true
