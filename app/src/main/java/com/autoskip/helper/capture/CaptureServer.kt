@@ -100,10 +100,10 @@ class CaptureServer(
                     flags
                 )
             } catch (e: SecurityException) {
-                pln("★ VirtualDisplay 创建失败：权限不足（CREATE_VIRTUAL_DISPLAY）", e)
+                pln("★ VirtualDisplay 创建失败：权限不足（CREATE_VIRTUAL_DISPLAY）：" + e.message)
                 throw e
             } catch (e: Exception) {
-                pln("★ VirtualDisplay 创建失败：${e.message}", e)
+                pln("★ VirtualDisplay 创建失败：" + e.message)
                 throw e
             }
             virtualDisplay = vd
