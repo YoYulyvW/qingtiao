@@ -77,6 +77,20 @@ jobs:
           path: out/*.apk
           if-no-files-found: error
 
+      - name: Notify server (上报最新版本)
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: |
+          VERSION="${{ steps.ver.outputs.name }}"
+          CODE="${{ steps.ver.outputs.code }}"
+          RAW="https://github.com/${{ github.repository }}/releases/download/v${VERSION}/AutoSkip-${VERSION}.apk"
+          URL="https://oo6.cc/downloads/${RAW}"
+          echo "上报 ${VERSION} (${CODE}) → ${URL}"
+          curl -sS -X POST "https://pybot.lyvw.eu.org/admin/api/app/version/set" \
+            -H "Content-Type: application/json" \
+            -H "X-Update-Secret: ${{ secrets.UPDATE_SECRET }}" \
+            -d "{\"version\":\"${VERSION}\",\"versionCode\":${CODE},\"downloadUrl\":\"${URL}\",\"forceUpdate\":true,\"note\":\"自动构建\"}" \
+            --max-time 15 || echo "上报失败（不阻塞构建）"
+
       - name: Publish to GitHub Releases
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         env:
