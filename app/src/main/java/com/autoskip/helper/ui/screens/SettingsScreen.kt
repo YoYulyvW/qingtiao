@@ -73,6 +73,7 @@ fun SettingsScreen(
     var tokenText by remember { mutableStateOf("") }
     var includeClone by remember { mutableStateOf(true) }
     var testResult by remember { mutableStateOf("") }
+    var rcResult by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
@@ -335,6 +336,52 @@ fun SettingsScreen(
                 subtitle = "批量创建抖音分身、改名、安装",
                 onClick = onOpenFenShen
             )
+
+            SectionLabelH("远程控制（Root）")
+
+            Card(
+                Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusCard),
+                colors = CardDefaults.cardColors(containerColor = com.autoskip.helper.ui.theme.HarmonyColor.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            ) {
+                Column(Modifier.padding(com.autoskip.helper.ui.theme.Dimens.SpaceM)) {
+                    Text("捕获测试（app_process）",
+                        fontWeight = FontWeight.Medium, fontSize = 15.sp,
+                        color = com.autoskip.helper.ui.theme.HarmonyColor.TextPrimary)
+                    Spacer(Modifier.height(4.dp))
+                    Text("验证 Root 通路：VirtualDisplay + MediaCodec",
+                        fontSize = 12.sp, color = com.autoskip.helper.ui.theme.HarmonyColor.Gray6)
+                    Spacer(Modifier.height(8.dp))
+                    Button(
+                        onClick = {
+                            rcResult = "测试中（约 15 秒）…"
+                            scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                                val out = try {
+                                    com.autoskip.helper.root.RemoteControlTester.testAppProcess(context)
+                                } catch (e: Exception) {
+                                    "异常：" + (e.message ?: "未知")
+                                }
+                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                    rcResult = out
+                                }
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth().height(com.autoskip.helper.ui.theme.Dimens.MinTouchTarget),
+                        shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusInput),
+                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                            containerColor = com.autoskip.helper.ui.theme.HarmonyColor.BrandOrange,
+                            contentColor = com.autoskip.helper.ui.theme.HarmonyColor.White
+                        )
+                    ) { Text("运行测试", fontSize = 14.sp) }
+                    if (rcResult.isNotBlank()) {
+                        Spacer(Modifier.height(8.dp))
+                        Text(rcResult, fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
+                    }
+                }
+            }
 
             Spacer(Modifier.height(6.dp))
         }
