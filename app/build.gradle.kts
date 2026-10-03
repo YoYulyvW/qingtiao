@@ -97,4 +97,7 @@ dependencies {
     // ★ WebRTC（远程控制推流 + DataChannel 触控）
     // io.github.webrtc-sdk 是 org.webrtc 的非官方镜像，发布在 Maven Central
     implementation("io.github.webrtc-sdk:android:125.6422.07")
+
+    // ★ OkHttp（信令 WebSocket 客户端）
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
 }
