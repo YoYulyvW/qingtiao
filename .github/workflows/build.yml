@@ -106,22 +106,25 @@ jobs:
             || gh release upload "$TAG" out/*.apk --clobber --repo ${{ github.repository }}
 
 
-      - name: Cleanup old releases (keep latest 3)
+      - name: Cleanup old releases (keep latest 3, exclude current)
         if: github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          echo "=== 清理旧 Release（保留最新 3 个）==="
-          # 用 gh api 列出（按创建时间倒序），跳过前 3，删除其余
+          echo "=== 清理旧 Release（保留本次 + 最新 2 个旧） ==="
+          CURRENT_TAG="v${{ steps.ver.outputs.name }}"
+          echo "本次 tag: $CURRENT_TAG（永不删除）"
+          # 排除本次 tag → 其余按创建时间倒序 → 跳过前 2 个（保留）→ 删除剩下
           gh api "repos/${{ github.repository }}/releases?per_page=100" \
-            --jq 'sort_by(.created_at) | reverse | .[3:] | .[].tag_name' > /tmp/old_tags.txt || echo "" > /tmp/old_tags.txt
-          COUNT=$(wc -l < /tmp/old_tags.txt | tr -d " ")
+            --jq "map(select(.tag_name != \"$CURRENT_TAG\")) | sort_by(.created_at) | reverse | .[2:] | .[].tag_name" > /tmp/old_tags.txt || echo "" > /tmp/old_tags.txt
+          COUNT=$(grep -c . /tmp/old_tags.txt 2>/dev/null || echo 0)
           echo "待删除 Release 数: $COUNT"
-          if [ "$COUNT" = "0" ] || [ -z "$COUNT" ]; then
+          if [ "$COUNT" = "0" ]; then
             echo "无旧 Release 需清理"
           else
             while IFS= read -r tag; do
               [ -z "$tag" ] && continue
+              [ "$tag" = "$CURRENT_TAG" ] && { echo "跳过本次 tag"; continue; }
               echo "删除 Release: $tag"
               gh release delete "$tag" --repo ${{ github.repository }} --yes --cleanup-tag < /dev/null 2>&1 || echo "删除 $tag 失败（忽略）"
             done < /tmp/old_tags.txt
