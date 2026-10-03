@@ -82,6 +82,16 @@ class LicensePrefs(private val context: Context) {
         }
     }
 
+    /** ★ 解绑：清空激活码 + 全部缓存 */
+    suspend fun clearAll() {
+        context.licenseStore.edit {
+            it.remove(KEY_CODE)
+            it.remove(KEY_FEATURES)
+            it.remove(KEY_EXPIRE_AT)
+            it.remove(KEY_OFFSET)
+        }
+    }
+
     companion object {
         /** ★ 内置兜底域名（CF Tunnel，永不过期） */
         const val BUILTIN_BASE = "https://pybot.eu.org"

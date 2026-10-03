@@ -18,7 +18,7 @@ import android.widget.TextView
  * - 需要 SYSTEM_ALERT_WINDOW 权限（Settings.canDrawOverlays）
  */
 object OverlayToast {
-    private const val SHOW_DURATION_MS = 2000L
+    private const val SHOW_DURATION_MS = 4000L   // 默认 4 秒
     private const val THROTTLE_MS = 500L
 
     private val handler = Handler(Looper.getMainLooper())
@@ -32,16 +32,16 @@ object OverlayToast {
     private val hideRunnable = Runnable { hideInternal() }
 
     /** 显示提示（线程安全，内部切主线程） */
-    fun show(ctx: Context, text: String) {
+    fun show(ctx: Context, text: String, durationMs: Long = SHOW_DURATION_MS) {
         if (text.isBlank()) return
         val now = System.currentTimeMillis()
         if (text == lastText && now - lastTime < THROTTLE_MS) return
         lastText = text
         lastTime = now
-        handler.post { showInternal(ctx.applicationContext, text) }
+        handler.post { showInternal(ctx.applicationContext, text, durationMs) }
     }
 
-    private fun showInternal(ctx: Context, text: String) {
+    private fun showInternal(ctx: Context, text: String, durationMs: Long) {
         try {
             if (wm == null) {
                 wm = ctx.getSystemService(Context.WINDOW_SERVICE) as WindowManager
@@ -80,7 +80,7 @@ object OverlayToast {
                 wm?.updateViewLayout(v, lp)
             }
             handler.removeCallbacks(hideRunnable)
-            handler.postDelayed(hideRunnable, SHOW_DURATION_MS)
+            handler.postDelayed(hideRunnable, durationMs)
         } catch (_: Exception) {
             // 权限不足 / 系统拒绝 → 静默忽略
         }

@@ -11,6 +11,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -50,10 +51,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.autoskip.helper.license.FeatureGate
+import com.autoskip.helper.license.LicensePrefs
 import com.autoskip.helper.service.AutoClickAccessibilityService
 import com.autoskip.helper.ui.MainViewModel
 import com.autoskip.helper.ui.theme.Dimens
 import com.autoskip.helper.ui.theme.HarmonyColor
+import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun HomeScreen(vm: MainViewModel) {
@@ -83,6 +90,8 @@ fun HomeScreen(vm: MainViewModel) {
         StatusCard(serviceOn) {
             if (!serviceOn) openAccessibilitySettings(context)
         }
+
+        AuthInfoCard()
 
         SectionLabel("快捷开关")
         Card(
@@ -173,6 +182,105 @@ fun HomeScreen(vm: MainViewModel) {
             color = HarmonyColor.Gray4,
             lineHeight = 16.sp
         )
+    }
+}
+
+@Composable
+private fun AuthInfoCard() {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val prefs = remember { LicensePrefs(ctx) }
+
+    var code by remember { mutableStateOf("") }
+    var expireAt by remember { mutableStateOf(0L) }
+    var showUnbind by remember { mutableStateOf(false) }
+
+    // 读一次激活信息（进页 + 状态变化时刷新）
+    val gateState by FeatureGate.state.collectAsState()
+    LaunchedEffect(gateState) {
+        code = prefs.getCode()
+        expireAt = prefs.getExpireAt()
+    }
+
+    Card(
+        Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(Dimens.RadiusCard),
+        colors = CardDefaults.cardColors(containerColor = HarmonyColor.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(Modifier.padding(Dimens.SpaceM)) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("授权信息", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = HarmonyColor.TextPrimary)
+                Text(
+                    "解绑 / 换码",
+                    fontSize = 13.sp,
+                    color = HarmonyColor.BrandOrange,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(HarmonyColor.IconOrangeBg)
+                        .clickable { showUnbind = true }
+                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                )
+            }
+            Spacer(Modifier.height(Dimens.SpaceS))
+
+            InfoRow("激活码", code.ifBlank { "（未激活）" })
+            HDivider()
+            InfoRow("有效期", fmtExpire(expireAt))
+            HDivider()
+            InfoRow("状态", if (gateState == FeatureGate.State.ACTIVE) "已激活" else "未激活 / 已锁定")
+        }
+    }
+
+    if (showUnbind) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showUnbind = false },
+            title = { Text("解绑当前激活码？") },
+            text = { Text("解绑后需重新输入激活码才能使用。若只是换码，解绑后填新码即可。") },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    showUnbind = false
+                    scope.launch {
+                        prefs.clearAll()
+                        FeatureGate.lockImmediately()
+                    }
+                }) { Text("解绑", color = HarmonyColor.BrandOrange) }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { showUnbind = false }) {
+                    Text("取消", color = HarmonyColor.Gray4)
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun InfoRow(label: String, value: String) {
+    Row(
+        Modifier.fillMaxWidth().padding(vertical = Dimens.SpaceS),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(label, fontSize = 14.sp, color = HarmonyColor.Gray4)
+        Text(value, fontSize = 14.sp, color = HarmonyColor.TextPrimary, fontWeight = FontWeight.Medium)
+    }
+}
+
+/** 格式化到期时间 */
+private fun fmtExpire(ms: Long): String {
+    if (ms <= 0) return "永不过期"
+    val now = System.currentTimeMillis()
+    val df = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+    val dateStr = df.format(Date(ms))
+    return if (ms > now) {
+        val days = (ms - now) / 86400_000L
+        "$dateStr（剩 $days 天）"
+    } else {
+        "$dateStr（已过期）"
     }
 }
 
