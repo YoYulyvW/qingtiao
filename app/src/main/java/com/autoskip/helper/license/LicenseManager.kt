@@ -194,14 +194,7 @@ object LicenseManager {
                             note = resp.updateNote
                         )
                     }
-                    // ★ 后台预下载：仅非强制更新时（强制更新走"联系管理员"，无需下载）
-                    if (!resp.forceUpdate && resp.downloadUrl.isNotBlank()) {
-                        try {
-                            com.autoskip.helper.update.AppUpdater.preDownload(
-                                ctx, resp.downloadUrl, resp.latestVersion, resp.latestVersionCode
-                            )
-                        } catch (_: Exception) {}
-                    }
+                    // 注：App 内不再下载（统一"联系管理员获取安装包"）
                     // ★ 按"设备绑定激活码"的 forceUpdate 决定锁/解锁
                     //    注：不在此处弹 OverlayToast（App 内已有弹窗，不必打断）
                     if (resp.forceUpdate) {

@@ -2,53 +2,41 @@ package com.autoskip.helper.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.autoskip.helper.license.LicenseManager
-import com.autoskip.helper.update.AppUpdater
 
 /**
- * 更新提示弹窗。
- * - force = true → "必须更新，请联系管理员获取最新安装包"（无下载/关闭按钮）
- * - force = false → 可下载（到系统下载目录）+ 可"稍后"
+ * 更新提示弹窗（统一"联系管理员"，App 内不下载）。
+ * - force = true  → 必须更新，无"稍后"（不可关）
+ * - force = false → 可"稍后"，不更新可继续使用功能
  */
 @Composable
 fun UpdateDialog(info: LicenseManager.UpdateInfo) {
-    val context = LocalContext.current
-    val prog by AppUpdater.progress.collectAsState()
-
     Dialog(
         onDismissRequest = {
-            if (!info.force && !prog.downloading) {
-                LicenseManager.dismissUpdate()
-                AppUpdater.reset()
-            }
+            // 非强制：点外部/返回可关闭
+            if (!info.force) LicenseManager.dismissUpdate()
         },
         properties = DialogProperties(
-            dismissOnBackPress = !info.force && !prog.downloading,
-            dismissOnClickOutside = !info.force && !prog.downloading
+            dismissOnBackPress = !info.force,
+            dismissOnClickOutside = !info.force
         )
     ) {
         Card(
@@ -75,114 +63,47 @@ fun UpdateDialog(info: LicenseManager.UpdateInfo) {
                     color = com.autoskip.helper.ui.theme.HarmonyColor.Gray4
                 )
 
+                Spacer(Modifier.height(4.dp))
+
+                Text(
+                    "请联系管理员获取最新安装包",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = if (info.force) androidx.compose.material3.MaterialTheme.colorScheme.error
+                            else com.autoskip.helper.ui.theme.HarmonyColor.TextPrimary,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
                 if (info.force) {
-                    // ★ 强制更新：提示联系管理员，不提供下载
-                    Spacer(Modifier.height(4.dp))
                     Text(
-                        "当前版本已不可用，请联系管理员获取最新安装包",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium,
+                        "未更新前，跳过功能已暂停",
+                        fontSize = 12.sp,
                         color = androidx.compose.material3.MaterialTheme.colorScheme.error,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        textAlign = TextAlign.Center,
                         modifier = Modifier.fillMaxWidth()
                     )
-                    Spacer(Modifier.height(8.dp))
                 } else {
-                    // 非强制更新：显示说明 + 下载/进度/就绪
-                    if (info.note.isNotBlank() && !prog.downloading) {
-                        Text(info.note, fontSize = 12.sp,
-                            color = com.autoskip.helper.ui.theme.HarmonyColor.Gray6)
-                    }
+                    Text(
+                        "不更新可继续使用",
+                        fontSize = 12.sp,
+                        color = com.autoskip.helper.ui.theme.HarmonyColor.Gray6,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
 
+                if (!info.force) {
                     Spacer(Modifier.height(4.dp))
-
-                    if (prog.readyToInstall) {
-                        Text("✅ 已下载到系统下载目录", fontSize = 13.sp,
-                            color = com.autoskip.helper.ui.theme.HarmonyColor.BrandOrange,
-                            fontWeight = FontWeight.Medium)
-                        Text("在文件管理器点 APK 即可安装", fontSize = 11.sp,
-                            color = com.autoskip.helper.ui.theme.HarmonyColor.Gray6)
-                        Button(
-                            onClick = { AppUpdater.openDownloadFolder(context) },
-                            modifier = Modifier.fillMaxWidth().height(48.dp),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = com.autoskip.helper.ui.theme.HarmonyColor.BrandOrange,
-                                contentColor = com.autoskip.helper.ui.theme.HarmonyColor.White
-                            )
-                        ) { Text("打开文件管理器", fontSize = 15.sp, fontWeight = FontWeight.Medium) }
-                    } else if (prog.downloading) {
-                        LinearProgressIndicator(
-                            progress = { prog.percent / 100f },
-                            modifier = Modifier.fillMaxWidth().height(8.dp),
-                            color = com.autoskip.helper.ui.theme.HarmonyColor.BrandOrange,
-                            trackColor = com.autoskip.helper.ui.theme.HarmonyColor.IconOrangeBg
-                        )
-                        Row(
-                            Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text("正在下载…", fontSize = 12.sp, color = com.autoskip.helper.ui.theme.HarmonyColor.Gray4)
-                            Text(
-                                if (prog.totalBytes > 0)
-                                    "${prog.percent}%  (${fmtSize(prog.downloadedBytes)}/${fmtSize(prog.totalBytes)})"
-                                else "${prog.percent}%",
-                                fontSize = 12.sp,
-                                color = com.autoskip.helper.ui.theme.HarmonyColor.Gray4
-                            )
-                        }
-                    } else if (prog.error != null) {
-                        Text("❌ ${prog.error}", fontSize = 12.sp,
-                            color = androidx.compose.material3.MaterialTheme.colorScheme.error)
-                        Button(
-                            onClick = {
-                                AppUpdater.reset()
-                                AppUpdater.downloadAndInstall(context, info.downloadUrl, info.latestVersion, info.latestVersionCode)
-                            },
-                            modifier = Modifier.fillMaxWidth().height(48.dp),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = com.autoskip.helper.ui.theme.HarmonyColor.BrandOrange,
-                                contentColor = com.autoskip.helper.ui.theme.HarmonyColor.White
-                            )
-                        ) { Text("重试", fontSize = 15.sp, fontWeight = FontWeight.Medium) }
-                    } else {
-                        Button(
-                            onClick = {
-                                AppUpdater.downloadAndInstall(context, info.downloadUrl, info.latestVersion, info.latestVersionCode)
-                            },
-                            modifier = Modifier.fillMaxWidth().height(48.dp),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = com.autoskip.helper.ui.theme.HarmonyColor.BrandOrange,
-                                contentColor = com.autoskip.helper.ui.theme.HarmonyColor.White
-                            )
-                        ) { Text("立即下载", fontSize = 15.sp, fontWeight = FontWeight.Medium) }
-                    }
-
-                    if (!prog.downloading && !prog.readyToInstall) {
-                        TextButton(
-                            onClick = {
-                                LicenseManager.dismissUpdate()
-                                AppUpdater.reset()
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("稍后", fontSize = 13.sp,
-                                color = com.autoskip.helper.ui.theme.HarmonyColor.Gray4)
-                        }
+                    TextButton(
+                        onClick = { LicenseManager.dismissUpdate() },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("稍后", fontSize = 13.sp,
+                            color = com.autoskip.helper.ui.theme.HarmonyColor.Gray4)
                     }
                 }
             }
         }
-    }
-}
-
-/** 格式化字节数 */
-private fun fmtSize(bytes: Long): String {
-    return when {
-        bytes < 1024 -> "${bytes}B"
-        bytes < 1024 * 1024 -> "${bytes / 1024}KB"
-        else -> String.format("%.1fMB", bytes / 1024.0 / 1024.0)
     }
 }
