@@ -182,21 +182,91 @@ class RemoteControlService : Service() {
     }
 
     // ===== 处理触控指令 =====
+    //
+    // iOS 端通过 DataChannel 发 JSON：
+    //   {"type":"tap","x":100,"y":200}
+    //   {"type":"swipe","x1":100,"y1":200,"x2":300,"y2":400,"durationMs":300}
+    //   {"type":"key","code":"HOME|BACK|RECENT"}
+    //   {"type":"text","text":"你好"}
+    //
+    // 坐标归一化：iOS 端把 [0,1] 坐标映射到屏幕像素后发来（绝对值）
+    //
+    // 性能考量：
+    //   - 每次 su 启动 ~50ms，滑动会有明显延迟
+    //   - 优化：滑动用 input swipe 单命令（不是 DOWN-MOVE-UP 三步）
+    //   - 后续若需要"跟手"滑动，改用 sendevent 直写事件节点
     private fun handleControlMessage(json: String) {
-        // 简化：JSON {"type":"tap","x":100,"y":200} / {"type":"swipe",...}
-        // 具体解析后续实现
-        // 这里只打印，防止无实现空转
-        log("触控指令：" + json)
-        // TODO: 解析 → RootShell.exec("input tap x y")
+        try {
+            val obj = org.json.JSONObject(json)
+            val type = obj.optString("type")
+            when (type) {
+                "tap" -> {
+                    val x = obj.optInt("x")
+                    val y = obj.optInt("y")
+                    worker.execute {
+                        val ok = com.autoskip.helper.root.RootShell.execSilently("input tap $x $y", 3000)
+                        log("tap($x,$y) → $ok")
+                    }
+                }
+                "swipe" -> {
+                    val x1 = obj.optInt("x1")
+                    val y1 = obj.optInt("y1")
+                    val x2 = obj.optInt("x2")
+                    val y2 = obj.optInt("y2")
+                    val dur = obj.optInt("durationMs", 300).coerceIn(50, 3000)
+                    worker.execute {
+                        val ok = com.autoskip.helper.root.RootShell.execSilently(
+                            "input swipe $x1 $y1 $x2 $y2 $dur", 5000
+                        )
+                        log("swipe($x1,$y1 → $x2,$y2, ${dur}ms) → $ok")
+                    }
+                }
+                "key" -> {
+                    val code = obj.optString("code")
+                    val keyEvent = when (code) {
+                        "HOME" -> "KEYCODE_HOME"
+                        "BACK" -> "KEYCODE_BACK"
+                        "RECENT" -> "KEYCODE_APP_SWITCH"
+                        "POWER" -> "KEYCODE_POWER"
+                        "WAKEUP" -> "KEYCODE_WAKEUP"
+                        else -> null
+                    }
+                    if (keyEvent != null) {
+                        worker.execute {
+                            val ok = com.autoskip.helper.root.RootShell.execSilently(
+                                "input keyevent $keyEvent", 3000
+                            )
+                            log("key($code) → $ok")
+                        }
+                    }
+                }
+                "text" -> {
+                    val text = obj.optString("text")
+                    if (text.isNotEmpty()) {
+                        // 注意：input text 只支持 ASCII；中文需用 ADBKeyBoard 或 IME
+                        // 简化：转义空格
+                        val escaped = text.replace(" ", "%s")
+                        worker.execute {
+                            val ok = com.autoskip.helper.root.RootShell.execSilently(
+                                "input text '$escaped'", 5000
+                            )
+                            log("text($text) → $ok")
+                        }
+                    }
+                }
+                else -> log("未知触控类型：$type")
+            }
+        } catch (e: Exception) {
+            log("解析触控失败：" + e.message + " raw=" + json.take(100))
+        }
     }
 
     // ===== 连接 app_process 的捕获流 =====
     private fun startCaptureClient() {
         log("连接 app_process 捕获端口 $CAPTURE_PORT…")
         captureClient = CaptureClient(CAPTURE_PORT).apply {
-            onFrame = { data ->
-                // 数据是完整的 H.264 帧（长度前缀已在 CaptureClient 内解析）
-                sendFrameToDataChannel(data)
+            onFrame = { frame ->
+                sendFrameToDataChannel(frame)
             }
             onError = { err ->
                 log("捕获流错误：" + err)
@@ -206,21 +276,45 @@ class RemoteControlService : Service() {
     }
 
     // ===== 把 H.264 帧分片发出 =====
-    private fun sendFrameToDataChannel(frame: ByteArray) {
+    //
+    // ★ DataChannel 协议（主进程 → iOS）：
+    //   [4B frame_id][4B pts_lo][1B flags][2B chunk_idx][2B chunk_total][2B chunk_len][N B data]
+    //   = 15 字节头 + 数据
+    //
+    // 简化说明：
+    //   - pts_us 只发低 32 位（每 71 分钟回绕一次，iOS 端检测大跳跃自行校正）
+    //   - flags 与 CaptureServer 一致（bit0=关键帧，bit1=codec config）
+    //   - chunk_idx 从 0 开始，chunk_total 是本帧总片数
+    //
+    // iOS 端拼帧：按 frame_id 聚合，收齐 chunk_total 片后交给解码器
+    private fun sendFrameToDataChannel(frame: CaptureClient.Frame) {
         val dc = dataChannel ?: return
         if (dc.state() != DataChannel.State.OPEN) return
 
-        // 分片（每片 ≤ 16KB）
+        val frameId = nextFrameId++  // 自增
+        val ptsLo = (frame.ptsUs and 0xFFFFFFFFL).toInt()
+        val totalChunks = ((frame.data.size + H264_CHUNK_SIZE - 1) / H264_CHUNK_SIZE).coerceAtLeast(1)
+
+        var chunkIdx = 0
         var offset = 0
-        while (offset < frame.size) {
-            val chunkLen = minOf(H264_CHUNK_SIZE, frame.size - offset)
-            val buf = ByteBuffer.allocateDirect(chunkLen)
-            buf.put(frame, offset, chunkLen)
+        while (offset < frame.data.size) {
+            val chunkLen = minOf(H264_CHUNK_SIZE, frame.data.size - offset)
+            val headerLen = 4 + 4 + 1 + 2 + 2 + 2   // 15
+            val buf = ByteBuffer.allocateDirect(headerLen + chunkLen)
+            buf.putInt(frameId)
+            buf.putInt(ptsLo)
+            buf.put(frame.flags.toByte())
+            buf.putShort(chunkIdx.toShort())
+            buf.putShort(totalChunks.toShort())
+            buf.putShort(chunkLen.toShort())
+            buf.put(frame.data, offset, chunkLen)
             buf.flip()
             dc.send(DataChannel.Buffer(buf, true))
             offset += chunkLen
+            chunkIdx++
         }
     }
+    private var nextFrameId: Int = 1
 
     // ===== 连接信令 WebSocket =====
     private fun startSignaling(url: String) {

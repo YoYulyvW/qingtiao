@@ -39,16 +39,22 @@ object CaptureMain {
     private fun testWebRTCLoad() {
         pln("=== POC=2：测试 WebRTC 加载 ===")
 
-        // 1) 检查 .so 库路径（app_process 不会自动加载 APK 的 native 库）
+        // 1) 用 PackageManager 查目标包的 nativeLibraryDir
         val nativeLibDir = try {
             val atCls = Class.forName("android.app.ActivityThread")
             val systemMain = atCls.getMethod("systemMain").invoke(null)
-            val appInfo = systemMain.javaClass.getMethod("getApplicationInfo").invoke(systemMain)
-            val srcDir = appInfo.javaClass.getField("nativeLibraryDir").get(appInfo) as String
-            pln("nativeLibraryDir=$srcDir")
-            srcDir
+            val sysCtx = atCls.getMethod("getSystemContext").invoke(systemMain) as android.content.Context
+            val pm = sysCtx.packageManager
+            // 目标包名硬编码（app_process 无 Context 拿不到自己包名，但能从 CLASSPATH 推断）
+            val apkPath = System.getProperty("java.class.path") ?: ""
+            pln("java.class.path=$apkPath")
+            val targetPkg = "com.autoskip.helper"
+            val appInfo = pm.getApplicationInfo(targetPkg, 0)
+            val nativeDir = appInfo.nativeLibraryDir
+            pln("nativeLibraryDir=$nativeDir")
+            nativeDir
         } catch (e: Throwable) {
-            pln("获取 nativeLibraryDir 失败：" + e.message)
+            pln("获取 nativeLibraryDir 失败：" + e.javaClass.simpleName + ": " + e.message)
             ""
         }
 

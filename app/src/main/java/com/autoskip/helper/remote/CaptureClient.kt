@@ -8,13 +8,30 @@ import java.net.Socket
 /**
  * 连接 app_process 的捕获输出（TCP），持续读取 H.264 帧。
  *
- * 协议（与 CaptureServer 一致）：
- *   [4B len BE][N B H.264 数据][4B len][...]
+ * ★ 协议（与 CaptureServer 一致）：
+ *   [4B total_len BE]  整个记录长度（不含本字段）
+ *   [8B pts_us BE]     时间戳（微秒）
+ *   [4B flags BE]      bit0=关键帧，bit1=codec config
+ *   [N  B data]        H.264 NAL 数据
  */
 class CaptureClient(private val port: Int) {
-    companion object { private const val TAG = "CaptureClient" }
+    companion object {
+        private const val TAG = "CaptureClient"
+        const val FLAG_KEYFRAME = 1
+        const val FLAG_CODEC_CONFIG = 2
+    }
 
-    var onFrame: ((ByteArray) -> Unit)? = null
+    /** 一帧视频数据 */
+    data class Frame(
+        val ptsUs: Long,
+        val flags: Int,
+        val data: ByteArray,
+    ) {
+        val isKeyFrame: Boolean get() = (flags and FLAG_KEYFRAME) != 0
+        val isCodecConfig: Boolean get() = (flags and FLAG_CODEC_CONFIG) != 0
+    }
+
+    var onFrame: ((Frame) -> Unit)? = null
     var onError: ((String) -> Unit)? = null
 
     @Volatile private var running = false
@@ -31,19 +48,24 @@ class CaptureClient(private val port: Int) {
                 socket = s
                 Log.i(TAG, "已连接捕获端口 $port")
                 val input = DataInputStream(s.getInputStream().buffered())
-                var buf = ByteArray(64 * 1024)
+                var buf = ByteArray(128 * 1024)
                 while (running) {
-                    val len = input.readInt()
-                    if (len <= 0 || len > 4 * 1024 * 1024) {
-                        Log.w(TAG, "非法帧长：$len")
+                    // 1) 读 total_len
+                    val totalLen = input.readInt()
+                    if (totalLen <= 12 || totalLen > 8 * 1024 * 1024) {
+                        Log.w(TAG, "非法记录长：$totalLen")
                         break
                     }
-                    // ★ 确保缓冲区足够大（H.264 I 帧可能超过 64KB）
-                    if (len > buf.size) {
-                        buf = ByteArray(len)
+                    // 2) 读 pts_us + flags
+                    val ptsUs = input.readLong()
+                    val flags = input.readInt()
+                    // 3) 读数据体
+                    val dataLen = totalLen - 12
+                    if (dataLen > buf.size) {
+                        buf = ByteArray(dataLen)
                     }
-                    input.readFully(buf, 0, len)
-                    val frame = buf.copyOf(len)
+                    input.readFully(buf, 0, dataLen)
+                    val frame = Frame(ptsUs, flags, buf.copyOf(dataLen))
                     onFrame?.invoke(frame)
                 }
             } catch (e: Exception) {
