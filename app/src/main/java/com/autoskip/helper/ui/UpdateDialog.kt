@@ -42,13 +42,9 @@ fun UpdateDialog(info: LicenseManager.UpdateInfo) {
     val context = LocalContext.current
     val prog by AppUpdater.progress.collectAsState()
 
-    // 下载中时：定时查询进度（就绪/失败后自动停）
-    LaunchedEffect(prog.downloading) {
-        while (prog.downloading) {
-            delay(500)
-            AppUpdater.refreshProgress(context)
-        }
-    }
+    // 进度由 AppUpdater 的 StateFlow 直接推送，无需轮询
+    // （保留 LaunchedEffect 便于后续扩展）
+    LaunchedEffect(Unit) {}
 
     Dialog(
         onDismissRequest = {
