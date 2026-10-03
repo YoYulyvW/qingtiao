@@ -1,4 +1,4 @@
-package com.autoskip.helper.capture
+﻿package com.autoskip.helper.capture
 
 import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
@@ -41,16 +41,19 @@ class CaptureServer(
         private const val IFRAME_INTERVAL = 1
     }
 
+    /** 统一走 CaptureMain.pln（logcat + stdout） */
+    private fun pln(s: String) = CaptureMain.pln(s)
+
     @Volatile private var running = true
     private var virtualDisplay: VirtualDisplay? = null
     private var codec: MediaCodec? = null
 
     fun runBlocking() {
-        Log.i(TAG, "=== CaptureServer 启动 ===")
-        Log.i(TAG, "参数：port=$port w=$requestedWidth h=$requestedHeight bitrate=$bitrate fps=$fps maxSize=$maxSize poc=$pocMode")
+        pln("=== CaptureServer 启动 ===")
+        pln("参数：port=$port w=$requestedWidth h=$requestedHeight bitrate=$bitrate fps=$fps maxSize=$maxSize poc=$pocMode")
 
         // ★ 诊断：打印当前进程信息
-        Log.i(TAG, "PID=${android.os.Process.myPid()} UID=${android.os.Process.myUid()}")
+        pln("PID=${android.os.Process.myPid()} UID=${android.os.Process.myUid()}")
 
         try {
             val dm = getDisplayManager()
@@ -60,17 +63,17 @@ class CaptureServer(
             val metrics = android.util.DisplayMetrics()
             defaultDisplay.getMetrics(metrics)
             val dpi = metrics.densityDpi
-            Log.i(TAG, "屏幕：${realW}x${realH} dpi=$dpi")
+            pln("屏幕：${realW}x${realH} dpi=$dpi")
 
             val (w, h) = computeSize(
                 if (requestedWidth > 0) requestedWidth else realW,
                 if (requestedHeight > 0) requestedHeight else realH,
                 maxSize
             )
-            Log.i(TAG, "捕获尺寸：${w}x${h}")
+            pln("捕获尺寸：${w}x${h}")
 
             // 1) 创建 MediaCodec（Surface 输入）
-            Log.i(TAG, "创建 MediaCodec（H.264 硬编）…")
+            pln("创建 MediaCodec（H.264 硬编）…")
             val format = MediaFormat.createVideoFormat(MIME, w, h).apply {
                 setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface)
                 setInteger(MediaFormat.KEY_BIT_RATE, bitrate)
@@ -82,10 +85,10 @@ class CaptureServer(
             val inputSurface: Surface = c.createInputSurface()
             c.start()
             codec = c
-            Log.i(TAG, "MediaCodec 已启动，Surface=$inputSurface")
+            pln("MediaCodec 已启动，Surface=$inputSurface")
 
             // 2) 创建 VirtualDisplay（公开 API，shell 用户可能有权）
-            Log.i(TAG, "创建 VirtualDisplay…")
+            pln("创建 VirtualDisplay…")
             val flags = DisplayManager.VIRTUAL_DISPLAY_FLAG_PUBLIC or
                     DisplayManager.VIRTUAL_DISPLAY_FLAG_PRESENTATION or
                     DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR
@@ -97,35 +100,37 @@ class CaptureServer(
                     flags
                 )
             } catch (e: SecurityException) {
-                Log.e(TAG, "★ VirtualDisplay 创建失败：权限不足（CREATE_VIRTUAL_DISPLAY）", e)
+                pln("★ VirtualDisplay 创建失败：权限不足（CREATE_VIRTUAL_DISPLAY）", e)
                 throw e
             } catch (e: Exception) {
-                Log.e(TAG, "★ VirtualDisplay 创建失败：${e.message}", e)
+                pln("★ VirtualDisplay 创建失败：${e.message}", e)
                 throw e
             }
             virtualDisplay = vd
-            Log.i(TAG, "✓ VirtualDisplay 已创建：name=${vd.display?.name} state=${vd.display?.state}")
+            pln("✓ VirtualDisplay 已创建：name=${vd.display?.name} state=${vd.display?.state}")
 
             if (pocMode) {
-                Log.i(TAG, "=== POC 模式：创建成功，10 秒后退出 ===")
+                pln("=== POC 模式：创建成功，10 秒后退出 ===")
                 Thread.sleep(10_000)
                 cleanup()
-                Log.i(TAG, "=== POC 完成 ===")
+                pln("=== POC 完成 ===")
                 return
             }
 
             // 3) 生产模式：等待 TCP 客户端，边编码边发送
             ServerSocket(port).use { ss ->
-                Log.i(TAG, "监听端口 $port，等待连接…")
+                pln("监听端口 $port，等待连接…")
                 val client = ss.accept()
-                Log.i(TAG, "客户端已连接：${client.remoteSocketAddress}")
+                pln("客户端已连接：${client.remoteSocketAddress}")
                 client.use { sock ->
                     val output = DataOutputStream(sock.getOutputStream().buffered())
                     encodeLoop(output)
                 }
             }
         } catch (e: Throwable) {
-            Log.e(TAG, "★ CaptureServer 异常退出", e)
+            val sw = java.io.StringWriter()
+            e.printStackTrace(java.io.PrintWriter(sw))
+            pln("★ CaptureServer 异常退出：" + e.javaClass.simpleName + ": " + e.message + "\n" + sw.toString())
             cleanup()
             throw e
         }
@@ -151,7 +156,7 @@ class CaptureServer(
                                 output.write(data)
                                 output.flush()
                             } catch (e: Exception) {
-                                Log.w(TAG, "写入失败，停止", e)
+                                pln("写入失败，停止：" + e.message)
                                 running = false
                             }
                         }
@@ -159,7 +164,7 @@ class CaptureServer(
                     c.releaseOutputBuffer(outIdx, false)
                 }
                 outIdx == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
-                    Log.i(TAG, "输出格式变化：${c.outputFormat}")
+                    pln("输出格式变化：${c.outputFormat}")
                 }
             }
         }
@@ -196,3 +201,4 @@ class CaptureServer(
         return getService.invoke(ctx, "display") as DisplayManager
     }
 }
+
