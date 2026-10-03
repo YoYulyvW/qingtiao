@@ -123,7 +123,7 @@ jobs:
             while IFS= read -r tag; do
               [ -z "$tag" ] && continue
               echo "删除 Release: $tag"
-              gh release delete "$tag" --repo ${{ github.repository }} --yes --cleanup-tag 2>&1 || echo "删除 $tag 失败（忽略）"
+              gh release delete "$tag" --repo ${{ github.repository }} --yes --cleanup-tag < /dev/null 2>&1 || echo "删除 $tag 失败（忽略）"
             done < /tmp/old_tags.txt
           fi
           echo "=== 剩余 Release ==="
