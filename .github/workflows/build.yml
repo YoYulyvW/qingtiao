@@ -104,3 +104,25 @@ jobs:
             --title "自动跳过 ${{ steps.ver.outputs.name }}" \
             --notes "自动构建：v${{ steps.ver.outputs.name }} (build ${{ steps.ver.outputs.code }})" \
             || gh release upload "$TAG" out/*.apk --clobber --repo ${{ github.repository }}
+
+
+      - name: Cleanup old releases (keep latest 3)
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "=== 清理旧 Release（保留最新 3 个）==="
+          gh release list --repo ${{ github.repository }} --limit 100 \
+            --json tagName,createdAt \
+            --jq 'sort_by(.createdAt) | reverse | .[3:] | .[].tagName' > /tmp/old_tags.txt
+          if [ ! -s /tmp/old_tags.txt ]; then
+            echo "无旧 Release 需清理"
+          else
+            while IFS= read -r tag; do
+              [ -z "$tag" ] && continue
+              echo "删除 Release: $tag"
+              gh release delete "$tag" --repo ${{ github.repository }} --yes --cleanup-tag || echo "删除失败（忽略）"
+            done < /tmp/old_tags.txt
+          fi
+          echo "=== 剩余 Release ==="
+          gh release list --repo ${{ github.repository }} --limit 5
