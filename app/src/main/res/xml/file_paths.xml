@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- 下载目录（外部） -->
+    <external-path name="external_downloads" path="Download/" />
+    <!-- App 私有目录 -->
+    <files-path name="internal_files" path="." />
+    <external-files-path name="external_files" path="." />
+    <cache-path name="cache" path="." />
+</paths>

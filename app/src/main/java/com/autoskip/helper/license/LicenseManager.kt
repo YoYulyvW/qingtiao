@@ -7,6 +7,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -28,6 +30,20 @@ object LicenseManager {
     private var prefs: LicensePrefs? = null
     /** 心跳互斥：避免多个心跳并发导致状态抖动 */
     private val heartBeatLock = java.util.concurrent.atomic.AtomicBoolean(false)
+
+    /** ★ 更新信息（UI 观察；非空则需弹窗） */
+    data class UpdateInfo(
+        val latestVersion: String,
+        val latestVersionCode: Long,
+        val downloadUrl: String,
+        val force: Boolean,
+        val note: String
+    )
+    private val _updateInfo = MutableStateFlow<UpdateInfo?>(null)
+    val updateInfo: StateFlow<UpdateInfo?> = _updateInfo
+
+    /** 用户已忽略的非强制更新版本（不再提示） */
+    private var dismissedVersionCode: Long = 0
 
     /** 设备唯一标识 */
     fun deviceId(ctx: Context): String =
@@ -68,6 +84,14 @@ object LicenseManager {
     fun checkNow(ctx: Context) {
         val app = ctx.applicationContext
         scope.launch { heartBeat(app, LicensePrefs(app)) }
+    }
+
+    /** 用户忽略本次（仅非强制更新可调用） */
+    fun dismissUpdate() {
+        val cur = _updateInfo.value ?: return
+        if (cur.force) return  // 强制更新不允许忽略
+        dismissedVersionCode = cur.latestVersionCode
+        _updateInfo.value = null
     }
 
     /**
@@ -116,7 +140,16 @@ object LicenseManager {
             val base = p.baseUrl.first()
             val deviceId = deviceId(ctx)
             if (deviceId.isBlank()) return
-            val resp = LicenseClient.check(base, deviceId)
+            // ★ 取当前 App 版本
+            val pkgInfo = ctx.packageManager.getPackageInfo(ctx.packageName, 0)
+            @Suppress("DEPRECATION")
+            val versionName = pkgInfo.versionName ?: "0"
+            @Suppress("DEPRECATION")
+            val versionCode = if (android.os.Build.VERSION.SDK_INT >= 28)
+                pkgInfo.longVersionCode
+            else
+                @Suppress("DEPRECATION") pkgInfo.versionCode.toLong()
+            val resp = LicenseClient.check(base, deviceId, versionName, versionCode)
             // ★ 网络失败计数：连续 3 次 → 重探
             if (resp.reason == "network") {
                 hbFailCount++
@@ -148,6 +181,20 @@ object LicenseManager {
                 p.setOffset(resp.serverNow - System.currentTimeMillis())
                 p.setLastHeartbeat(System.currentTimeMillis())
                 Log.i(TAG, "心跳成功")
+
+                // ★ 版本检查：服务端下发最新版本
+                if (resp.latestVersionCode > 0 && resp.latestVersionCode > versionCode) {
+                    Log.i(TAG, "发现新版本：${resp.latestVersion} (${resp.latestVersionCode}) 当前：$versionName ($versionCode)")
+                    if (resp.forceUpdate || resp.latestVersionCode > dismissedVersionCode) {
+                        _updateInfo.value = UpdateInfo(
+                            latestVersion = resp.latestVersion,
+                            latestVersionCode = resp.latestVersionCode,
+                            downloadUrl = resp.downloadUrl,
+                            force = resp.forceUpdate,
+                            note = resp.updateNote
+                        )
+                    }
+                }
                 // ★ 规则版本检查：服务端版本更新 → 触发同步
                 if (resp.rulesVersion > p.getRulesVersion()) {
                     try {

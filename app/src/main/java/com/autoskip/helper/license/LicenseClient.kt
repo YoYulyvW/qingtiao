@@ -36,7 +36,13 @@ object LicenseClient {
         val features: Map<String, Boolean>,
         val rulesVersion: Long = 0,
         /** ★ 服务端下发的候选心跳域名（null=字段缺失，保留本地缓存；空数组=清空） */
-        val endpoints: List<String>? = null
+        val endpoints: List<String>? = null,
+        // ★ 版本信息（强制更新用）
+        val latestVersion: String = "",
+        val latestVersionCode: Long = 0,
+        val downloadUrl: String = "",
+        val forceUpdate: Boolean = false,
+        val updateNote: String = ""
     )
 
     /** 拉取规则结果（原始 JSON，交给 RuleSync 解析） */
@@ -62,9 +68,11 @@ object LicenseClient {
             ActivateResult(ok, msg, expireAt, serverNow, features)
         }
 
-    suspend fun check(base: String, deviceId: String): CheckResult =
+    suspend fun check(base: String, deviceId: String, appVersion: String, appVersionCode: Long): CheckResult =
         withContext(Dispatchers.IO) {
-            val body = "{\"deviceId\":\"" + esc(deviceId) + "\"}"
+            val body = "{\"deviceId\":\"" + esc(deviceId) +
+                "\",\"appVersion\":\"" + esc(appVersion) +
+                "\",\"appVersionCode\":" + appVersionCode + "}"
             val resp = post(base + "/license/check", body)
             if (resp == null) {
                 // 网络错误：用 reason=network 区分
@@ -77,7 +85,16 @@ object LicenseClient {
             val features = parseFeatures(resp)
             val rulesVersion = parseLong(resp, "rulesVersion")
             val endpoints = parseEndpoints(resp)
-            CheckResult(ok, reason, expireAt, serverNow, features, rulesVersion, endpoints)
+            // ★ 版本信息
+            val latestVersion = parseString(resp, "latestVersion")
+            val latestVersionCode = parseLong(resp, "latestVersionCode")
+            val downloadUrl = parseString(resp, "downloadUrl")
+            val forceUpdate = parseBool(resp, "forceUpdate")
+            val updateNote = parseString(resp, "updateNote")
+            CheckResult(
+                ok, reason, expireAt, serverNow, features, rulesVersion, endpoints,
+                latestVersion, latestVersionCode, downloadUrl, forceUpdate, updateNote
+            )
         }
 
     /** 拉取全量服务端规则 */

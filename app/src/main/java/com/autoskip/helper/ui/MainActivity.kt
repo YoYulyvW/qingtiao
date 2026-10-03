@@ -82,6 +82,16 @@ class MainActivity : ComponentActivity() {
 private fun AppRoot(vm: MainViewModel) {
     val licenseState by FeatureGate.state.collectAsState()
 
+    // ★ 强制/可选更新弹窗（覆盖在最上层，优先于所有界面）
+    val updateInfo by com.autoskip.helper.license.LicenseManager.updateInfo.collectAsState()
+    updateInfo?.let { info ->
+        UpdateDialog(info)
+        // 强制更新时：其余界面全部禁用（弹窗本身就会挡住，这里可加一层遮罩）
+        if (info.force) {
+            // 弹窗 Modal 已覆盖，无需额外处理
+        }
+    }
+
     // ★ 授权状态判断
     when (licenseState) {
         FeatureGate.State.LOADING -> {
