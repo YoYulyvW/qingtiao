@@ -160,7 +160,7 @@ class CaptureServer(
                     if (bufInfo.size > 0) {
                         count++
                         if (output != null) {
-                            writeFrame(output, c, bufInfo)
+                            writeFrame(output, c, outIdx, bufInfo)
                         }
                     }
                     c.releaseOutputBuffer(outIdx, false)
@@ -183,7 +183,7 @@ class CaptureServer(
             when {
                 outIdx >= 0 -> {
                     if (bufInfo.size > 0) {
-                        writeFrame(output, c, bufInfo)
+                        writeFrame(output, c, outIdx, bufInfo)
                     }
                     c.releaseOutputBuffer(outIdx, false)
                 }
@@ -195,8 +195,8 @@ class CaptureServer(
     }
 
     /** ★ 写入一帧（含帧头） */
-    private fun writeFrame(output: DataOutputStream, codec: MediaCodec, info: MediaCodec.BufferInfo) {
-        val buf = codec.getOutputBuffer(info.outputBufferIndex) ?: return
+    private fun writeFrame(output: DataOutputStream, codec: MediaCodec, outIdx: Int, info: MediaCodec.BufferInfo) {
+        val buf = codec.getOutputBuffer(outIdx) ?: return
         val data = ByteArray(info.size)
         buf.position(info.offset)
         buf.limit(info.offset + info.size)
