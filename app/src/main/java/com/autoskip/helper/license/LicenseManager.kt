@@ -194,19 +194,25 @@ object LicenseManager {
                             note = resp.updateNote
                         )
                     }
-                    // ★ 强制更新：立即暂停所有跳过功能 + Toast 提示（不打断当前工作）
+                    // ★ 按"设备绑定激活码"的 forceUpdate 决定锁/解锁
                     if (resp.forceUpdate) {
+                        // 强制更新：暂停所有跳过功能 + Toast 提示（不打断工作中的用户）
                         if (!FeatureGate.updateBlocked) {
                             FeatureGate.setUpdateBlocked(true)
                             Log.w(TAG, "强制更新：已暂停所有跳过功能")
                         }
-                        // 用 Toast 提示（不弹窗打断工作中的用户）
                         try {
                             com.autoskip.helper.service.OverlayToast.show(
                                 ctx,
                                 "发现新版本 v${resp.latestVersion}，请更新后继续使用跳过功能"
                             )
                         } catch (_: Exception) {}
+                    } else {
+                        // ★ 非强制更新：若之前被锁，现在解锁（管理员把"强制"改回"非强制"）
+                        if (FeatureGate.updateBlocked) {
+                            FeatureGate.setUpdateBlocked(false)
+                            Log.i(TAG, "非强制更新：已恢复跳过功能")
+                        }
                     }
                 } else {
                     // ★ 版本已是最新（或服务端未下发版本）→ 解除阻塞
