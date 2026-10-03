@@ -81,6 +81,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun AppRoot(vm: MainViewModel) {
     val licenseState by FeatureGate.state.collectAsState()
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     // ★ 强制/可选更新弹窗（覆盖在最上层，优先于所有界面）
     val updateInfo by com.autoskip.helper.license.LicenseManager.updateInfo.collectAsState()
@@ -89,6 +90,43 @@ private fun AppRoot(vm: MainViewModel) {
         // 强制更新时：其余界面全部禁用（弹窗本身就会挡住，这里可加一层遮罩）
         if (info.force) {
             // 弹窗 Modal 已覆盖，无需额外处理
+        }
+    }
+
+    // ★ 无障碍服务未开启 → 自动弹窗引导（更新/重装后系统会禁用无障碍）
+    if (licenseState == FeatureGate.State.ACTIVE) {
+        var serviceOn by remember { mutableStateOf(true) }   // 初始 true，避免启动瞬间误弹
+        var showGuide by remember { mutableStateOf(false) }
+        var userDismissed by remember { mutableStateOf(false) }
+
+        androidx.compose.runtime.LaunchedEffect(Unit) {
+            kotlinx.coroutines.delay(1500)   // 启动后稍等，避免误判
+            while (true) {
+                val on = com.autoskip.helper.ui.screens.isAccessibilityEnabled(context)
+                serviceOn = on
+                if (!on && !userDismissed) showGuide = true
+                if (on) { showGuide = false; userDismissed = false }
+                kotlinx.coroutines.delay(2000)
+            }
+        }
+
+        if (showGuide) {
+            androidx.compose.material3.AlertDialog(
+                onDismissRequest = { /* 不允许点外部关闭 */ },
+                title = { Text("需要开启无障碍服务") },
+                text = { Text("应用更新后，系统可能自动关闭无障碍服务。请重新开启，否则自动跳过功能无法使用。") },
+                confirmButton = {
+                    androidx.compose.material3.TextButton(onClick = {
+                        com.autoskip.helper.ui.screens.openAccessibilitySettings(context)
+                    }) { Text("去开启") }
+                },
+                dismissButton = {
+                    androidx.compose.material3.TextButton(onClick = {
+                        userDismissed = true
+                        showGuide = false
+                    }) { Text("稍后") }
+                }
+            )
         }
     }
 
