@@ -64,6 +64,7 @@ fun DramaScreen(onBack: () -> Unit, vm: MainViewModel) {
     val debugEnabled by vm.dramaDebug.collectAsState()
     val imgInterval by vm.dramaImgInterval.collectAsState()
     val normalInterval by vm.dramaNormalInterval.collectAsState()
+    val stuckSec by vm.dramaStuckSec.collectAsState()
     val longPressOn by vm.dramaLongPress.collectAsState()
     val mountByIdOn by vm.dramaMountById.collectAsState()
     val resumePauseOn by vm.dramaResumePause.collectAsState()
@@ -221,6 +222,13 @@ fun DramaScreen(onBack: () -> Unit, vm: MainViewModel) {
                     CompactNumField("检测间隔(ms)", intervalMs.toString()) { v ->
                         if (v in 200..5000) vm.setDramaInterval(v.toLong())
                     }
+                    Spacer(Modifier.height(8.dp))
+                    CompactNumField("卡住判定(秒)", stuckSec.toString()) { v ->
+                        if (v in 30..1800) vm.setDramaStuckSec(v)
+                    }
+                    Text("集数/画面超过该秒数无变化 → 自动按返回键（仅短剧页）",
+                        fontSize = 11.sp, color = com.autoskip.helper.ui.theme.HarmonyColor.Gray6,
+                        modifier = Modifier.padding(top = 4.dp))
                 }
             }
 

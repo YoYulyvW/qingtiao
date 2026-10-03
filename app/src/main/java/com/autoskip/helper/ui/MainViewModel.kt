@@ -33,6 +33,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val dramaDebug = repo.dramaDebug.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
     val dramaImgInterval = repo.dramaImgInterval.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 1)
     val dramaNormalInterval = repo.dramaNormalInterval.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 5)
+    val dramaStuckSec = repo.dramaStuckSec.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 180)
     val dramaLongPress = repo.dramaLongPress.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
     val dramaMountById = repo.dramaMountById.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
     val dramaResumePause = repo.dramaResumePause.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
@@ -150,6 +151,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun setDramaClickSpeed(v: Boolean) = viewModelScope.launch { repo.setDramaClickSpeed(v) }
     fun setDramaImgInterval(v: Int) = viewModelScope.launch { repo.setDramaImgInterval(v) }
     fun setDramaNormalInterval(v: Int) = viewModelScope.launch { repo.setDramaNormalInterval(v) }
+    fun setDramaStuckSec(v: Int) = viewModelScope.launch { repo.setDramaStuckSec(v) }
 
     // ===== 白名单（门控 WHITELIST；原子操作防并发丢更新）=====
     fun toggleWhitelistPkg(pkg: String) = viewModelScope.launch {

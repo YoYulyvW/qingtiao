@@ -285,6 +285,8 @@ class Repository(
     suspend fun setDramaDebug(v: Boolean) = prefs.setDramaDebug(v)
     suspend fun setDramaImgInterval(v: Int) = prefs.setDramaImgInterval(v)
     suspend fun setDramaNormalInterval(v: Int) = prefs.setDramaNormalInterval(v)
+    val dramaStuckSec: Flow<Int> = prefs.dramaStuckSec
+    suspend fun setDramaStuckSec(v: Int) = prefs.setDramaStuckSec(v)
     suspend fun setDramaLongPress(v: Boolean) = prefs.setDramaLongPress(v)
     suspend fun setDramaMountById(v: Boolean) = prefs.setDramaMountById(v)
     suspend fun setDramaResumePause(v: Boolean) = prefs.setDramaResumePause(v)

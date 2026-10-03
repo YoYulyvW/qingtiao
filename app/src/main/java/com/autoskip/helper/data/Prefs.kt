@@ -39,6 +39,7 @@ class Prefs(private val context: Context) {
     private val KEY_DRAMA_DEBUG = booleanPreferencesKey("drama_debug")
     private val KEY_DRAMA_IMG_INT = stringPreferencesKey("drama_img_int")
     private val KEY_DRAMA_NORMAL_INT = stringPreferencesKey("drama_normal_int")
+    private val KEY_DRAMA_STUCK_SEC = stringPreferencesKey("drama_stuck_sec")   // 卡住判定秒数
 
     private val KEY_DRAMA_LONGPRESS = booleanPreferencesKey("drama_longpress")
     private val KEY_DRAMA_CLICKSPEED = booleanPreferencesKey("drama_clickspeed")
@@ -136,6 +137,10 @@ class Prefs(private val context: Context) {
     /** 「识别图片」版菜单的呼出间隔（集数），默认 1（每集） */
     val dramaImgInterval: Flow<Int> = context.dataStore.data.map { it[KEY_DRAMA_IMG_INT]?.toIntOrNull() ?: 1 }
     suspend fun setDramaImgInterval(v: Int) { context.dataStore.edit { it[KEY_DRAMA_IMG_INT] = v.toString() } }
+
+    /** 卡住判定秒数（集数/画面多久无变化 → 按返回键），默认 180 秒 */
+    val dramaStuckSec: Flow<Int> = context.dataStore.data.map { (it[KEY_DRAMA_STUCK_SEC] ?: "180").toIntOrNull() ?: 180 }
+    suspend fun setDramaStuckSec(v: Int) { context.dataStore.edit { it[KEY_DRAMA_STUCK_SEC] = v.toString() } }
 
     /** 其他版菜单的呼出间隔（集数），默认 5 */
     val dramaNormalInterval: Flow<Int> = context.dataStore.data.map { it[KEY_DRAMA_NORMAL_INT]?.toIntOrNull() ?: 5 }

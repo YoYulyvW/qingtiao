@@ -154,8 +154,9 @@ class AutoClickAccessibilityService : AccessibilityService() {
     private var lastSeenEpisodeText: String? = null
     /** 上次因卡住按返回键的时间戳（冷却，避免连按） */
     private var lastStuckBackTime = 0L
-    /** 卡住判定阈值：5 分钟无变化 */
-    private val STUCK_THRESHOLD_MS = 5 * 60 * 1000L
+    /** 卡住判定阈值（秒，可配），默认 180 秒 = 3 分钟 */
+    @Volatile private var dramaStuckSec = 180
+    private val STUCK_THRESHOLD_MS get() = dramaStuckSec * 1000L
     /** 返回键冷却：60 秒 */
     private val STUCK_BACK_COOLDOWN_MS = 60_000L
     /** 本轮卡住是否已按过返回（集数变化后复位） */
@@ -228,6 +229,7 @@ class AutoClickAccessibilityService : AccessibilityService() {
         scope.launch { repo.dramaDebug.collect { DramaDebug.enabled = it } }
         scope.launch { repo.dramaImgInterval.collect { dramaImgInterval = it } }
         scope.launch { repo.dramaNormalInterval.collect { dramaNormalInterval = it } }
+        scope.launch { repo.dramaStuckSec.collect { dramaStuckSec = it } }
         // ★ 识别提示悬浮窗开关
         scope.launch { repo.overlayToastEnabled.collect { overlayToastOn = it } }
 
