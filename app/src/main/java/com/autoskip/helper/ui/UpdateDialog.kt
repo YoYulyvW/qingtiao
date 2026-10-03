@@ -169,7 +169,7 @@ fun UpdateDialog(info: LicenseManager.UpdateInfo) {
                     ) { Text("立即下载", fontSize = 15.sp, fontWeight = FontWeight.Medium) }
                 }
 
-                if (!info.force && !prog.downloading) {
+                if (!info.force && !prog.downloading && !prog.readyToInstall) {
                     TextButton(
                         onClick = {
                             LicenseManager.dismissUpdate()
