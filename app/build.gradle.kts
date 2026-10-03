@@ -17,6 +17,11 @@ android {
         // 版本号可被 CI 覆盖
         versionCode = (System.getenv("APP_VERSION_CODE") ?: "1").toInt()
         versionName = System.getenv("APP_VERSION_NAME") ?: "1.0.0"
+
+        // ★ 只打包 arm64-v8a（现代设备都是 64 位；WebRTC .so 很大，裁剪后 APK 约 5-8MB）
+        ndk {
+            abiFilters += listOf("arm64-v8a")
+        }
     }
 
     signingConfigs {
