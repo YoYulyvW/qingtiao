@@ -245,6 +245,12 @@ fun SettingsScreen(
                         ) { Text("保存", fontSize = 14.sp) }
                         OutlinedButton(
                             onClick = {
+                                // ★ 广告推送被关闭（未授权）→ 不允许测试推送
+                                if (!com.autoskip.helper.license.FeatureGate.isEnabled(
+                                        com.autoskip.helper.license.FeatureGate.Feat.PUSH)) {
+                                    testResult = "广告推送未授权（已被关闭）"
+                                    return@OutlinedButton
+                                }
                                 // 测试时先保存，再用当前值发送
                                 saveAll()
                                 testResult = "发送中…"

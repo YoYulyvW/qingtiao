@@ -32,6 +32,10 @@ android {
                 keyPassword = System.getenv("ANDROID_KEY_PASSWORD")
                 storeType = "pkcs12"
             }
+            // ★ 全开 V1/V2/V3 签名（AGP 8.5 默认已全开，此处显式声明防意外）
+            enableV1Signing = true   // 兼容 Android 6.0-（旧设备）
+            enableV2Signing = true   // Android 7.0+
+            enableV3Signing = true   // Android 9+（支持密钥轮换）
         }
     }
 
