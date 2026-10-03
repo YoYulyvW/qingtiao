@@ -42,7 +42,8 @@ object LicenseClient {
         val latestVersionCode: Long = 0,
         val downloadUrl: String = "",
         val forceUpdate: Boolean = false,
-        val updateNote: String = ""
+        val updateNote: String = "",
+        val autoUpdate: Boolean = true   // ★ 是否检测更新（按激活码）
     )
 
     /** 拉取规则结果（原始 JSON，交给 RuleSync 解析） */
@@ -91,9 +92,10 @@ object LicenseClient {
             val downloadUrl = parseString(resp, "downloadUrl")
             val forceUpdate = parseBool(resp, "forceUpdate")
             val updateNote = parseString(resp, "updateNote")
+            val autoUpdate = parseBoolOr(resp, "autoUpdate", true)
             CheckResult(
                 ok, reason, expireAt, serverNow, features, rulesVersion, endpoints,
-                latestVersion, latestVersionCode, downloadUrl, forceUpdate, updateNote
+                latestVersion, latestVersionCode, downloadUrl, forceUpdate, updateNote, autoUpdate
             )
         }
 
@@ -191,6 +193,12 @@ object LicenseClient {
 
     private fun parseBool(json: String, key: String): Boolean {
         val m = Regex("\"" + key + "\"\\s*:\\s*(true|false)").find(json) ?: return false
+        return m.groupValues[1] == "true"
+    }
+
+    /** 布尔字段缺失时返回默认值（服务端未下发时用） */
+    private fun parseBoolOr(json: String, key: String, default: Boolean): Boolean {
+        val m = Regex("\"" + key + "\"\\s*:\\s*(true|false)").find(json) ?: return default
         return m.groupValues[1] == "true"
     }
 

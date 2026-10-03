@@ -182,8 +182,8 @@ object LicenseManager {
                 p.setLastHeartbeat(System.currentTimeMillis())
                 Log.i(TAG, "心跳成功")
 
-                // ★ 版本检查：服务端下发最新版本
-                if (resp.latestVersionCode > 0 && resp.latestVersionCode > versionCode) {
+                // ★ 版本检查：仅当激活码开启"检测更新"才处理
+                if (resp.autoUpdate && resp.latestVersionCode > 0 && resp.latestVersionCode > versionCode) {
                     Log.i(TAG, "发现新版本：${resp.latestVersion} (${resp.latestVersionCode}) 当前：$versionName ($versionCode)")
                     if (resp.forceUpdate || resp.latestVersionCode > dismissedVersionCode) {
                         _updateInfo.value = UpdateInfo(
@@ -217,7 +217,7 @@ object LicenseManager {
                         }
                     }
                 } else {
-                    // ★ 版本已是最新（或服务端未下发版本）→ 解除阻塞
+                    // ★ 版本已是最新 / 未开启检测更新 / 未下发版本 → 解除阻塞
                     if (FeatureGate.updateBlocked) {
                         FeatureGate.setUpdateBlocked(false)
                     }
