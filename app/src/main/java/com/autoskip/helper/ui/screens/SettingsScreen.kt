@@ -396,6 +396,25 @@ fun SettingsScreen(
 
                     if (rcResult.isNotBlank()) {
                         Spacer(Modifier.height(8.dp))
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("测试结果（${rcResult.length} 字符）",
+                                fontSize = 12.sp, fontWeight = FontWeight.Medium,
+                                color = com.autoskip.helper.ui.theme.HarmonyColor.TextPrimary)
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                TextButton(onClick = {
+                                    val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
+                                            as android.content.ClipboardManager
+                                    cm.setPrimaryClip(android.content.ClipData.newPlainText("rc_log", rcResult))
+                                    android.widget.Toast.makeText(context, "已复制 ${rcResult.length} 字符", android.widget.Toast.LENGTH_SHORT).show()
+                                }) { Text("复制", fontSize = 12.sp) }
+                                TextButton(onClick = { rcResult = "" }) { Text("清空", fontSize = 12.sp) }
+                            }
+                        }
+                        Spacer(Modifier.height(4.dp))
                         Text(rcResult, fontSize = 11.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
