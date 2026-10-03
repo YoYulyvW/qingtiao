@@ -194,8 +194,8 @@ object LicenseManager {
                             note = resp.updateNote
                         )
                     }
-                    // ★ 后台预下载（下载完成不自动安装，仅标记就绪；用户点安装）
-                    if (resp.downloadUrl.isNotBlank()) {
+                    // ★ 后台预下载：仅非强制更新时（强制更新走"联系管理员"，无需下载）
+                    if (!resp.forceUpdate && resp.downloadUrl.isNotBlank()) {
                         try {
                             com.autoskip.helper.update.AppUpdater.preDownload(
                                 ctx, resp.downloadUrl, resp.latestVersion, resp.latestVersionCode
