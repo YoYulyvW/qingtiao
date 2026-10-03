@@ -373,7 +373,27 @@ fun SettingsScreen(
                             containerColor = com.autoskip.helper.ui.theme.HarmonyColor.BrandOrange,
                             contentColor = com.autoskip.helper.ui.theme.HarmonyColor.White
                         )
-                    ) { Text("运行测试", fontSize = 14.sp) }
+                    ) { Text("运行测试（捕获）", fontSize = 14.sp) }
+
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = {
+                            rcResult = "测试 WebRTC 加载中（约 20 秒）…"
+                            scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                                val out = try {
+                                    com.autoskip.helper.root.RemoteControlTester.testWebRTCInAppProcess(context)
+                                } catch (e: Exception) {
+                                    "异常：" + (e.message ?: "未知")
+                                }
+                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                    rcResult = out
+                                }
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth().height(com.autoskip.helper.ui.theme.Dimens.MinTouchTarget),
+                        shape = RoundedCornerShape(com.autoskip.helper.ui.theme.Dimens.RadiusInput)
+                    ) { Text("测试 WebRTC 加载", fontSize = 14.sp) }
+
                     if (rcResult.isNotBlank()) {
                         Spacer(Modifier.height(8.dp))
                         Text(rcResult, fontSize = 11.sp,
