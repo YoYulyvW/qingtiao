@@ -85,7 +85,7 @@ jobs:
           RAW="https://github.com/${{ github.repository }}/releases/download/v${VERSION}/AutoSkip-${VERSION}.apk"
           URL="https://oo6.cc/downloads/${RAW}"
           echo "上报 ${VERSION} (${CODE}) → ${URL}"
-          curl -sS -X POST "https://pybot.eu.org/admin/api/app/version/set" \
+          curl -sS -X POST "https://pybot.eu.org/app/report-version" \
             -H "Content-Type: application/json" \
             -H "X-Update-Secret: ${{ secrets.UPDATE_SECRET }}" \
             -d "{\"version\":\"${VERSION}\",\"versionCode\":${CODE},\"downloadUrl\":\"${URL}\",\"forceUpdate\":true,\"note\":\"自动构建\"}" \
