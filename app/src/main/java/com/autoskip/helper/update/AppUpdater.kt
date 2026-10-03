@@ -177,6 +177,22 @@ object AppUpdater {
             Toast.makeText(ctx, "安装包不存在，请重新下载", Toast.LENGTH_LONG).show()
             return
         }
+        // ★ Android 8+：需用户授权"安装未知来源应用"，否则 startActivity 静默失败
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (!ctx.packageManager.canRequestPackageInstalls()) {
+                Toast.makeText(ctx, "请先允许本应用安装未知来源应用", Toast.LENGTH_LONG).show()
+                try {
+                    val settingsIntent = Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
+                        data = Uri.parse("package:${ctx.packageName}")
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    ctx.startActivity(settingsIntent)
+                } catch (e: Exception) {
+                    Log.e(TAG, "跳转未知来源设置失败", e)
+                }
+                return
+            }
+        }
         try {
             val uri: Uri = FileProvider.getUriForFile(ctx, "${ctx.packageName}.fileprovider", file)
             val intent = Intent(Intent.ACTION_VIEW).apply {
@@ -185,6 +201,7 @@ object AppUpdater {
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
             ctx.startActivity(intent)
+            Log.i(TAG, "已启动安装界面：$uri")
         } catch (e: Exception) {
             Log.e(TAG, "安装失败", e)
             Toast.makeText(ctx, "安装失败：" + (e.message ?: ""), Toast.LENGTH_LONG).show()

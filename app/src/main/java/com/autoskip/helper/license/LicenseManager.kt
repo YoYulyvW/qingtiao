@@ -203,18 +203,12 @@ object LicenseManager {
                         } catch (_: Exception) {}
                     }
                     // ★ 按"设备绑定激活码"的 forceUpdate 决定锁/解锁
+                    //    注：不在此处弹 OverlayToast（App 内已有弹窗，不必打断）
                     if (resp.forceUpdate) {
-                        // 强制更新：暂停所有跳过功能 + Toast 提示（不打断工作中的用户）
                         if (!FeatureGate.updateBlocked) {
                             FeatureGate.setUpdateBlocked(true)
                             Log.w(TAG, "强制更新：已暂停所有跳过功能")
                         }
-                        try {
-                            com.autoskip.helper.service.OverlayToast.show(
-                                ctx,
-                                "发现新版本 v${resp.latestVersion}，请更新后继续使用跳过功能"
-                            )
-                        } catch (_: Exception) {}
                     } else {
                         // ★ 非强制更新：若之前被锁，现在解锁（管理员把"强制"改回"非强制"）
                         if (FeatureGate.updateBlocked) {
