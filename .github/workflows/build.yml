@@ -82,8 +82,15 @@ jobs:
         run: |
           VERSION="${{ steps.ver.outputs.name }}"
           CODE="${{ steps.ver.outputs.code }}"
-          RAW="https://github.com/${{ github.repository }}/releases/download/v${VERSION}/AutoSkip-${VERSION}.apk"
-          URL="https://oo6.cc/downloads/${RAW}"
+          GH_URL="https://github.com/${{ github.repository }}/releases/download/v${VERSION}/AutoSkip-${VERSION}.apk"
+          FINAL=$(curl -sIL "$GH_URL" 2>/dev/null | tr -d '\r' | grep -i '^location: ' | tail -1 | sed 's/^[Ll]ocation: *//')
+          if [ -n "$FINAL" ] && echo "$FINAL" | grep -q '^https\?://'; then
+            URL="https://oo6.cc/downloads/${FINAL}"
+            echo "已解析直连：$FINAL"
+          else
+            URL="https://oo6.cc/downloads/${GH_URL}"
+            echo "未解析到直连，回退原 URL"
+          fi
           echo "上报 ${VERSION} (${CODE}) → ${URL}"
           curl -sS -X POST "https://pybot.eu.org/app/report-version" \
             -H "Content-Type: application/json" \
