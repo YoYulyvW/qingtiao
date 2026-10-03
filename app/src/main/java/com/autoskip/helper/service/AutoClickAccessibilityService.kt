@@ -147,6 +147,22 @@ class AutoClickAccessibilityService : AccessibilityService() {
     /** 是否处于"退出短剧"页面：为 true 时暂停所有动作 */
     @Volatile private var exitDramaPaused = false
 
+    // ===== 短剧卡住检测（黑屏 / 集数长时间不变 → 按返回键）=====
+    /** 上次看到"第X集"（或短剧页特征）的时间戳 */
+    private var lastEpisodeSeenTime = 0L
+    /** 上次看到的集数文本（用于判断是否变化） */
+    private var lastSeenEpisodeText: String? = null
+    /** 上次因卡住按返回键的时间戳（冷却，避免连按） */
+    private var lastStuckBackTime = 0L
+    /** 卡住判定阈值：5 分钟无变化 */
+    private val STUCK_THRESHOLD_MS = 5 * 60 * 1000L
+    /** 返回键冷却：60 秒 */
+    private val STUCK_BACK_COOLDOWN_MS = 60_000L
+    /** 本轮卡住是否已按过返回（集数变化后复位） */
+    @Volatile private var stuckHandled = false
+    /** 本轮是否刚触发返回（用于 handleDrama 跳过后续动作） */
+    @Volatile private var stuckJustFired = false
+
     /** 条件规则延时检测：记录已触发待确认的规则（签名 -> 触发时间） */
     private val pendingCondRules = HashMap<String, Long>()
 
@@ -347,6 +363,13 @@ class AutoClickAccessibilityService : AccessibilityService() {
 
         // 提取当前集数（发布者下方，形如"第1集"）
         currentEpisode = extractEpisode(nodes)
+
+        // ★ 卡住检测（黑屏 / 集数 5 分钟不变 → 按返回键）
+        checkDramaStuck(nodes, hasEpisode)
+        if (stuckJustFired) {
+            stuckJustFired = false
+            return   // 刚按了返回，本轮不再做其它动作
+        }
 
         // 0) 长按菜单是否已弹出？（同时看 text 和 desc，兼容分身版）
         val hasMenu = nodes.any {
@@ -598,6 +621,68 @@ class AutoClickAccessibilityService : AccessibilityService() {
      * 策略：优先取【紧跟在发布者(@xxx)下方】的那个（当前集标题位置）；
      *       找不到发布者时，退化为取可见屏幕内最靠上的。
      */
+    /**
+     * 短剧卡住检测：
+     * - 首页（含 团购/商城/朋友 底部导航）→ 不触发，复位计时
+     * - 短剧页（有"第X集"/"集全"）→ 记录集数文本与时间
+     *   · 集数变化 → 复位
+     *   · 集数 5 分钟未变 → 按返回键
+     * - 既非首页也非短剧页（可能是黑屏/加载页）→ 若之前处于短剧页且超 5 分钟 → 按返回键
+     * 返回键冷却 60 秒；同一"卡住"只处理一次（集数变化后复位）
+     */
+    private fun checkDramaStuck(nodes: List<android.view.accessibility.AccessibilityNodeInfo>, hasEpisode: Boolean) {
+        val now = System.currentTimeMillis()
+
+        // 首页特征：底部导航 团购/商城/朋友/我
+        val isHomePage = nodes.any {
+            val t = it.text?.toString()?.trim() ?: ""
+            t == "团购" || t == "商城" || t == "朋友"
+        }
+        if (isHomePage) {
+            // 首页 → 复位（不在短剧页，不触发）
+            lastEpisodeSeenTime = 0L
+            lastSeenEpisodeText = null
+            stuckHandled = false
+            return
+        }
+
+        // 短剧页（有"第X集"等特征）
+        if (hasEpisode) {
+            val epText = currentEpisode ?: "?"
+            if (epText != lastSeenEpisodeText) {
+                // 集数变化 → 复位
+                lastSeenEpisodeText = epText
+                lastEpisodeSeenTime = now
+                stuckHandled = false
+                return
+            }
+            // 集数未变
+            if (lastEpisodeSeenTime == 0L) { lastEpisodeSeenTime = now; return }
+            if (!stuckHandled && now - lastEpisodeSeenTime >= STUCK_THRESHOLD_MS) {
+                if (now - lastStuckBackTime >= STUCK_BACK_COOLDOWN_MS) {
+                    lastStuckBackTime = now
+                    stuckHandled = true
+                    stuckJustFired = true
+                    DramaDebug.add("⚠ 短剧页卡住（集数 ${epText} 5 分钟未变），按返回键")
+                    mainHandler.post { performGlobalAction(GLOBAL_ACTION_BACK) }
+                }
+            }
+            return
+        }
+
+        // 无短剧特征、非首页 → 可能黑屏/加载页
+        // 只有"之前确实在短剧页"（lastEpisodeSeenTime > 0）才判定
+        if (lastEpisodeSeenTime > 0 && !stuckHandled && now - lastEpisodeSeenTime >= STUCK_THRESHOLD_MS) {
+            if (now - lastStuckBackTime >= STUCK_BACK_COOLDOWN_MS) {
+                lastStuckBackTime = now
+                stuckHandled = true
+                stuckJustFired = true
+                DramaDebug.add("⚠ 短剧页消失/黑屏 5 分钟，按返回键")
+                mainHandler.post { performGlobalAction(GLOBAL_ACTION_BACK) }
+            }
+        }
+    }
+
     private fun extractEpisode(nodes: List<android.view.accessibility.AccessibilityNodeInfo>): String? {
         val regex = Regex("第\\s*(\\d+)\\s*集")
         val screenH = resources.displayMetrics.heightPixels
