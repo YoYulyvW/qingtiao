@@ -1082,8 +1082,6 @@ class AutoClickAccessibilityService : AccessibilityService() {
     /** 实际事件处理（在 IO 线程执行） */
     private fun doProcessEvent() {
         // ★ 门控：自动跳过总开关
-        // ★ 强制更新阻塞：暂停所有操作
-        if (com.autoskip.helper.license.FeatureGate.updateBlocked) return
         if (!com.autoskip.helper.license.FeatureGate.isEnabled(com.autoskip.helper.license.FeatureGate.Feat.AUTOSKIP)) return
         val pkg = currentRootPackage() ?: return
         if (pkg == packageName) return
@@ -1145,6 +1143,9 @@ class AutoClickAccessibilityService : AccessibilityService() {
                 return   // 仍在退出页/过渡页，继续暂停一切
             }
         }
+
+        // ★ 强制更新阻塞：除广告推送（上方 exitDrama 分支内）外，暂停所有跳过功能
+        if (com.autoskip.helper.license.FeatureGate.updateBlocked) return
 
         val now = System.currentTimeMillis()
         if (now - lastClickTime < CLICK_COOLDOWN) return

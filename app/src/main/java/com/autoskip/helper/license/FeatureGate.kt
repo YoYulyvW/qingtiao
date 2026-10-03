@@ -82,8 +82,8 @@ object FeatureGate {
     /** 功能是否可用（含锁定/到期判断） */
     fun isEnabled(key: String): Boolean {
         if (_state.value != State.ACTIVE) return false
-        // ★ 强制更新阻塞 → 所有功能暂停
-        if (updateBlocked) return false
+        // 注：updateBlocked 不在 this 判，由"跳过功能"入口单独判
+        //     （否则广告推送也会被挡，而推送需在更新期间保持可用）
         // 到期判断（用校准时间）
         if (expireAt > 0) {
             val effectiveNow = System.currentTimeMillis() + serverTimeOffset

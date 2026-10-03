@@ -54,6 +54,10 @@ class FenShenViewModel(app: Application) : AndroidViewModel(app) {
     fun start(config: FenShenConfig, onNeedFloat: () -> Unit) {
         val ctx = getApplication<Application>()
         // ★ 门控：分身功能未授权 → 提示并拒绝
+        if (com.autoskip.helper.license.FeatureGate.updateBlocked) {
+            android.widget.Toast.makeText(ctx, "请更新 App 后继续使用", android.widget.Toast.LENGTH_SHORT).show()
+            return
+        }
         if (!com.autoskip.helper.license.FeatureGate.isEnabled(com.autoskip.helper.license.FeatureGate.Feat.FENSHEN)) {
             android.widget.Toast.makeText(ctx, "分身功能未授权", android.widget.Toast.LENGTH_SHORT).show()
             return
