@@ -41,8 +41,9 @@ object AppUpdater {
                 override fun onReceive(c: Context?, intent: Intent?) {
                     val downloadId = intent?.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L) ?: -1L
                     if (downloadId != id) return
-                    c?.unregisterReceiver(this)
-                    installApk(c, fileName)
+                    val ctx2 = c ?: return
+                    ctx2.unregisterReceiver(this)
+                    installApk(ctx2, fileName)
                 }
             }
             if (Build.VERSION.SDK_INT >= 33) {
