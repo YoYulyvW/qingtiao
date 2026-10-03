@@ -78,7 +78,7 @@ jobs:
           if-no-files-found: error
 
       - name: Notify server (上报最新版本)
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        if: github.ref == 'refs/heads/main'
         run: |
           VERSION="${{ steps.ver.outputs.name }}"
           CODE="${{ steps.ver.outputs.code }}"
@@ -92,7 +92,7 @@ jobs:
             --max-time 15 || echo "上报失败（不阻塞构建）"
 
       - name: Publish to GitHub Releases
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        if: github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

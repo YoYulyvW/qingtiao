@@ -54,8 +54,22 @@ object FeatureGate {
     @Volatile private var expireAt = 0L
     @Volatile private var serverTimeOffset = 0L   // serverNow - localNow
 
+    /** ★ 强制更新阻塞：检测到必须更新时为 true → 所有跳过功能暂停 */
+    @Volatile var updateBlocked: Boolean = false
+        private set
+
     private val _state = MutableStateFlow(State.LOADING)
     val state: StateFlow<State> = _state
+
+    /** 更新阻塞状态（UI 观察用） */
+    private val _updateBlockedFlow = MutableStateFlow(false)
+    val updateBlockedFlow: StateFlow<Boolean> = _updateBlockedFlow
+
+    /** 设置更新阻塞状态 */
+    fun setUpdateBlocked(v: Boolean) {
+        updateBlocked = v
+        _updateBlockedFlow.value = v
+    }
 
     /** 供 UI 观察的 features（刷新时触发重组） */
     private val _featuresFlow = MutableStateFlow<Map<String, Boolean>>(emptyMap())
@@ -68,6 +82,8 @@ object FeatureGate {
     /** 功能是否可用（含锁定/到期判断） */
     fun isEnabled(key: String): Boolean {
         if (_state.value != State.ACTIVE) return false
+        // ★ 强制更新阻塞 → 所有功能暂停
+        if (updateBlocked) return false
         // 到期判断（用校准时间）
         if (expireAt > 0) {
             val effectiveNow = System.currentTimeMillis() + serverTimeOffset

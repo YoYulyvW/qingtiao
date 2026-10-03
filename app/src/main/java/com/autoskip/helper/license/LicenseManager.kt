@@ -194,6 +194,25 @@ object LicenseManager {
                             note = resp.updateNote
                         )
                     }
+                    // ★ 强制更新：立即暂停所有跳过功能 + Toast 提示（不打断当前工作）
+                    if (resp.forceUpdate) {
+                        if (!FeatureGate.updateBlocked) {
+                            FeatureGate.setUpdateBlocked(true)
+                            Log.w(TAG, "强制更新：已暂停所有跳过功能")
+                        }
+                        // 用 Toast 提示（不弹窗打断工作中的用户）
+                        try {
+                            com.autoskip.helper.service.OverlayToast.show(
+                                ctx,
+                                "发现新版本 v${resp.latestVersion}，请更新后继续使用跳过功能"
+                            )
+                        } catch (_: Exception) {}
+                    }
+                } else {
+                    // ★ 版本已是最新（或服务端未下发版本）→ 解除阻塞
+                    if (FeatureGate.updateBlocked) {
+                        FeatureGate.setUpdateBlocked(false)
+                    }
                 }
                 // ★ 规则版本检查：服务端版本更新 → 触发同步
                 if (resp.rulesVersion > p.getRulesVersion()) {
