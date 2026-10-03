@@ -57,7 +57,9 @@ class CaptureServer(
             val defaultDisplay = dm.getDisplay(Display.DEFAULT_DISPLAY)
             val realW = defaultDisplay.width
             val realH = defaultDisplay.height
-            val dpi = defaultDisplay.densityDpi
+            val metrics = android.util.DisplayMetrics()
+            defaultDisplay.getMetrics(metrics)
+            val dpi = metrics.densityDpi
             Log.i(TAG, "屏幕：${realW}x${realH} dpi=$dpi")
 
             val (w, h) = computeSize(
@@ -174,12 +176,14 @@ class CaptureServer(
 
     private fun computeSize(reqW: Int, reqH: Int, maxSize: Int): Pair<Int, Int> {
         val longest = maxOf(reqW, reqH)
+        // 0xFFFFFFFE 转 Int（等价 -2，即最低位清零取偶数）
+        val evenMask = 0xFFFFFFFE.toInt()
         if (longest <= maxSize) {
-            return (reqW and 0xFFFFFFFE) to (reqH and 0xFFFFFFFE)
+            return (reqW and evenMask) to (reqH and evenMask)
         }
         val scale = maxSize.toFloat() / longest
-        val w = (reqW * scale).toInt() and 0xFFFFFFFE
-        val h = (reqH * scale).toInt() and 0xFFFFFFFE
+        val w = (reqW * scale).toInt() and evenMask
+        val h = (reqH * scale).toInt() and evenMask
         return w to h
     }
 
