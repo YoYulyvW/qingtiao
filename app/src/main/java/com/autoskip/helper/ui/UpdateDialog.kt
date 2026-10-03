@@ -42,7 +42,7 @@ fun UpdateDialog(info: LicenseManager.UpdateInfo) {
     val context = LocalContext.current
     val prog by AppUpdater.progress.collectAsState()
 
-    // 下载中时：定时查询进度
+    // 下载中时：定时查询进度（就绪/失败后自动停）
     LaunchedEffect(prog.downloading) {
         while (prog.downloading) {
             delay(500)
@@ -103,8 +103,22 @@ fun UpdateDialog(info: LicenseManager.UpdateInfo) {
 
                 Spacer(Modifier.height(4.dp))
 
-                // ★ 下载中：显示进度条
-                if (prog.downloading) {
+                // ★ 状态分支：已就绪 > 下载中 > 错误 > 未开始
+                if (prog.readyToInstall) {
+                    // 后台预下载完成 → 显示"立即安装"
+                    Text("✅ 新版本已准备好", fontSize = 13.sp,
+                        color = com.autoskip.helper.ui.theme.HarmonyColor.BrandOrange,
+                        fontWeight = FontWeight.Medium)
+                    Button(
+                        onClick = { AppUpdater.installNow(context) },
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = com.autoskip.helper.ui.theme.HarmonyColor.BrandOrange,
+                            contentColor = com.autoskip.helper.ui.theme.HarmonyColor.White
+                        )
+                    ) { Text("立即安装", fontSize = 15.sp, fontWeight = FontWeight.Medium) }
+                } else if (prog.downloading) {
                     LinearProgressIndicator(
                         progress = { prog.percent / 100f },
                         modifier = Modifier.fillMaxWidth().height(8.dp),
@@ -132,7 +146,7 @@ fun UpdateDialog(info: LicenseManager.UpdateInfo) {
                     Button(
                         onClick = {
                             AppUpdater.reset()
-                            AppUpdater.downloadAndInstall(context, info.downloadUrl, info.latestVersion)
+                            AppUpdater.downloadAndInstall(context, info.downloadUrl, info.latestVersion, info.latestVersionCode)
                         },
                         modifier = Modifier.fillMaxWidth().height(48.dp),
                         shape = RoundedCornerShape(12.dp),
@@ -144,7 +158,7 @@ fun UpdateDialog(info: LicenseManager.UpdateInfo) {
                 } else {
                     Button(
                         onClick = {
-                            AppUpdater.downloadAndInstall(context, info.downloadUrl, info.latestVersion)
+                            AppUpdater.downloadAndInstall(context, info.downloadUrl, info.latestVersion, info.latestVersionCode)
                         },
                         modifier = Modifier.fillMaxWidth().height(48.dp),
                         shape = RoundedCornerShape(12.dp),

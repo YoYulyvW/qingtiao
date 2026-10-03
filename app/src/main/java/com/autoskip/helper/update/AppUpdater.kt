@@ -16,20 +16,23 @@ import kotlinx.coroutines.flow.StateFlow
 import java.io.File
 
 /**
- * APK 下载 + 安装。
- * - 用系统 DownloadManager 下载到 Download/ 目录
- * - 下载完通过 FileProvider 触发安装
- * - 暴露 downloadProgress（0..100），供 UI 显示进度条
+ * APK 下载 + 安装（下载与安装分离）。
+ * - preDownload：后台静默预下载，完成后标记 readyToInstall（不自动安装）
+ * - downloadAndInstall：手动下载，完成后自动调系统安装
+ * - installNow：对已下载的 APK 触发系统安装
+ * - 暴露 progress（下载进度 + 就绪状态）
  */
 object AppUpdater {
     private const val TAG = "AppUpdater"
 
-    /** 下载进度状态（供 UI 观察） */
+    /** 下载/就绪状态（供 UI 观察） */
     data class Progress(
         val downloading: Boolean = false,
         val percent: Int = 0,
         val downloadedBytes: Long = 0,
         val totalBytes: Long = 0,
+        val readyToInstall: Boolean = false,   // 已下载完成，待用户点击安装
+        val version: String = "",
         val error: String? = null
     )
 
@@ -37,12 +40,31 @@ object AppUpdater {
     val progress: StateFlow<Progress> = _progress
 
     private var currentDownloadId: Long = -1L
+    private var currentFileName: String = ""
+    private var currentVersion: String = ""
+    /** 正在下载/已就绪的版本码，避免重复下载 */
+    @Volatile private var busyVersionCode: Long = 0
 
-    /** 下载并安装（返回 DownloadManager 的 downloadId） */
-    fun downloadAndInstall(ctx: Context, url: String, version: String): Long? {
+    /**
+     * 开始下载。
+     * @param autoInstall true=下载完自动调系统安装；false=仅下载（就绪后等用户点击）
+     */
+    fun startDownload(ctx: Context, url: String, version: String, versionCode: Long, autoInstall: Boolean): Long? {
+        // 已就绪同一版本 → 直接返回
+        val cur = _progress.value
+        if (cur.readyToInstall && cur.version == version) return currentDownloadId
+        // 正在下载同一版本 → 跳过
+        if (cur.downloading && cur.version == version) return currentDownloadId
+        // 其他版本下载中 → 不干扰
+        if (cur.downloading) return null
+
         return try {
-            _progress.value = Progress(downloading = true, percent = 0)
             val fileName = "AutoSkip-${version}.apk"
+            currentFileName = fileName
+            currentVersion = version
+            busyVersionCode = versionCode
+            _progress.value = Progress(downloading = true, percent = 0, version = version)
+
             val req = DownloadManager.Request(Uri.parse(url)).apply {
                 setTitle("开饭小工具更新")
                 setDescription("正在下载 ${version}…")
@@ -55,26 +77,28 @@ object AppUpdater {
             val id = dm.enqueue(req)
             currentDownloadId = id
 
-            // 注册广播：下载完成 → 触发安装
             val receiver = object : BroadcastReceiver() {
                 override fun onReceive(c: Context?, intent: Intent?) {
                     val downloadId = intent?.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L) ?: -1L
                     if (downloadId != id) return
                     val ctx2 = c ?: return
                     ctx2.unregisterReceiver(this)
-                    // 检查下载是否成功
-                    val q = DownloadManager.Query().setFilterById(id)
-                    val cursor = dm.query(q)
-                    if (cursor != null && cursor.moveToFirst()) {
-                        val status = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
-                        cursor.close()
-                        if (status == DownloadManager.STATUS_SUCCESSFUL) {
-                            _progress.value = Progress(downloading = false, percent = 100)
+                    val ok = checkSuccess(dm, id)
+                    if (ok) {
+                        if (autoInstall) {
+                            _progress.value = Progress(downloading = false, percent = 100, version = version)
                             installApk(ctx2, fileName)
-                            return
+                        } else {
+                            // 后台预下载：标记就绪，不自动安装
+                            _progress.value = Progress(
+                                downloading = false, percent = 100,
+                                readyToInstall = true, version = version
+                            )
+                            Log.i(TAG, "预下载完成，等待用户安装：${version}")
                         }
+                    } else {
+                        _progress.value = Progress(downloading = false, error = "下载失败，请重试", version = version)
                     }
-                    _progress.value = Progress(downloading = false, error = "下载失败，请重试")
                 }
             }
             if (Build.VERSION.SDK_INT >= 33) {
@@ -85,15 +109,45 @@ object AppUpdater {
             id
         } catch (e: Exception) {
             Log.e(TAG, "下载失败", e)
-            _progress.value = Progress(downloading = false, error = (e.message ?: "下载失败"))
+            _progress.value = Progress(downloading = false, error = (e.message ?: "下载失败"), version = version)
             Toast.makeText(ctx, "下载失败：" + (e.message ?: ""), Toast.LENGTH_LONG).show()
             null
+        }
+    }
+
+    /** 后台预下载（不自动安装） */
+    fun preDownload(ctx: Context, url: String, version: String, versionCode: Long): Long? =
+        startDownload(ctx, url, version, versionCode, autoInstall = false)
+
+    /** 手动下载并安装（下载完自动装） */
+    fun downloadAndInstall(ctx: Context, url: String, version: String, versionCode: Long = 0): Long? =
+        startDownload(ctx, url, version, versionCode, autoInstall = true)
+
+    /** 对已下载的 APK 触发系统安装 */
+    fun installNow(ctx: Context) {
+        if (currentFileName.isBlank()) {
+            Toast.makeText(ctx, "安装包不存在", Toast.LENGTH_LONG).show()
+            return
+        }
+        installApk(ctx, currentFileName)
+    }
+
+    private fun checkSuccess(dm: DownloadManager, id: Long): Boolean {
+        val cursor = dm.query(DownloadManager.Query().setFilterById(id)) ?: return false
+        return if (cursor.moveToFirst()) {
+            val status = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
+            cursor.close()
+            status == DownloadManager.STATUS_SUCCESSFUL
+        } else {
+            cursor.close()
+            false
         }
     }
 
     /** 查询当前下载进度（由 UI 定时调用） */
     fun refreshProgress(ctx: Context) {
         if (currentDownloadId < 0) return
+        if (_progress.value.readyToInstall) return
         try {
             val dm = ctx.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
             val cursor = dm.query(DownloadManager.Query().setFilterById(currentDownloadId)) ?: return
@@ -105,12 +159,14 @@ object AppUpdater {
                 when (status) {
                     DownloadManager.STATUS_RUNNING -> {
                         val pct = if (bytesTotal > 0) ((bytesDown * 100) / bytesTotal).toInt() else 0
-                        _progress.value = Progress(true, pct, bytesDown, bytesTotal)
+                        _progress.value = _progress.value.copy(
+                            downloading = true, percent = pct,
+                            downloadedBytes = bytesDown, totalBytes = bytesTotal, error = null
+                        )
                     }
                     DownloadManager.STATUS_FAILED -> {
-                        _progress.value = Progress(false, error = "下载失败，请重试")
+                        _progress.value = _progress.value.copy(downloading = false, error = "下载失败，请重试")
                     }
-                    // SUCCESSFUL 由广播处理
                 }
             } else {
                 cursor.close()
@@ -120,9 +176,12 @@ object AppUpdater {
         }
     }
 
-    /** 重置状态（用户重试 / 关闭弹窗） */
+    /** 重置状态 */
     fun reset() {
         currentDownloadId = -1L
+        currentFileName = ""
+        currentVersion = ""
+        busyVersionCode = 0
         _progress.value = Progress()
     }
 
