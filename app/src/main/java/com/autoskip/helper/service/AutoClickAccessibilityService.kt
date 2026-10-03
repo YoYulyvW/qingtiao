@@ -463,9 +463,14 @@ class AutoClickAccessibilityService : AccessibilityService() {
             return
         }
 
+        // ★ 首页排除（修复首页偶发长按）：底部导航含 团购/商城/朋友 → 绝非短剧页
+        val isHomePageLike = nodes.any {
+            val tt = it.text?.toString()?.trim() ?: ""
+            tt == "团购" || tt == "商城" || tt == "朋友"
+        }
         // 2) 是短剧页面 → 长按视频中心唤出菜单
         //   短剧页特征：明确的"集全" / "第N集" / "免费看全集"（已收紧，首页不会误判）
-        val isDramaPage = nodes.any {
+        val isDramaPage = !isHomePageLike && nodes.any {
             val t = it.text?.toString() ?: ""
             t.contains("集全") || Regex("第\\s*\\d+\\s*集").containsMatchIn(t) ||
                 t.contains("免费看全集")
