@@ -83,14 +83,9 @@ jobs:
           VERSION="${{ steps.ver.outputs.name }}"
           CODE="${{ steps.ver.outputs.code }}"
           GH_URL="https://github.com/${{ github.repository }}/releases/download/v${VERSION}/AutoSkip-${VERSION}.apk"
-          FINAL=$(curl -sIL "$GH_URL" 2>/dev/null | tr -d '\r' | grep -i '^location: ' | tail -1 | sed 's/^[Ll]ocation: *//')
-          if [ -n "$FINAL" ] && echo "$FINAL" | grep -q '^https\?://'; then
-            URL="https://oo6.cc/downloads/${FINAL}"
-            echo "已解析直连：$FINAL"
-          else
-            URL="https://oo6.cc/downloads/${GH_URL}"
-            echo "未解析到直连，回退原 URL"
-          fi
+          # ★ 用「每次请求时解析 302」的 GitHub 代理（ghfast.top），URL 永久有效
+          #    （直接拼 CDN 直连会因签名过期而 403）
+          URL="https://ghfast.top/${GH_URL}"
           echo "上报 ${VERSION} (${CODE}) → ${URL}"
           curl -sS -X POST "https://pybot.eu.org/app/report-version" \
             -H "Content-Type: application/json" \
