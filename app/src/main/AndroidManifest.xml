@@ -11,6 +11,8 @@
     <uses-permission
         android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="QueryAllPackagesPermission" />
+    <!-- ★ 安装 APK 必需（Android 8+）：缺此权限，App 不在"安装未知应用"列表，装 APK 会崩 -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <application
         android:name=".App"
