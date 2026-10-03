@@ -161,7 +161,10 @@ class RemoteControlService : Service() {
     }
 
     // ===== DataChannel 事件 =====
+    @Volatile private var dcSetup = false
     private fun setupDataChannel(dc: DataChannel) {
+        if (dcSetup) return   // ★ 避免重复注册 observer
+        dcSetup = true
         dc.registerObserver(object : DataChannel.Observer {
             override fun onBufferedAmountChange(previousAmount: Long) {}
             override fun onStateChange() {

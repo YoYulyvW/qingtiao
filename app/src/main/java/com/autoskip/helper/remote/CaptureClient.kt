@@ -31,12 +31,16 @@ class CaptureClient(private val port: Int) {
                 socket = s
                 Log.i(TAG, "已连接捕获端口 $port")
                 val input = DataInputStream(s.getInputStream().buffered())
-                val buf = ByteArray(64 * 1024)
+                var buf = ByteArray(64 * 1024)
                 while (running) {
                     val len = input.readInt()
                     if (len <= 0 || len > 4 * 1024 * 1024) {
                         Log.w(TAG, "非法帧长：$len")
                         break
+                    }
+                    // ★ 确保缓冲区足够大（H.264 I 帧可能超过 64KB）
+                    if (len > buf.size) {
+                        buf = ByteArray(len)
                     }
                     input.readFully(buf, 0, len)
                     val frame = buf.copyOf(len)
