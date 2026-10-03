@@ -101,19 +101,21 @@ fun UpdateDialog(info: LicenseManager.UpdateInfo) {
 
                 // ★ 状态分支：已就绪 > 下载中 > 错误 > 未开始
                 if (prog.readyToInstall) {
-                    // 后台预下载完成 → 显示"立即安装"
-                    Text("✅ 新版本已准备好", fontSize = 13.sp,
+                    // 下载完成 → 引导到文件管理器手动安装
+                    Text("✅ 已下载到系统下载目录", fontSize = 13.sp,
                         color = com.autoskip.helper.ui.theme.HarmonyColor.BrandOrange,
                         fontWeight = FontWeight.Medium)
+                    Text("在文件管理器点 APK 即可安装", fontSize = 11.sp,
+                        color = com.autoskip.helper.ui.theme.HarmonyColor.Gray6)
                     Button(
-                        onClick = { AppUpdater.installNow(context) },
+                        onClick = { AppUpdater.openDownloadFolder(context) },
                         modifier = Modifier.fillMaxWidth().height(48.dp),
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = com.autoskip.helper.ui.theme.HarmonyColor.BrandOrange,
                             contentColor = com.autoskip.helper.ui.theme.HarmonyColor.White
                         )
-                    ) { Text("立即安装", fontSize = 15.sp, fontWeight = FontWeight.Medium) }
+                    ) { Text("打开文件管理器", fontSize = 15.sp, fontWeight = FontWeight.Medium) }
                 } else if (prog.downloading) {
                     LinearProgressIndicator(
                         progress = { prog.percent / 100f },

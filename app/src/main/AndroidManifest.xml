@@ -8,11 +8,14 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Android 9- 写公共下载目录需要；10+ 用 MediaStore 无需 -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
     <uses-permission
         android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="QueryAllPackagesPermission" />
-    <!-- ★ 安装 APK 必需（Android 8+）：缺此权限，App 不在"安装未知应用"列表，装 APK 会崩 -->
-    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- 注：不声明 REQUEST_INSTALL_PACKAGES（避免三星"限制性应用"标记）。
+         下载后由用户手动到系统文件管理器点 APK 安装。 -->
 
     <application
         android:name=".App"
