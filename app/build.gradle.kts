@@ -88,4 +88,8 @@ dependencies {
     ksp("androidx.room:room-compiler:2.6.1")
 
     implementation("androidx.datastore:datastore-preferences:1.1.1")
+
+    // ★ WebRTC（远程控制推流 + DataChannel 触控）
+    // io.github.webrtc-sdk 是 org.webrtc 的非官方镜像，发布在 Maven Central
+    implementation("io.github.webrtc-sdk:android:125.6422.07")
 }

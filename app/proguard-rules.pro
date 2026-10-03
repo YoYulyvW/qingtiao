@@ -54,3 +54,14 @@
 -dontwarn org.jetbrains.annotations.**
 -dontwarn kotlin.**
 -dontwarn javax.annotation.**
+
+# ===== 远程控制捕获（app_process 反射调用，类名/方法名不可混淆）=====
+-keep class com.autoskip.helper.capture.** { *; }
+-keepclassmembers class com.autoskip.helper.capture.** { *; }
+
+# ===== WebRTC（大量 JNI 反射调用，不可混淆）=====
+-keep class org.webrtc.** { *; }
+-dontwarn org.webrtc.**
+
+# ===== Root 模块（反射相关）=====
+-keep class com.autoskip.helper.root.** { *; }
