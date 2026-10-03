@@ -87,8 +87,15 @@ class RemoteControlService : Service() {
 
         worker.execute {
             try {
+                // 1) 通过 su 后台启动 app_process 捕获进程
+                startCaptureProcess()
+                // 2) 等 2 秒让捕获进程初始化（app_process 启动 + VirtualDisplay 创建）
+                Thread.sleep(2000)
+                // 3) 初始化 WebRTC
                 initWebRTC()
+                // 4) 连接本地 TCP（读 H.264 流）
                 startCaptureClient()
+                // 5) 连接信令
                 startSignaling(signalUrl)
             } catch (e: Exception) {
                 log("★ 启动失败：" + e.message)
@@ -97,6 +104,51 @@ class RemoteControlService : Service() {
             }
         }
         return START_STICKY
+    }
+
+    /**
+     * ★ 通过 su 启动 app_process 捕获进程（生产模式：port=27183，非 POC）。
+     *
+     * 关键点：
+     *   - 用 & 让 app_process 在后台运行，su 立即返回
+     *   - app_process 输出的日志写到 logcat（Log.i）而不是 stdout
+     *   - 该进程独立于本 Service 生命周期（Service 停止时需手动 kill）
+     *
+     * 关于 APK 路径：CLASSPATH 需指向当前安装的 APK（动态路径）
+     */
+    private fun startCaptureProcess() {
+        // 拿到 APK 路径
+        val apkPath = try {
+            packageManager.getApplicationInfo(packageName, 0).sourceDir
+        } catch (e: Exception) {
+            log("★ 获取 APK 路径失败：" + e.message)
+            ""
+        }
+        if (apkPath.isEmpty()) return
+
+        // 检查是否已有捕获进程在跑（通过 TCP 端口探测）
+        if (isPortOpen(27183)) {
+            log("捕获端口已占用，跳过启动（可能已有进程）")
+            return
+        }
+
+        val cmd = "CLASSPATH=$apkPath app_process /system/bin com.autoskip.helper.capture.CaptureMain port=27183 >/dev/null 2>&1 &"
+        log("启动 app_process：$cmd")
+        // 用 su -c 执行，加 & 后台运行（不阻塞）
+        val r = com.autoskip.helper.root.RootShell.exec(cmd, 5000)
+        log("su 返回：退出码=${r.exitCode} stdout=${r.stdout.take(200)}")
+    }
+
+    /** 探测本地端口是否已打开 */
+    private fun isPortOpen(port: Int): Boolean {
+        return try {
+            java.net.Socket().use { s ->
+                s.connect(java.net.InetSocketAddress("127.0.0.1", port), 500)
+                true
+            }
+        } catch (e: Exception) {
+            false
+        }
     }
 
     // ===== WebRTC 初始化 =====
